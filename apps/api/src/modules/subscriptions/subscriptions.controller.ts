@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { IsString } from 'class-validator';
 import { SubscriptionsService } from './subscriptions.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
@@ -30,6 +31,7 @@ export class SubscriptionsController {
   // Public endpoint; authenticity is verified via the provider signature over
   // the raw request bytes (populated by `rawBody: true` in main.ts).
   @Post('webhook')
+  @SkipThrottle()
   webhook(
     @Req() req: { rawBody?: Buffer; body?: unknown },
     @Headers('stripe-signature') signature = '',

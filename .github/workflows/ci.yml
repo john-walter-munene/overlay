@@ -15,9 +15,10 @@ jobs:
         with:
           node-version: 22
       # Pure-logic tests (stats, integrity, odds/results mappers, payout math)
-      # run on Node's native TS type-stripping — no install needed.
+      # run on Node's native TS type-stripping — no install needed. Globs are
+      # quoted so Node's test runner expands them recursively (not the shell).
       - name: Run unit tests
-        run: node --experimental-strip-types --test packages/shared/src/*.test.ts apps/api/src/**/*.test.ts
+        run: npm run test:unit
 
   build:
     name: Install & build
@@ -28,6 +29,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm run prisma:generate
-      - run: npm run build --if-present
+      - run: npm run build
