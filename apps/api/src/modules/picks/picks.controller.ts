@@ -32,4 +32,13 @@ export class PicksController {
   listByTipster(@Param('tipsterId') tipsterId: string) {
     return this.picks.listByTipster(tipsterId);
   }
+
+  @Get('tipster/:tipsterId/live')
+  @UseGuards(JwtAuthGuard)
+  listLive(
+    @Param('tipsterId') tipsterId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.picks.listLiveForSubscriber(user.userId, tipsterId);
+  }
 }

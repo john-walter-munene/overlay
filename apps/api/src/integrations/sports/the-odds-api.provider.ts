@@ -1,23 +1,30 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type {
   EventResult,
   MarketOdds,
   ProviderEvent,
   SportsDataProvider,
 } from './sports-provider.interface';
+import {
+  mapEvents,
+  mapOdds,
+  toEventResult,
+  type OddsApiEvent,
+  type OddsApiEventOdds,
+  type OddsApiScoreEvent,
+} from './the-odds-api.mapper';
 
 /**
  * The Odds API adapter — primary source for pre-match + closing odds.
- * https://the-odds-api.com/  (confirm endpoints/quota against live docs)
+ * https://the-odds-api.com/ (v4). Response shaping lives in the pure mapper so
+ * it can be unit-tested without the network or framework.
  *
- * NOTE: v1 skeleton. Endpoint shapes are sketched from the vendor's v4 API and
- * must be validated during integration. Kept behind SportsDataProvider so the
- * rest of the system is unaffected by vendor specifics.
+ * The Odds API's odds/scores endpoints are keyed by `sport` (e.g. 'soccer_epl'),
+ * not by event id, so we encode the vendor id as "<sport>:<eventId>".
  */
 @Injectable()
 export class TheOddsApiProvider implements SportsDataProvider {
   readonly name = 'the-odds-api';
-  private readonly log = new Logger(TheOddsApiProvider.name);
   private readonly base = 'https://api.the-odds-api.com/v4';
 
   private get apiKey(): string {
@@ -28,36 +35,47 @@ export class TheOddsApiProvider implements SportsDataProvider {
 
   async getUpcomingEvents(sport: string): Promise<ProviderEvent[]> {
     const url = `${this.base}/sports/${sport}/events?apiKey=${this.apiKey}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`the-odds-api events ${res.status}`);
-    const data = (await res.json()) as Array<{
-      id: string;
-      sport_key: string;
-      sport_title: string;
-      home_team: string;
-      away_team: string;
-      commence_time: string;
-    }>;
-    return data.map((e) => ({
-      vendorEventId: e.id,
-      sport: e.sport_key,
-      league: e.sport_title,
-      home: e.home_team,
-      away: e.away_team,
-      startTime: new Date(e.commence_time),
+    const raw = await this.fetchJson<OddsApiEvent[]>(url);
+    // Encode sport into the id so later odds/scores lookups can route.
+    return mapEvents(raw).map((e) => ({
+      ...e,
+      vendorEventId: `${sport}:${e.vendorEventId}`,
     }));
   }
 
   async getOdds(vendorEventId: string): Promise<MarketOdds[]> {
-    // TODO: map /sports/{sport}/odds response (bookmakers[].markets[].outcomes[])
-    // into aggregated MarketOdds. Requires the sport key alongside the event id.
-    this.log.warn(`getOdds not yet implemented for ${vendorEventId}`);
-    return [];
+    const { sport, eventId } = this.splitId(vendorEventId);
+    const url = `${this.base}/sports/${sport}/odds?apiKey=${this.apiKey}&regions=eu&markets=h2h&oddsFormat=decimal`;
+    const raw = await this.fetchJson<OddsApiEventOdds[]>(url);
+    const event = raw.find((e) => e.id === eventId);
+    return event ? mapOdds(event) : [];
   }
 
   async getResult(vendorEventId: string): Promise<EventResult | null> {
-    // TODO: map /sports/{sport}/scores response into EventResult with grade().
-    this.log.warn(`getResult not yet implemented for ${vendorEventId}`);
-    return null;
+    const { sport, eventId } = this.splitId(vendorEventId);
+    const url = `${this.base}/sports/${sport}/scores?apiKey=${this.apiKey}&daysFrom=3`;
+    const raw = await this.fetchJson<OddsApiScoreEvent[]>(url);
+    const event = raw.find((e) => e.id === eventId);
+    if (!event || !event.completed) return null;
+    return toEventResult(event);
+  }
+
+  private splitId(vendorEventId: string): { sport: string; eventId: string } {
+    const idx = vendorEventId.indexOf(':');
+    if (idx === -1) {
+      throw new Error(
+        `Expected "<sport>:<eventId>" for the-odds-api, got "${vendorEventId}"`,
+      );
+    }
+    return {
+      sport: vendorEventId.slice(0, idx),
+      eventId: vendorEventId.slice(idx + 1),
+    };
+  }
+
+  private async fetchJson<T>(url: string): Promise<T> {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`the-odds-api ${res.status} for ${url}`);
+    return (await res.json()) as T;
   }
 }

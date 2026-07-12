@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,11 +10,17 @@ import {
   type PickPayload,
 } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreatePickDto } from './dto/create-pick.dto';
 
 @Injectable()
 export class PicksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subs: SubscriptionsService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private get pepper(): string {
     return process.env.PICK_HASH_PEPPER ?? 'dev-pepper';
@@ -70,15 +77,38 @@ export class PicksService {
       return created;
     });
 
-    // TODO: publish "new_pick" to Redis and enqueue dispatch-notifications.
+    // Fan out to subscribers (enqueue in production; awaited here in v1).
+    await this.notifications.notifyNewPick({
+      tipsterId,
+      market: pick.market,
+      selection: pick.selection,
+      oddsAtPick: pick.oddsAtPick,
+    });
+
     return pick;
   }
 
-  /** List a tipster's picks (settlement fields are public once graded). */
+  /** Public track record: only SETTLED picks. Live/pending picks are gated. */
   listByTipster(tipsterId: string) {
+    return this.prisma.pick.findMany({
+      where: { tipsterId, status: { not: 'pending' } },
+      orderBy: { lockedAt: 'desc' },
+    });
+  }
+
+  /**
+   * Live picks for a subscriber — includes still-pending (pre-event) picks.
+   * Gated: requires an active subscription to the tipster.
+   */
+  async listLiveForSubscriber(userId: string, tipsterId: string) {
+    const entitled = await this.subs.isEntitled(userId, tipsterId);
+    if (!entitled) {
+      throw new ForbiddenException('Active subscription required');
+    }
     return this.prisma.pick.findMany({
       where: { tipsterId },
       orderBy: { lockedAt: 'desc' },
+      take: 100,
     });
   }
 }

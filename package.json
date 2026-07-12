@@ -8,10 +8,11 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @overlay/shared && npm run build -w @overlay/api && npm run build -w @overlay/web",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test:shared": "node --experimental-strip-types --test packages/shared/src/*.test.ts",
+    "test:unit": "node --experimental-strip-types --test packages/shared/src/*.test.ts apps/api/src/**/*.test.ts",
     "db:up": "docker compose -f infra/docker-compose.yml up -d",
     "db:down": "docker compose -f infra/docker-compose.yml down",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",

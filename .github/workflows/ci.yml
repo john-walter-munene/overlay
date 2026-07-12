@@ -14,9 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Stats & integrity tests run on Node's native TS type-stripping — no install needed.
-      - name: Run shared tests
-        run: node --experimental-strip-types --test packages/shared/src/*.test.ts
+      # Pure-logic tests (stats, integrity, odds/results mappers, payout math)
+      # run on Node's native TS type-stripping — no install needed.
+      - name: Run unit tests
+        run: node --experimental-strip-types --test packages/shared/src/*.test.ts apps/api/src/**/*.test.ts
 
   build:
     name: Install & build
