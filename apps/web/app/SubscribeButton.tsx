@@ -45,9 +45,9 @@ export default function SubscribeButton({
         body: JSON.stringify({ tipsterId }),
       });
       if (!res.ok) throw new Error(`Checkout failed (${res.status})`);
-      const data = (await res.json()) as { checkoutUrl?: string };
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl;
+      const data = (await res.json()) as { url?: string };
+      if (data.url) {
+        window.location.href = data.url;
       } else {
         setError('Subscription started.');
       }

@@ -21,7 +21,7 @@ test('slugify collapses runs and trims hyphens', () => {
 });
 
 test('countWords ignores markdown punctuation and code', () => {
-  assert.equal(countWords('# Title\n\nHello **world** `x=1` [link](/a)'), 3);
+  assert.equal(countWords('# Title\n\nHello **world** `x=1` [link](/a)'), 4);
 });
 
 test('readingTimeMinutes is at least 1 for real content', () => {

@@ -64,13 +64,32 @@ cp .env.example .env        # then fill in secrets
 npm run prisma:generate
 npm run prisma:migrate
 
-# 5. Run the API and web app (separate terminals)
+# 5. Seed an admin user + starter blog content
+npm run db:seed
+
+# 6. Run the API and web app (separate terminals)
 npm run start:dev -w @overlay/api
 npm run dev -w @overlay/web
 
-# Run the correctness-critical stats/integrity tests (no install needed):
-npm run test:shared
+# Optional: run the settlement worker
+#   interval mode (default, no Redis):  npm run start:worker -w @overlay/api
+#   queue mode (BullMQ + Redis):        WORKER_MODE=queue npm run start:worker -w @overlay/api
+
+# Run the correctness-critical stats/integrity/content tests (no install needed):
+npm run test:unit
 ```
+
+## Key surfaces
+
+| Surface | Route | Notes |
+|---|---|---|
+| Leaderboard | `/` | Verified tipsters ranked by yield + CLV (suspended hidden) |
+| Tipster profile | `/tipsters/[id]` | Verified stats, settled picks, subscribe CTA |
+| Strategy blog | `/blog`, `/blog/[slug]` | SEO content — JSON-LD, OG tags, sitemap, robots |
+| Auth | `/login`, `/signup` | JWT stored client-side; bettor or tipster role |
+| Account | `/account` | Subscriptions + sign-out |
+| Tipster dashboard | `/dashboard` | Submit (hash-lock) picks, view track record |
+| Admin API | `/api/admin/*` | Dashboard metrics, role mgmt, tipster suspend, audit log |
 
 ## Monorepo layout
 
@@ -78,7 +97,7 @@ npm run test:shared
 overlay-bets/
 ├── apps/
 │   ├── api/           # NestJS modular monolith (HTTP + worker)
-│   └── web/           # Next.js (leaderboard, profiles)
+│   └── web/           # Next.js (leaderboard, profiles, blog, auth, dashboard)
 ├── packages/
 │   └── shared/        # stats engine (CLV/ROI) + pick integrity — unit-tested
 ├── prisma/            # schema + migrations
