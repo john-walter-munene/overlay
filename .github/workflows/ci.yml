@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  shared:
+    name: Shared engine (stats + integrity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Stats & integrity tests run on Node's native TS type-stripping — no install needed.
+      - name: Run shared tests
+        run: node --experimental-strip-types --test packages/shared/src/*.test.ts
+
+  build:
+    name: Install & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run prisma:generate
+      - run: npm run build --if-present

@@ -1,0 +1,159 @@
+// Overlay Bets — Prisma schema (v1)
+// See docs/ARCHITECTURE.md §4 for the data model and integrity rules.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  tipster
+  admin
+}
+
+enum PickStatus {
+  pending
+  won
+  lost
+  void
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+}
+
+enum PayoutStatus {
+  pending
+  paid
+  failed
+}
+
+model User {
+  id           String         @id @default(cuid())
+  role         Role           @default(user)
+  email        String         @unique
+  passwordHash String
+  createdAt    DateTime       @default(now())
+
+  tipster       Tipster?
+  subscriptions Subscription[]
+}
+
+model Tipster {
+  userId                 String   @id
+  user                   User     @relation(fields: [userId], references: [id])
+  bio                    String?
+  sports                 String[]
+  subscriptionPriceCents Int      @default(0)
+  stripeAccountId        String?
+  status                 String   @default("active")
+  createdAt              DateTime @default(now())
+
+  picks         Pick[]
+  subscriptions Subscription[]
+  stats         TipsterStats?
+  payouts       Payout[]
+}
+
+model Event {
+  id                String    @id @default(cuid())
+  vendorEventId     String    @unique
+  sport             String
+  league            String?
+  home              String
+  away              String
+  startTime         DateTime
+  status            String    @default("scheduled")
+  closingCapturedAt DateTime?
+
+  picks Pick[]
+
+  @@index([startTime])
+}
+
+/// Append-only. Core fields are immutable after `lockedAt`.
+/// Only the settlement worker writes settlement fields (status/result/closingOdds/clv/settledAt).
+model Pick {
+  id         String  @id @default(cuid())
+  tipsterId  String
+  tipster    Tipster @relation(fields: [tipsterId], references: [userId])
+  eventId    String
+  event      Event   @relation(fields: [eventId], references: [id])
+
+  market     String
+  selection  String
+  oddsAtPick Float
+  stakeUnits Float   @default(1)
+
+  // Integrity fields (set at lock time, never mutated)
+  hash     String
+  nonce    String
+  lockedAt DateTime @default(now())
+
+  // Settlement fields (worker-only writes)
+  status      PickStatus @default(pending)
+  closingOdds Float?
+  clv         Float?
+  result      String?
+  settledAt   DateTime?
+
+  @@index([tipsterId, status])
+  @@index([eventId, status])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String
+  user                 User               @relation(fields: [userId], references: [id])
+  tipsterId            String
+  tipster              Tipster            @relation(fields: [tipsterId], references: [userId])
+  stripeSubscriptionId String?            @unique
+  status               SubscriptionStatus @default(active)
+  currentPeriodEnd     DateTime?
+
+  @@unique([userId, tipsterId])
+}
+
+/// Materialized stats, recomputed by the stats worker after each settlement batch.
+model TipsterStats {
+  tipsterId     String   @id
+  tipster       Tipster  @relation(fields: [tipsterId], references: [userId])
+  roi           Float    @default(0)
+  yield         Float    @default(0)
+  clvAvg        Float    @default(0)
+  winRate       Float    @default(0)
+  sampleSize    Int      @default(0)
+  maxDrawdown   Float    @default(0)
+  currentStreak Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
+model Payout {
+  id               String       @id @default(cuid())
+  tipsterId        String
+  tipster          Tipster      @relation(fields: [tipsterId], references: [userId])
+  amountCents      Int
+  period           String
+  status           PayoutStatus @default(pending)
+  stripeTransferId String?
+  createdAt        DateTime     @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  entity    String
+  entityId  String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
