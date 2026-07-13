@@ -1,0 +1,77 @@
+# Full local stack: Postgres + Redis + API + Web.
+# From the repo root:
+#   docker compose -f infra/docker-compose.full.yml up --build
+#
+# The base infra (Postgres + Redis) is reused from docker-compose.yml.
+
+services:
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: overlay-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ******postgres:5432/overlay?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-please-change-me}
+      PICK_HASH_PEPPER: ${PICK_HASH_PEPPER:-please-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-mock}
+      SPORTS_API_PROVIDER: ${SPORTS_API_PROVIDER:-mock}
+    ports:
+      - "4000:4000"
+
+  worker:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    container_name: overlay-worker
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    command: ["node", "apps/api/dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ******postgres:5432/overlay?schema=public
+      REDIS_URL: redis://redis:6379
+      WORKER_MODE: ${WORKER_MODE:-queue}
+      JWT_SECRET: ${JWT_SECRET:-please-change-me}
+      PICK_HASH_PEPPER: ${PICK_HASH_PEPPER:-please-change-me}
+      SPORTS_API_PROVIDER: ${SPORTS_API_PROVIDER:-mock}
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+    container_name: overlay-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+volumes:
+  overlay-pgdata:
+  overlay-redisdata:
