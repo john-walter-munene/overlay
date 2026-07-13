@@ -11,7 +11,7 @@ export class StatsController {
     @Query('limit') limit?: string,
   ) {
     return this.stats.leaderboard(
-      minSample ? Number(minSample) : 50,
+      minSample ? Number(minSample) : 10,
       limit ? Number(limit) : 100,
     );
   }

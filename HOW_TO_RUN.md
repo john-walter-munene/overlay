@@ -64,7 +64,7 @@ The defaults work out of the box for local testing:
 ```bash
 npm run prisma:generate     # generate the Prisma client
 npm run prisma:migrate      # create tables (name the migration e.g. "init")
-npm run db:seed             # admin user + 3 starter blog articles
+npm run db:seed             # admin user, 3 blog articles + 3 upcoming events
 ```
 
 The seed prints the admin credentials (defaults: `admin@overlay.local` /
@@ -108,20 +108,21 @@ WORKER_MODE=queue npm run start:worker -w @overlay/api
 
 1. **Browse** the leaderboard and the **/blog** (seeded articles).
 2. **Sign up** at `/signup` as a **Tipster** → you land on **/dashboard**.
-3. **Ingest events** so there's something to pick (admin-only). Easiest path:
-   sign up/promote an admin, or use the seeded admin to call:
-   ```bash
-   # log in to get a token, then:
-   curl -X POST http://localhost:4000/api/events/ingest \
-     -H "authorization: Bearer <ADMIN_JWT>" \
-     -H "content-type: application/json" \
-     -d '{"sport":"soccer"}'
-   ```
-   (With `SPORTS_API_PROVIDER=mock`, this returns mock fixtures.)
-4. **Submit a pick** from the dashboard — it's hash-locked instantly.
-5. In another account, **subscribe** to a tipster from their profile → the mock
+3. **Submit a pick** from the dashboard — the seed already created a few
+   upcoming fixtures, so they appear in the event dropdown immediately. The
+   pick is hash-locked instantly.
+   > To pull **more/fresh** fixtures, an admin can ingest them (admin-only):
+   > ```bash
+   > # log in to get a token, then:
+   > curl -X POST http://localhost:4000/api/events/ingest \
+   >   -H "authorization: Bearer <ADMIN_JWT>" \
+   >   -H "content-type: application/json" \
+   >   -d '{"sport":"soccer"}'
+   > ```
+   > (With `SPORTS_API_PROVIDER=mock`, this returns mock fixtures.)
+4. In another account, **subscribe** to a tipster from their profile → the mock
    checkout returns to `/subscribe/success` and activates the subscription.
-6. **Admin** endpoints live under `/api/admin/*` (dashboard, users, audit log).
+5. **Admin** endpoints live under `/api/admin/*` (dashboard, users, audit log).
 
 ---
 

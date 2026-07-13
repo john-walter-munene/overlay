@@ -37,7 +37,7 @@ export class StatsService {
    * Leaderboard: verified tipsters only, filtered by a minimum sample size so
    * lucky newcomers don't top the board. Ranked by yield then CLV.
    */
-  leaderboard(minSampleSize = 50, limit = 100) {
+  leaderboard(minSampleSize = 10, limit = 100) {
     return this.prisma.tipsterStats.findMany({
       where: {
         sampleSize: { gte: minSampleSize },
