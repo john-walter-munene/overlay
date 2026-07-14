@@ -18,7 +18,12 @@ let client: SupabaseClient | null = null;
 export function supabase(): SupabaseClient {
   if (!client) {
     client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true },
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        // Consume the #access_token hash from email-confirmation / OAuth links.
+        detectSessionInUrl: true,
+      },
     });
   }
   return client;
@@ -67,7 +72,14 @@ export async function signUp(
   const { data, error } = await supabase().auth.signUp({
     email,
     password,
-    options: { data: { role } },
+    options: {
+      data: { role },
+      // Email-confirmation link returns here to establish the session.
+      emailRedirectTo:
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : undefined,
+    },
   });
   if (error) throw new Error(error.message);
   return { needsConfirmation: !data.session };
