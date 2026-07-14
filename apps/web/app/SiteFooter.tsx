@@ -15,12 +15,15 @@ export default function SiteFooter() {
         <nav aria-label="Footer">
           <Link href="/marketplace">Marketplace</Link>
           <Link href="/blog">Blog</Link>
-          <Link href="/login">Sign in</Link>
-          <Link href="/signup">Get started</Link>
+          <Link href="/legal/terms">Terms of Service</Link>
+          <Link href="/legal/privacy">Privacy Policy</Link>
         </nav>
         <p className="site-footer__legal">
-          © {year} Overlay Bets. Picks are for informational purposes only and
-          are not betting or financial advice. 18+. Please gamble responsibly.
+          Information only — Overlay Bets is a sports-information and analytics
+          service. We take no bets, hold no stakes and are not a bookmaker. Picks
+          and stats are for informational purposes only and are not betting or
+          financial advice. 18+. Please gamble responsibly. © {year} Overlay
+          Bets.
         </p>
       </div>
     </footer>

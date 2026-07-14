@@ -1,6 +1,7 @@
 import './globals.css';
 import SiteHeader from './SiteHeader';
 import SiteFooter from './SiteFooter';
+import CookieConsent from './CookieConsent';
 
 export const metadata = {
   metadataBase: new URL(
@@ -33,6 +34,7 @@ export default function RootLayout({
           {children}
         </div>
         <SiteFooter />
+        <CookieConsent />
       </body>
     </html>
   );

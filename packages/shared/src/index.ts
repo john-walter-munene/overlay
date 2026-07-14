@@ -6,4 +6,5 @@ export * from './content.ts';
 export * from './markdown.ts';
 export * from './password.ts';
 export * from './tipster-profile.ts';
+export * from './consent.ts';
 export * from './subscriptions.ts';
