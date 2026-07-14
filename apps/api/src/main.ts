@@ -17,10 +17,28 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(helmet());
 
-  // Web app runs on a separate origin (:3000) and calls this API from the
-  // browser — allow it. Tighten `origin` to the real domain(s) in production.
+  // CORS: allow the configured origins (comma-separated, trailing-slash and
+  // whitespace tolerant) plus — unless disabled — any *.vercel.app origin so
+  // Vercel per-deployment PREVIEW URLs work without reconfiguring on each deploy.
+  // Lock this down for production by setting ALLOW_VERCEL_PREVIEWS=false and an
+  // explicit CORS_ORIGINS list (see OB-083).
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+  const allowVercelPreviews = process.env.ALLOW_VERCEL_PREVIEWS !== 'false';
+  const vercelHost = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+
   app.enableCors({
-    origin: (process.env.CORS_ORIGINS ?? 'http://localhost:3000').split(','),
+    origin: (origin, callback) => {
+      // Non-browser requests (curl, server-to-server) send no Origin.
+      if (!origin) return callback(null, true);
+      const normalized = origin.replace(/\/+$/, '');
+      const ok =
+        allowedOrigins.includes(normalized) ||
+        (allowVercelPreviews && vercelHost.test(normalized));
+      return callback(ok ? null : new Error('Not allowed by CORS'), ok);
+    },
     credentials: true,
   });
 
