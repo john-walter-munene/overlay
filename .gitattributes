@@ -1,0 +1,2 @@
+# Shell scripts must be LF so they run in Linux containers (CRLF -> status 127).
+*.sh text eol=lf

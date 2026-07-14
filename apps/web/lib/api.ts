@@ -76,3 +76,54 @@ export interface TipsterProfile {
 export async function getTipster(id: string): Promise<TipsterProfile | null> {
   return getJson<TipsterProfile>(`/api/tipsters/${encodeURIComponent(id)}`, 60);
 }
+
+export type MarketplaceSort = 'yield' | 'clv' | 'winRate';
+
+export interface MarketplaceTipster {
+  tipsterId: string;
+  yield: number;
+  clvAvg: number;
+  winRate: number;
+  sampleSize: number;
+  sports: string[];
+  subscriptionPriceCents: number;
+  bio: string | null;
+}
+
+export interface MarketplacePage {
+  items: MarketplaceTipster[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface MarketplaceParams {
+  sport?: string;
+  maxPrice?: string;
+  minSample?: string;
+  sort?: string;
+  page?: string;
+}
+
+const EMPTY_MARKETPLACE: MarketplacePage = {
+  items: [],
+  total: 0,
+  page: 1,
+  pageSize: 20,
+  totalPages: 1,
+};
+
+export async function listMarketplace(
+  params: MarketplaceParams = {},
+): Promise<MarketplacePage> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v != null && v !== '') qs.set(k, v);
+  }
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return (
+    (await getJson<MarketplacePage>(`/api/tipsters/marketplace${suffix}`, 60)) ??
+    EMPTY_MARKETPLACE
+  );
+}

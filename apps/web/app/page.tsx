@@ -32,6 +32,11 @@ export default async function Home() {
         Find the overlay. Beat the close. Verified edge, not screenshots.
       </p>
       <p style={{ marginTop: '0.5rem' }}>
+        <Link href="/marketplace" style={{ color: '#6ea8fe' }}>
+          Browse the tipster marketplace →
+        </Link>
+      </p>
+      <p style={{ marginTop: '0.5rem' }}>
         <Link href="/blog" style={{ color: '#6ea8fe' }}>
           Read the strategy blog →
         </Link>

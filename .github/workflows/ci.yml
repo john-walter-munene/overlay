@@ -5,7 +5,30 @@ on:
     branches: [main]
   pull_request:
 
+# Cancel superseded runs on the same branch/PR to save minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: CI only needs to read the repo.
+permissions:
+  contents: read
+
 jobs:
+  lockfile:
+    name: Lockfile in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # `npm ci` fails fast (EUSAGE) if package-lock.json is out of sync with
+      # any package.json — e.g. a dep was added without running `npm install`.
+      # --ignore-scripts keeps this quick (no Prisma engine download).
+      - name: Verify package-lock.json is in sync
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
   shared:
     name: Shared engine (stats + integrity)
     runs-on: ubuntu-latest

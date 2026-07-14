@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
@@ -13,6 +14,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
+import type { RawMarketplaceQuery } from './marketplace';
 
 class UpdateTipsterDto {
   @IsOptional() @IsString() bio?: string;
@@ -23,6 +25,12 @@ class UpdateTipsterDto {
 @Controller('tipsters')
 export class TipstersController {
   constructor(private readonly tipsters: TipstersService) {}
+
+  /** Marketplace / discovery listing (OB-010). */
+  @Get('marketplace')
+  marketplace(@Query() query: RawMarketplaceQuery) {
+    return this.tipsters.listMarketplace(query);
+  }
 
   @Get(':id')
   getProfile(@Param('id') id: string) {

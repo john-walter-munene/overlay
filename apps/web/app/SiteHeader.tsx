@@ -35,6 +35,9 @@ export default function SiteHeader() {
         <Link href="/" style={{ color: '#9aa4b2' }}>
           Leaderboard
         </Link>
+        <Link href="/marketplace" style={{ color: '#9aa4b2' }}>
+          Marketplace
+        </Link>
         <Link href="/blog" style={{ color: '#9aa4b2' }}>
           Blog
         </Link>
