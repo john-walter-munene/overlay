@@ -192,7 +192,7 @@ monthly cron → worker(run-payouts):
 | API | **NestJS (TypeScript)** | Module boundaries fit modular-monolith design |
 | ORM/DB | **Prisma + PostgreSQL** | Type-safe, migrations, good DX |
 | Cache/Queue | **Redis + BullMQ** | Pub/sub fan-out + reliable jobs |
-| Auth | **Auth.js / Clerk** (TBD) | Speed; roles + sessions |
+| Auth | **Supabase Auth** | Free (~50k MAU), Postgres-native; API verifies JWTs via JWKS (OB-145) |
 | Payments | **Stripe + Connect** | Subscriptions + marketplace payouts |
 | Email | **Resend** | Simple transactional email |
 | Hosting | **Vercel** (web) · **Fly.io/Railway** (API+workers+DB) | Managed, fast to prod |
@@ -246,7 +246,7 @@ The **stats math lives in `packages/shared`** so it's independently unit-testabl
 
 ## 10. Open architectural decisions
 
-1. **Auth:** Auth.js (self-host, cheap) vs Clerk (fastest). → decide in Phase 0.
+1. **Auth:** ✅ Decided — **Supabase Auth** (OB-145). Identity lives in Supabase; roles + domain data (Tipster, Subscriptions, Picks) in Postgres, linked by `supabaseUserId`. The API verifies Supabase access tokens via JWKS and provisions the local `User` on first request.
 2. **Data vendor + closing-odds source** (book close vs Betfair exchange price). → `VENDOR-SPIKE.md`.
 3. **Single vs dual-source settlement** for trust vs cost.
 4. **Public-chain anchoring in v1** or defer to v2.
