@@ -54,7 +54,7 @@ export default function SignupPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <label style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>
+        <label style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           Account type
           <select
             style={{ ...formStyles.input, marginTop: '0.35rem' }}
@@ -68,14 +68,14 @@ export default function SignupPage() {
           </select>
         </label>
         {error ? <p style={formStyles.error}>{error}</p> : null}
-        {info ? <p style={{ color: '#6ee7b7' }}>{info}</p> : null}
+        {info ? <p style={{ color: 'var(--success)' }}>{info}</p> : null}
         <button style={formStyles.button} disabled={loading}>
           {loading ? 'Creating…' : 'Create account'}
         </button>
       </form>
-      <p style={{ color: '#9aa4b2' }}>
+      <p style={{ color: 'var(--muted)' }}>
         Already have an account?{' '}
-        <Link href="/login" style={{ color: '#6ea8fe' }}>
+        <Link href="/login" style={{ color: 'var(--accent)' }}>
           Sign in
         </Link>
       </p>

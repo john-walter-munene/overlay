@@ -25,9 +25,9 @@ const SORTS: { value: MarketplaceSort; label: string }[] = [
 ];
 
 const inputStyle: React.CSSProperties = {
-  background: '#0f141c',
-  color: '#e6e6e6',
-  border: '1px solid #1c2430',
+  background: 'var(--surface)',
+  color: 'var(--fg)',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   padding: '0.45rem 0.6rem',
   fontSize: '0.9rem',
@@ -37,7 +37,7 @@ const labelStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '0.3rem',
-  color: '#9aa4b2',
+  color: 'var(--muted)',
   fontSize: '0.8rem',
 };
 
@@ -68,14 +68,14 @@ export default async function MarketplacePage({
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
-        <Link href="/" style={{ color: '#6ea8fe' }}>
+        <Link href="/" style={{ color: 'var(--accent)' }}>
           ← Overlay Bets
         </Link>
       </p>
       <h1 style={{ fontSize: '2.2rem', marginBottom: '0.25rem' }}>
         Tipster Marketplace
       </h1>
-      <p style={{ color: '#9aa4b2', marginTop: 0 }}>
+      <p style={{ color: 'var(--muted)', marginTop: 0 }}>
         Verified tipsters only. Filter and sort by the metrics that matter —
         every record is locked before kickoff.
       </p>
@@ -89,7 +89,7 @@ export default async function MarketplacePage({
           alignItems: 'flex-end',
           margin: '1.75rem 0',
           padding: '1.25rem',
-          border: '1px solid #1c2430',
+          border: '1px solid var(--border)',
           borderRadius: 12,
         }}
       >
@@ -144,11 +144,11 @@ export default async function MarketplacePage({
           type="submit"
           style={{
             ...inputStyle,
-            background: '#6ea8fe',
-            color: '#0b0e14',
+            background: 'var(--accent)',
+            color: 'var(--on-accent)',
             fontWeight: 600,
             cursor: 'pointer',
-            border: '1px solid #6ea8fe',
+            border: '1px solid var(--accent)',
           }}
         >
           Apply
@@ -156,20 +156,20 @@ export default async function MarketplacePage({
       </form>
 
       {data.items.length === 0 ? (
-        <p style={{ color: '#9aa4b2' }}>
+        <p style={{ color: 'var(--muted)' }}>
           No verified tipsters match these filters yet. Try widening your
           filters — tipsters appear here once they reach the minimum settled
           sample, ranked by verified yield and closing line value.
         </p>
       ) : (
         <>
-          <p style={{ color: '#6b7280', fontSize: '0.85rem' }}>
+          <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
             {data.total} verified tipster{data.total === 1 ? '' : 's'} · page{' '}
             {data.page} of {data.totalPages}
           </p>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ textAlign: 'left', color: '#9aa4b2' }}>
+              <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
                 <th style={{ padding: '0.5rem 0' }}>Tipster</th>
                 <th>Sports</th>
                 <th>Yield</th>
@@ -181,16 +181,16 @@ export default async function MarketplacePage({
             </thead>
             <tbody>
               {data.items.map((r) => (
-                <tr key={r.tipsterId} style={{ borderTop: '1px solid #1c2430' }}>
+                <tr key={r.tipsterId} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.6rem 0' }}>
                     <Link
                       href={`/tipsters/${r.tipsterId}`}
-                      style={{ color: '#6ea8fe' }}
+                      style={{ color: 'var(--accent)' }}
                     >
                       {r.tipsterId}
                     </Link>
                   </td>
-                  <td style={{ color: '#9aa4b2' }}>
+                  <td style={{ color: 'var(--muted)' }}>
                     {r.sports.length ? r.sports.join(', ') : '—'}
                   </td>
                   <td>{r.yield.toFixed(1)}%</td>
@@ -218,7 +218,7 @@ export default async function MarketplacePage({
               {data.page > 1 ? (
                 <Link
                   href={pageHref(params, data.page - 1)}
-                  style={{ color: '#6ea8fe' }}
+                  style={{ color: 'var(--accent)' }}
                 >
                   ← Previous
                 </Link>
@@ -228,7 +228,7 @@ export default async function MarketplacePage({
               {data.page < data.totalPages ? (
                 <Link
                   href={pageHref(params, data.page + 1)}
-                  style={{ color: '#6ea8fe' }}
+                  style={{ color: 'var(--accent)' }}
                 >
                   Next →
                 </Link>

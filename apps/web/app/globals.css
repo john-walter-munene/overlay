@@ -1,0 +1,263 @@
+/*
+ * Global theme tokens and accessibility base styles.
+ *
+ * Colors are exposed as CSS custom properties so the whole app can switch
+ * between dark and light themes. Values are chosen to meet WCAG AA contrast
+ * against their intended backgrounds.
+ */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0e14;
+  --surface: #111826;
+  --surface-2: #131a24;
+  --fg: #e6e6e6;
+  --muted: #9aa4b2;
+  --border: #1c2430;
+  --accent: #6ea8fe;
+  --accent-hover: #8fbcff;
+  --on-accent: #0b0e14;
+  --danger: #ff6b8a;
+  --warning: #d29922;
+  --success: #3fb950;
+  --focus-ring: #8fbcff;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface: #f5f7fb;
+  --surface-2: #eef1f7;
+  --fg: #17202e;
+  --muted: #55606f;
+  --border: #d7dde7;
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --on-accent: #ffffff;
+  --danger: #c2283a;
+  --warning: #8a6100;
+  --success: #1a7f37;
+  --focus-ring: #1d4ed8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* Visible keyboard focus for all interactive elements. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip link: hidden until focused, then revealed at the top of the page. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -3rem;
+  z-index: 100;
+  padding: 0.55rem 0.9rem;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+#main-content:focus {
+  outline: none;
+}
+
+/* Site header ---------------------------------------------------------- */
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.site-header__inner {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0.9rem 1.5rem;
+}
+
+.site-header__brand {
+  color: var(--fg);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-nav {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.site-nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+  color: var(--fg);
+}
+
+.site-header__actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.site-header__actions a {
+  text-decoration: none;
+  color: var(--muted);
+}
+
+.site-header__actions a.is-primary {
+  color: var(--accent);
+}
+
+.nav-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  border-radius: 8px;
+  padding: 0.4rem 0.6rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Theme toggle button -------------------------------------------------- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--fg);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+}
+
+.theme-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* Site footer ---------------------------------------------------------- */
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  margin-top: 3rem;
+}
+
+.site-footer__inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  justify-content: space-between;
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.site-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+  color: var(--fg);
+}
+
+.site-footer__legal {
+  flex-basis: 100%;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Responsive: collapse the primary nav into a toggle on small screens. */
+@media (max-width: 720px) {
+  .nav-toggle {
+    display: inline-flex;
+    order: 3;
+    margin-left: auto;
+  }
+
+  .site-nav {
+    display: none;
+    flex-basis: 100%;
+    order: 4;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+  }
+
+  .site-nav.is-open {
+    display: flex;
+  }
+
+  .site-header__actions {
+    order: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -22,20 +22,20 @@ export default async function BlogIndex({
   return (
     <main style={{ maxWidth: 860, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
-        <Link href="/" style={{ color: '#6ea8fe' }}>
+        <Link href="/" style={{ color: 'var(--accent)' }}>
           ← Overlay Bets
         </Link>
       </p>
       <h1 style={{ fontSize: '2.2rem', marginBottom: '0.25rem' }}>
         Strategy Blog{tag ? `: ${tag}` : ''}
       </h1>
-      <p style={{ color: '#9aa4b2', marginTop: 0 }}>
+      <p style={{ color: 'var(--muted)', marginTop: 0 }}>
         Closing line value, expected value, bankroll math — the concepts behind
         a verified edge.
       </p>
 
       {articles.length === 0 ? (
-        <p style={{ color: '#9aa4b2', marginTop: '2rem' }}>
+        <p style={{ color: 'var(--muted)', marginTop: '2rem' }}>
           No articles published yet. Check back soon.
         </p>
       ) : (
@@ -44,22 +44,22 @@ export default async function BlogIndex({
             <li
               key={a.slug}
               style={{
-                borderTop: '1px solid #1c2430',
+                borderTop: '1px solid var(--border)',
                 padding: '1.25rem 0',
               }}
             >
               <Link
                 href={`/blog/${a.slug}`}
-                style={{ color: '#e6e6e6', textDecoration: 'none' }}
+                style={{ color: 'var(--fg)', textDecoration: 'none' }}
               >
                 <h2 style={{ margin: '0 0 0.35rem', fontSize: '1.35rem' }}>
                   {a.title}
                 </h2>
               </Link>
-              <p style={{ color: '#9aa4b2', margin: '0 0 0.5rem' }}>
+              <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
                 {a.excerpt}
               </p>
-              <small style={{ color: '#6b7280' }}>
+              <small style={{ color: 'var(--muted)' }}>
                 {a.readingMinutes} min read
                 {a.publishedAt
                   ? ` · ${new Date(a.publishedAt).toLocaleDateString()}`

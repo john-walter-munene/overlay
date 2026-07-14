@@ -132,17 +132,17 @@ export default function DashboardPage() {
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1>Tipster dashboard</h1>
-      <p style={{ color: '#9aa4b2' }}>
+      <p style={{ color: 'var(--muted)' }}>
         Picks are hash-locked and timestamped the moment you submit — before
         kickoff. That’s what makes your record verifiable.
       </p>
       <p style={{ margin: '0 0 0.5rem' }}>
-        <Link href="/earnings" style={{ color: '#6ea8fe' }}>
+        <Link href="/earnings" style={{ color: 'var(--accent)' }}>
           → Earnings &amp; payouts
         </Link>
       </p>
       <p style={{ margin: '0 0 0.5rem' }}>
-        <Link href="/dashboard/profile" style={{ color: '#6ea8fe' }}>
+        <Link href="/dashboard/profile" style={{ color: 'var(--accent)' }}>
           → Edit public profile
         </Link>
       </p>
@@ -151,17 +151,17 @@ export default function DashboardPage() {
       {onboarding && !onboarding.canPublish ? (
         <div
           style={{
-            border: '1px solid #1c2430',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '1rem 1.2rem',
-            background: '#111826',
+            background: 'var(--surface)',
           }}
         >
           <p style={{ margin: '0 0 0.5rem' }}>
             Finish onboarding ({onboarding.completedSteps}/
             {onboarding.totalSteps} steps) to unlock pick publishing.
           </p>
-          <Link href="/onboarding" style={{ color: '#6ea8fe' }}>
+          <Link href="/onboarding" style={{ color: 'var(--accent)' }}>
             → Complete onboarding
           </Link>
         </div>
@@ -170,7 +170,7 @@ export default function DashboardPage() {
           onSubmit={submitPick}
           style={{ ...formStyles.form, maxWidth: 520 }}
         >
-        <label style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>
+        <label style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           Event
           <select
             style={{ ...formStyles.input, marginTop: '0.35rem' }}
@@ -186,7 +186,7 @@ export default function DashboardPage() {
           </select>
         </label>
 
-        <label style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>
+        <label style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           Market
           <select
             style={{ ...formStyles.input, marginTop: '0.35rem' }}
@@ -228,7 +228,7 @@ export default function DashboardPage() {
           onChange={(e) => setForm({ ...form, stakeUnits: e.target.value })}
           required
         />
-        {msg ? <p style={{ color: '#6ea8fe', margin: 0 }}>{msg}</p> : null}
+        {msg ? <p style={{ color: 'var(--accent)', margin: 0 }}>{msg}</p> : null}
         <button style={formStyles.button} disabled={submitting}>
           {submitting ? 'Locking…' : 'Lock pick'}
         </button>
@@ -239,11 +239,11 @@ export default function DashboardPage() {
 
       <h2 style={{ marginTop: '2.5rem' }}>Your track record</h2>
       {picks.length === 0 ? (
-        <p style={{ color: '#9aa4b2' }}>No settled picks yet.</p>
+        <p style={{ color: 'var(--muted)' }}>No settled picks yet.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ textAlign: 'left', color: '#9aa4b2' }}>
+            <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
               <th style={{ padding: '0.5rem 0' }}>Selection</th>
               <th>Market</th>
               <th>Odds</th>
@@ -253,7 +253,7 @@ export default function DashboardPage() {
           </thead>
           <tbody>
             {picks.map((p) => (
-              <tr key={p.id} style={{ borderTop: '1px solid #1c2430' }}>
+              <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '0.5rem 0' }}>{p.selection}</td>
                 <td>{p.market}</td>
                 <td>{p.oddsAtPick.toFixed(2)}</td>

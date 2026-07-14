@@ -42,7 +42,7 @@ export default function AuthCallbackPage() {
 
   return (
     <main style={{ maxWidth: 480, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <p style={{ color: '#9aa4b2' }}>Signing you in…</p>
+      <p style={{ color: 'var(--muted)' }}>Signing you in…</p>
     </main>
   );
 }

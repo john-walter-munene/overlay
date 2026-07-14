@@ -28,30 +28,30 @@ export default async function Home() {
   return (
     <main style={{ maxWidth: 860, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1 style={{ fontSize: '2.4rem', marginBottom: '0.25rem' }}>Overlay Bets</h1>
-      <p style={{ color: '#9aa4b2', marginTop: 0 }}>
+      <p style={{ color: 'var(--muted)', marginTop: 0 }}>
         Find the overlay. Beat the close. Verified edge, not screenshots.
       </p>
       <p style={{ marginTop: '0.5rem' }}>
-        <Link href="/marketplace" style={{ color: '#6ea8fe' }}>
+        <Link href="/marketplace" style={{ color: 'var(--accent)' }}>
           Browse the tipster marketplace →
         </Link>
       </p>
       <p style={{ marginTop: '0.5rem' }}>
-        <Link href="/blog" style={{ color: '#6ea8fe' }}>
+        <Link href="/blog" style={{ color: 'var(--accent)' }}>
           Read the strategy blog →
         </Link>
       </p>
 
       <h2 style={{ marginTop: '2.5rem' }}>Leaderboard</h2>
       {rows.length === 0 ? (
-        <p style={{ color: '#9aa4b2' }}>
+        <p style={{ color: 'var(--muted)' }}>
           No verified tipsters yet. Once tipsters reach 50+ settled picks they
           appear here, ranked by verified yield and closing line value.
         </p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ textAlign: 'left', color: '#9aa4b2' }}>
+            <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
               <th style={{ padding: '0.5rem 0' }}>Tipster</th>
               <th>Yield</th>
               <th>CLV</th>
@@ -61,11 +61,11 @@ export default async function Home() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.tipsterId} style={{ borderTop: '1px solid #1c2430' }}>
+              <tr key={r.tipsterId} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '0.5rem 0' }}>
                   <Link
                     href={`/tipsters/${r.tipsterId}`}
-                    style={{ color: '#6ea8fe' }}
+                    style={{ color: 'var(--accent)' }}
                   >
                     {r.tipsterId}
                   </Link>

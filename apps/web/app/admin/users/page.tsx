@@ -27,7 +27,7 @@ interface AdminUsersPage {
 const ROLES: Role[] = ['user', 'tipster', 'admin'];
 const PAGE_SIZE = 20;
 
-const muted = { color: '#9aa4b2' } as const;
+const muted = { color: 'var(--muted)' } as const;
 
 export default function AdminUsersPage() {
   const router = useRouter();
@@ -189,8 +189,8 @@ export default function AdminUsersPage() {
             }}
             style={{
               background: 'transparent',
-              color: '#9aa4b2',
-              border: '1px solid #1c2430',
+              color: 'var(--muted)',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '0.6rem 1.2rem',
               cursor: 'pointer',
@@ -202,7 +202,7 @@ export default function AdminUsersPage() {
       </form>
 
       {error ? <p style={formStyles.error}>{error}</p> : null}
-      {notice ? <p style={{ color: '#6ea8fe', margin: 0 }}>{notice}</p> : null}
+      {notice ? <p style={{ color: 'var(--accent)', margin: 0 }}>{notice}</p> : null}
 
       {loading && !data ? (
         <p style={muted}>Loading…</p>
@@ -222,7 +222,7 @@ export default function AdminUsersPage() {
           </thead>
           <tbody>
             {data.items.map((u) => (
-              <tr key={u.id} style={{ borderTop: '1px solid #1c2430' }}>
+              <tr key={u.id} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '0.6rem 0' }}>{u.email}</td>
                 <td>
                   <select
@@ -254,9 +254,9 @@ export default function AdminUsersPage() {
                         background: 'transparent',
                         color:
                           u.tipster.status === 'suspended'
-                            ? '#6ea8fe'
-                            : '#ff6b8a',
-                        border: '1px solid #1c2430',
+                            ? 'var(--accent)'
+                            : 'var(--danger)',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
                         padding: '0.4rem 0.9rem',
                         cursor: busyId === u.id ? 'default' : 'pointer',
@@ -291,8 +291,8 @@ export default function AdminUsersPage() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             style={{
               background: 'transparent',
-              color: '#9aa4b2',
-              border: '1px solid #1c2430',
+              color: 'var(--muted)',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '0.5rem 1rem',
               cursor: data.page <= 1 ? 'default' : 'pointer',
@@ -309,8 +309,8 @@ export default function AdminUsersPage() {
             onClick={() => setPage((p) => p + 1)}
             style={{
               background: 'transparent',
-              color: '#9aa4b2',
-              border: '1px solid #1c2430',
+              color: 'var(--muted)',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '0.5rem 1rem',
               cursor: data.page >= data.totalPages ? 'default' : 'pointer',

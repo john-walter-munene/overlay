@@ -41,7 +41,7 @@ export default function SubscribeSuccessClient() {
   return (
     <>
       <h1>{state === 'done' ? 'You’re subscribed 🎉' : 'Finishing up…'}</h1>
-      <p style={{ color: '#9aa4b2' }}>
+      <p style={{ color: 'var(--muted)' }}>
         {state === 'done'
           ? 'Your subscription is active. You now get this tipster’s live picks the moment they’re locked.'
           : state === 'pending'
@@ -49,7 +49,7 @@ export default function SubscribeSuccessClient() {
             : 'Confirming your subscription…'}
       </p>
       <p>
-        <Link href="/account" style={{ color: '#6ea8fe' }}>
+        <Link href="/account" style={{ color: 'var(--accent)' }}>
           → Go to your account
         </Link>
       </p>

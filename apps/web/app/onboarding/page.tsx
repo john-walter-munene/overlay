@@ -125,23 +125,23 @@ export default function OnboardingPage() {
   return (
     <main style={{ maxWidth: 640, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1>Tipster onboarding</h1>
-      <p style={{ color: '#9aa4b2' }}>
+      <p style={{ color: 'var(--muted)' }}>
         Complete every step to unlock pick publishing. Your progress is saved as
         you go.
       </p>
 
       {status ? (
-        <p style={{ color: '#9aa4b2', margin: '0 0 1.5rem' }}>
+        <p style={{ color: 'var(--muted)', margin: '0 0 1.5rem' }}>
           {status.completedSteps}/{status.totalSteps} steps complete
           {status.canPublish ? ' — you’re ready to publish! ' : ''}
           {status.canPublish ? (
-            <Link href="/dashboard" style={{ color: '#6ea8fe' }}>
+            <Link href="/dashboard" style={{ color: 'var(--accent)' }}>
               Go to dashboard →
             </Link>
           ) : null}
         </p>
       ) : (
-        <p style={{ color: '#9aa4b2' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>Loading…</p>
       )}
 
       <section aria-label="Profile steps" style={{ marginTop: '1rem' }}>
@@ -149,7 +149,7 @@ export default function OnboardingPage() {
           {stepMark(done('bio') && done('sports') && done('pricing'))} Profile,
           sports &amp; pricing
         </h2>
-        <p style={{ color: '#9aa4b2', margin: '0 0 0.75rem' }}>
+        <p style={{ color: 'var(--muted)', margin: '0 0 0.75rem' }}>
           {STEP_HELP.bio} {STEP_HELP.sports} {STEP_HELP.pricing}
         </p>
         <form onSubmit={saveProfile} style={formStyles.form}>
@@ -184,7 +184,7 @@ export default function OnboardingPage() {
         <h2 style={{ fontSize: '1.15rem' }}>
           {stepMark(done('stripe'))} Connect Stripe payouts
         </h2>
-        <p style={{ color: '#9aa4b2', margin: '0 0 0.75rem' }}>
+        <p style={{ color: 'var(--muted)', margin: '0 0 0.75rem' }}>
           {STEP_HELP.stripe}
         </p>
         <button
@@ -200,7 +200,7 @@ export default function OnboardingPage() {
         <h2 style={{ fontSize: '1.15rem' }}>
           {stepMark(done('verification'))} Verify your identity
         </h2>
-        <p style={{ color: '#9aa4b2', margin: '0 0 0.75rem' }}>
+        <p style={{ color: 'var(--muted)', margin: '0 0 0.75rem' }}>
           {STEP_HELP.verification}
         </p>
         <button
@@ -213,7 +213,7 @@ export default function OnboardingPage() {
       </section>
 
       {msg ? (
-        <p style={{ color: '#6ea8fe', marginTop: '1.5rem' }}>{msg}</p>
+        <p style={{ color: 'var(--accent)', marginTop: '1.5rem' }}>{msg}</p>
       ) : null}
     </main>
   );

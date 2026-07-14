@@ -80,14 +80,14 @@ export default async function ArticlePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <p style={{ margin: 0 }}>
-        <Link href="/blog" style={{ color: '#6ea8fe' }}>
+        <Link href="/blog" style={{ color: 'var(--accent)' }}>
           ← Blog
         </Link>
       </p>
       <h1 style={{ fontSize: '2.3rem', marginBottom: '0.25rem' }}>
         {article.title}
       </h1>
-      <p style={{ color: '#6b7280', marginTop: 0 }}>
+      <p style={{ color: 'var(--muted)', marginTop: 0 }}>
         {article.readingMinutes} min read
         {article.publishedAt
           ? ` · ${new Date(article.publishedAt).toLocaleDateString()}`

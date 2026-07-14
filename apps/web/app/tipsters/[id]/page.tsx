@@ -26,7 +26,7 @@ export async function generateMetadata({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ color: '#9aa4b2', fontSize: '0.8rem' }}>{label}</div>
+      <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>{label}</div>
       <div style={{ fontSize: '1.4rem', fontWeight: 600 }}>{value}</div>
     </div>
   );
@@ -44,16 +44,16 @@ export default async function TipsterPage({
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
-        <Link href="/" style={{ color: '#6ea8fe' }}>
+        <Link href="/" style={{ color: 'var(--accent)' }}>
           ← Leaderboard
         </Link>
       </p>
       <h1 style={{ fontSize: '2.1rem', marginBottom: '0.25rem' }}>
         {t.tipsterId}
       </h1>
-      {t.bio ? <p style={{ color: '#c7cdd6' }}>{t.bio}</p> : null}
+      {t.bio ? <p style={{ color: 'var(--fg)' }}>{t.bio}</p> : null}
       {t.sports.length ? (
-        <p style={{ color: '#9aa4b2', marginTop: 0 }}>{t.sports.join(' · ')}</p>
+        <p style={{ color: 'var(--muted)', marginTop: 0 }}>{t.sports.join(' · ')}</p>
       ) : null}
 
       <section
@@ -63,7 +63,7 @@ export default async function TipsterPage({
           gap: '1rem',
           margin: '1.5rem 0',
           padding: '1.25rem',
-          border: '1px solid #1c2430',
+          border: '1px solid var(--border)',
           borderRadius: 12,
         }}
       >
@@ -75,7 +75,7 @@ export default async function TipsterPage({
             <Stat label="Picks" value={`${s.sampleSize}`} />
           </>
         ) : (
-          <p style={{ gridColumn: '1 / -1', color: '#9aa4b2', margin: 0 }}>
+          <p style={{ gridColumn: '1 / -1', color: 'var(--muted)', margin: 0 }}>
             Not enough settled picks yet to publish verified stats.
           </p>
         )}
@@ -90,11 +90,11 @@ export default async function TipsterPage({
 
       <h2 style={{ marginTop: '2rem' }}>Recent settled picks</h2>
       {t.recentPicks.length === 0 ? (
-        <p style={{ color: '#9aa4b2' }}>No settled picks yet.</p>
+        <p style={{ color: 'var(--muted)' }}>No settled picks yet.</p>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ textAlign: 'left', color: '#9aa4b2' }}>
+            <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
               <th style={{ padding: '0.5rem 0' }}>Selection</th>
               <th>Market</th>
               <th>Odds</th>
@@ -104,7 +104,7 @@ export default async function TipsterPage({
           </thead>
           <tbody>
             {t.recentPicks.map((p) => (
-              <tr key={p.id} style={{ borderTop: '1px solid #1c2430' }}>
+              <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '0.5rem 0' }}>{p.selection}</td>
                 <td>{p.market}</td>
                 <td>{p.oddsAtPick.toFixed(2)}</td>

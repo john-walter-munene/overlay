@@ -33,26 +33,26 @@ function money(cents: number): string {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  paid: '#3fb950',
-  pending: '#d29922',
-  failed: '#f85149',
+  paid: 'var(--success)',
+  pending: 'var(--warning)',
+  failed: 'var(--danger)',
 };
 
 function Card({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div
       style={{
-        border: '1px solid #1c2430',
+        border: '1px solid var(--border)',
         borderRadius: 12,
         padding: '1.1rem',
       }}
     >
-      <div style={{ color: '#9aa4b2', fontSize: '0.85rem' }}>{label}</div>
+      <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>{label}</div>
       <div style={{ fontSize: '1.5rem', fontWeight: 700, marginTop: '0.3rem' }}>
         {value}
       </div>
       {hint ? (
-        <div style={{ color: '#6b7484', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+        <div style={{ color: 'var(--muted)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
           {hint}
         </div>
       ) : null}
@@ -89,20 +89,20 @@ export default function EarningsPage() {
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
-        <Link href="/dashboard" style={{ color: '#6ea8fe' }}>
+        <Link href="/dashboard" style={{ color: 'var(--accent)' }}>
           ← Dashboard
         </Link>
       </p>
       <h1>Earnings &amp; payouts</h1>
-      <p style={{ color: '#9aa4b2' }}>
+      <p style={{ color: 'var(--muted)' }}>
         Projected earnings update with your active subscribers and the platform
         fee. Payouts are transferred monthly.
       </p>
 
       {error ? (
-        <p style={{ color: '#f85149' }}>{error}</p>
+        <p style={{ color: 'var(--danger)' }}>{error}</p>
       ) : data === null ? (
-        <p style={{ color: '#9aa4b2' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>Loading…</p>
       ) : (
         <>
           <section
@@ -139,11 +139,11 @@ export default function EarningsPage() {
 
           <h2 style={{ marginTop: '2rem' }}>Payout history</h2>
           {data.payouts.length === 0 ? (
-            <p style={{ color: '#9aa4b2' }}>No payouts yet.</p>
+            <p style={{ color: 'var(--muted)' }}>No payouts yet.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ textAlign: 'left', color: '#9aa4b2' }}>
+                <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
                   <th style={{ padding: '0.5rem 0' }}>Period</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -151,10 +151,10 @@ export default function EarningsPage() {
               </thead>
               <tbody>
                 {data.payouts.map((p) => (
-                  <tr key={p.id} style={{ borderTop: '1px solid #1c2430' }}>
+                  <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.5rem 0' }}>{p.period}</td>
                     <td>{money(p.amountCents)}</td>
-                    <td style={{ color: STATUS_COLORS[p.status] ?? '#9aa4b2' }}>
+                    <td style={{ color: STATUS_COLORS[p.status] ?? 'var(--muted)' }}>
                       {p.status}
                     </td>
                   </tr>

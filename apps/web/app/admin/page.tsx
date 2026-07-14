@@ -27,15 +27,15 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   return (
     <div
       style={{
-        background: '#111826',
-        border: '1px solid #1c2430',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 12,
         padding: '1.25rem 1.4rem',
       }}
     >
       <div
         style={{
-          color: '#9aa4b2',
+          color: 'var(--muted)',
           fontSize: '0.85rem',
           textTransform: 'uppercase',
           letterSpacing: '0.04em',
@@ -78,15 +78,15 @@ export default function AdminPage() {
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1>Admin dashboard</h1>
-      <p style={{ color: '#9aa4b2' }}>
+      <p style={{ color: 'var(--muted)' }}>
         Live platform metrics across users, tipsters, subscriptions, picks and
         payouts.
       </p>
 
       {error ? (
-        <p style={{ color: '#ff6b8a' }}>{error}</p>
+        <p style={{ color: 'var(--danger)' }}>{error}</p>
       ) : metrics === null ? (
-        <p style={{ color: '#9aa4b2' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>Loading…</p>
       ) : (
         <div
           style={{

@@ -13,7 +13,7 @@ import { authFetch, getProfile } from '../../../lib/auth';
 import { getTipster } from '../../../lib/api';
 import { formStyles } from '../../formStyles';
 
-const MUTED = '#9aa4b2';
+const MUTED = 'var(--muted)';
 
 export default function ProfileEditorPage() {
   const router = useRouter();
@@ -91,7 +91,7 @@ export default function ProfileEditorPage() {
   return (
     <main style={{ maxWidth: 640, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
-        <Link href="/dashboard" style={{ color: '#6ea8fe' }}>
+        <Link href="/dashboard" style={{ color: 'var(--accent)' }}>
           ← Dashboard
         </Link>
       </p>
@@ -151,7 +151,7 @@ export default function ProfileEditorPage() {
               ))}
             </ul>
           ) : null}
-          {msg ? <p style={{ color: '#6ea8fe', margin: 0 }}>{msg}</p> : null}
+          {msg ? <p style={{ color: 'var(--accent)', margin: 0 }}>{msg}</p> : null}
 
           <button style={formStyles.button} disabled={saving}>
             {saving ? 'Saving…' : 'Save profile'}
@@ -161,7 +161,7 @@ export default function ProfileEditorPage() {
 
       {tipsterId ? (
         <p style={{ marginTop: '1.5rem' }}>
-          <Link href={`/tipsters/${tipsterId}`} style={{ color: '#6ea8fe' }}>
+          <Link href={`/tipsters/${tipsterId}`} style={{ color: 'var(--accent)' }}>
             → View public profile
           </Link>
         </p>

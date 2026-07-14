@@ -3,17 +3,17 @@
 import type { CSSProperties } from 'react';
 import type { PerformanceDashboard, PerformancePoint } from '../lib/api';
 
-const MUTED = '#9aa4b2';
+const MUTED = 'var(--muted)';
 const ACCENT = '#6ea8fe';
 const BORDER = '#1c2430';
-const PANEL = '#111826';
+const PANEL = 'var(--surface)';
 const WIN = '#3fb950';
 const LOSS = '#ff6b8a';
 const VOID = '#8b98a8';
 const PENDING = '#d29922';
 
 const cardStyle: CSSProperties = {
-  border: `1px solid ${BORDER}`,
+  border: `1px solid var(--border)`,
   borderRadius: 12,
   padding: '1rem 1.1rem',
   background: PANEL,
@@ -166,7 +166,7 @@ function BreakdownBar({
           borderRadius: 7,
           overflow: 'hidden',
           background: PANEL,
-          border: `1px solid ${BORDER}`,
+          border: `1px solid var(--border)`,
         }}
       >
         {segments.map((s) => (

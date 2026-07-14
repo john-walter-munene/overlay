@@ -21,7 +21,7 @@ export default function SubscribeButton({
 
   if (priceCents <= 0) {
     return (
-      <p style={{ color: '#9aa4b2' }}>
+      <p style={{ color: 'var(--muted)' }}>
         This tipster isn’t accepting subscriptions yet.
       </p>
     );
@@ -65,8 +65,8 @@ export default function SubscribeButton({
         onClick={subscribe}
         disabled={loading}
         style={{
-          background: '#6ea8fe',
-          color: '#0b0e14',
+          background: 'var(--accent)',
+          color: 'var(--on-accent)',
           border: 'none',
           borderRadius: 8,
           padding: '0.7rem 1.4rem',
@@ -80,7 +80,7 @@ export default function SubscribeButton({
           : `Subscribe · $${(priceCents / 100).toFixed(2)}/mo`}
       </button>
       {error ? (
-        <p style={{ color: '#f0a', marginTop: '0.5rem' }}>{error}</p>
+        <p style={{ color: 'var(--danger)', marginTop: '0.5rem' }}>{error}</p>
       ) : null}
     </div>
   );
