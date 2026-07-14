@@ -16,6 +16,14 @@
     "./tipster-profile": {
       "types": "./src/tipster-profile.ts",
       "default": "./src/tipster-profile.ts"
+    },
+    "./markdown": {
+      "types": "./src/markdown.ts",
+      "default": "./src/markdown.ts"
+    },
+    "./subscriptions": {
+      "types": "./src/subscriptions.ts",
+      "default": "./src/subscriptions.ts"
     }
   },
   "scripts": {

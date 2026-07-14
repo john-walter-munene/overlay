@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
@@ -81,6 +82,11 @@ export default function AdminPage() {
       <p style={{ color: '#9aa4b2' }}>
         Live platform metrics across users, tipsters, subscriptions, picks and
         payouts.
+      </p>
+      <p style={{ margin: '0 0 1rem' }}>
+        <Link href="/admin/blog" style={{ color: '#6ea8fe' }}>
+          Blog authoring →
+        </Link>
       </p>
 
       <nav style={{ display: 'flex', gap: '1rem', margin: '1rem 0 0' }}>

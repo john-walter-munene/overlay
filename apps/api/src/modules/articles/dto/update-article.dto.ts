@@ -15,8 +15,8 @@ export class UpdateArticleDto {
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
 
   @IsOptional()
-  @IsIn(['draft', 'published', 'archived'])
-  status?: 'draft' | 'published' | 'archived';
+  @IsIn(['draft', 'pending', 'published', 'archived'])
+  status?: 'draft' | 'pending' | 'published' | 'archived';
 
   @IsOptional() @IsString() @MaxLength(70) seoTitle?: string;
   @IsOptional() @IsString() @MaxLength(200) seoDescription?: string;

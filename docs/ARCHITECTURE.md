@@ -2,7 +2,7 @@
 
 > **Status:** Draft v1
 > **Scope:** MVP architecture for the verified tipster marketplace. Fiat-only, no wagering, no crypto.
-> **Companion docs:** `SPEC.md` (product), `ROADMAP.md` (delivery), `VENDOR-SPIKE.md` (data vendor).
+> **Companion docs:** `SPEC.md` (product), `ROADMAP.md` (delivery), `VENDOR-SPIKE.md` (data vendor), `PRIVACY.md` (GDPR/retention).
 
 ---
 

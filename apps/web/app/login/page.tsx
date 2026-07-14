@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from '../../lib/auth';
+import { signIn, getProfile } from '../../lib/auth';
 import { formStyles } from '../formStyles';
 
 export default function LoginPage() {
@@ -23,7 +23,18 @@ export default function LoginPage() {
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('next')
           : null;
-      router.push(next || '/account');
+      if (next) {
+        router.push(next);
+        return;
+      }
+      const profile = await getProfile();
+      router.push(
+        profile?.role === 'admin'
+          ? '/admin'
+          : profile?.role === 'tipster'
+            ? '/dashboard'
+            : '/account',
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -60,6 +71,11 @@ export default function LoginPage() {
         No account?{' '}
         <Link href="/signup" style={{ color: '#6ea8fe' }}>
           Create one
+        </Link>
+      </p>
+      <p style={{ color: '#9aa4b2' }}>
+        <Link href="/forgot-password" style={{ color: '#6ea8fe' }}>
+          Forgot your password?
         </Link>
       </p>
     </main>

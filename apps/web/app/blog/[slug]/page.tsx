@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { marked } from 'marked';
+import { sanitizeHtml } from '@overlay/shared/markdown';
 import { getArticle, listArticleSlugs, SITE_URL } from '../../../lib/api';
 
 export const revalidate = 300;
@@ -54,7 +55,7 @@ export default async function ArticlePage({
   const article = await getArticle(params.slug);
   if (!article) notFound();
 
-  const html = await marked.parse(article.body);
+  const html = sanitizeHtml(await marked.parse(article.body));
   const url = `${SITE_URL}/blog/${article.slug}`;
 
   // Article structured data for rich results.

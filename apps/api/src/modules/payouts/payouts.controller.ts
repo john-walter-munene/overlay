@@ -1,10 +1,12 @@
 import { Body, Controller, ForbiddenException, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Matches } from 'class-validator';
 import { PayoutsService } from './payouts.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
+import { writeThrottle } from '../../common/throttling';
 
 class RunPayoutsDto {
   @Matches(/^\d{4}-\d{2}$/, { message: 'period must be YYYY-MM' })
@@ -25,6 +27,7 @@ export class PayoutsController {
   }
 
   @Post('run')
+  @Throttle(writeThrottle())
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('admin')
   run(@Body() dto: RunPayoutsDto) {

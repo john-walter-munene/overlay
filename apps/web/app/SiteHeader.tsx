@@ -62,6 +62,8 @@ export default function SiteHeader() {
             </Link>
             <Link href="/admin/settlements" style={{ color: '#9aa4b2' }}>
               Settlements
+            <Link href="/admin/audit-log" style={{ color: '#9aa4b2' }}>
+              Audit log
             </Link>
           </>
         ) : null}

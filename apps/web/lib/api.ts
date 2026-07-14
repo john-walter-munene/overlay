@@ -77,6 +77,23 @@ export async function getTipster(id: string): Promise<TipsterProfile | null> {
   return getJson<TipsterProfile>(`/api/tipsters/${encodeURIComponent(id)}`, 60);
 }
 
+/**
+ * A tipster's live pick as returned by GET /api/picks/tipster/:id/live. Includes
+ * still-pending (pre-event) picks and is gated behind an active subscription.
+ */
+export interface LivePick {
+  id: string;
+  market: string;
+  selection: string;
+  oddsAtPick: number;
+  stakeUnits: number;
+  status: string;
+  hash: string;
+  clv: number | null;
+  lockedAt: string;
+  settledAt: string | null;
+}
+
 /** Fields a tipster can edit on their own profile (OB-021). */
 export interface UpdateTipsterProfile {
   bio: string;

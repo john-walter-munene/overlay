@@ -51,7 +51,7 @@ export class ArticlesController {
     return this.articles.getPublishedBySlug(slug);
   }
 
-  // ---- authoring (admin only) ----
+  // ---- authoring (admin + approved tipsters) ----
 
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -60,24 +60,36 @@ export class ArticlesController {
     return this.articles.listAll();
   }
 
+  /** Articles the caller may manage (admins: all, tipsters: their own). */
+  @Get('manage/mine')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'tipster')
+  mine(@CurrentUser() user: AuthUser) {
+    return this.articles.listMine(user);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @Roles('admin', 'tipster')
   create(@Body() dto: CreateArticleDto, @CurrentUser() user: AuthUser) {
-    return this.articles.create(user.userId, dto);
+    return this.articles.create(user, dto);
   }
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  update(@Param('id') id: string, @Body() dto: UpdateArticleDto) {
-    return this.articles.update(id, dto);
+  @Roles('admin', 'tipster')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateArticleDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.articles.update(id, dto, user);
   }
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  remove(@Param('id') id: string) {
-    return this.articles.remove(id);
+  @Roles('admin', 'tipster')
+  remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.articles.remove(id, user);
   }
 }
