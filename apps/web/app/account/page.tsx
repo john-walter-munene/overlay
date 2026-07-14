@@ -221,6 +221,11 @@ export default function AccountPage() {
       ) : null}
 
       <h2 style={{ marginTop: '2rem' }}>Your subscriptions</h2>
+      <p>
+        <Link href="/account/subscriptions" style={{ color: '#6ea8fe' }}>
+          → Manage subscriptions
+        </Link>
+      </p>
       {subs === null ? (
         <p style={{ color: '#9aa4b2' }}>Loading…</p>
       ) : subs.length === 0 ? (

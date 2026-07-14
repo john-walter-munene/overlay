@@ -49,4 +49,13 @@ export class SubscriptionsController {
   mine(@CurrentUser() user: AuthUser) {
     return this.subs.listForUser(user.userId);
   }
+
+  // Returns a billing-portal URL where the subscriber cancels/resumes their
+  // subscriptions (Stripe billing portal); the web UI then redirects to it.
+  @Post('portal')
+  @UseGuards(JwtAuthGuard)
+  portal(@CurrentUser() user: AuthUser) {
+    const returnUrl = `${process.env.WEB_APP_URL ?? 'http://localhost:3000'}/account/subscriptions`;
+    return this.subs.createBillingPortal(user.userId, returnUrl);
+  }
 }

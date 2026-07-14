@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type {
+  BillingPortalSession,
   CheckoutSession,
   PaymentProvider,
   SubscriptionEvent,
@@ -65,6 +66,20 @@ export class StripePaymentProvider implements PaymentProvider {
     void rawBody;
     void signature;
     return null;
+  }
+
+  async createBillingPortalSession(params: {
+    userId: string;
+    returnUrl: string;
+  }): Promise<BillingPortalSession> {
+    const stripe = await this.stripe();
+    // TODO (OB-063): resolve the Stripe customer id for this user once the
+    // subscription flow persists it; scaffolded here to keep the interface real.
+    const session = await stripe.billingPortal.sessions.create({
+      customer: params.userId,
+      return_url: params.returnUrl,
+    });
+    return { url: session.url };
   }
 
   async transferToTipster(params: {
