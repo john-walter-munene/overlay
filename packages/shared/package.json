@@ -24,6 +24,7 @@
     "./subscriptions": {
       "types": "./src/subscriptions.ts",
       "default": "./src/subscriptions.ts"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
