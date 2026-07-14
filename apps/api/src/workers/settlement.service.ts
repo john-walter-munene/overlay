@@ -6,6 +6,7 @@ import {
   SPORTS_PROVIDER,
 } from '../integrations/sports/sports.module';
 import type { SportsDataProvider } from '../integrations/sports/sports-provider.interface';
+import { recordSettlementCycle } from '../common/metrics';
 
 /**
  * Core settlement pipeline (docs/ARCHITECTURE.md §3.3 / §5.2). All steps are
@@ -15,6 +16,8 @@ import type { SportsDataProvider } from '../integrations/sports/sports-provider.
 @Injectable()
 export class SettlementService {
   private readonly log = new Logger(SettlementService.name);
+  /** Picks graded by the most recent settlePicks() call (for metrics). */
+  private lastSettledCount = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -24,10 +27,29 @@ export class SettlementService {
 
   /** Orchestrate one full cycle. Safe to run on a cron. */
   async runOnce(): Promise<void> {
-    await this.captureClosingOdds();
-    const affected = await this.settlePicks();
-    await this.computeClv();
-    await this.recomputeStats(affected);
+    // OB-093: time every cycle and record its outcome so the settlement
+    // latency + error-rate SLOs can be alerted on (see docs/OBSERVABILITY.md).
+    const startedAt = Date.now();
+    let settledPicks = 0;
+    try {
+      await this.captureClosingOdds();
+      const affected = await this.settlePicks();
+      settledPicks = this.lastSettledCount;
+      await this.computeClv();
+      await this.recomputeStats(affected);
+      recordSettlementCycle({
+        durationSeconds: (Date.now() - startedAt) / 1000,
+        settledPicks,
+        ok: true,
+      });
+    } catch (err) {
+      recordSettlementCycle({
+        durationSeconds: (Date.now() - startedAt) / 1000,
+        settledPicks,
+        ok: false,
+      });
+      throw err;
+    }
   }
 
   /**
@@ -68,6 +90,7 @@ export class SettlementService {
    */
   async settlePicks(): Promise<Set<string>> {
     const affected = new Set<string>();
+    let settledCount = 0;
     const events = await this.prisma.event.findMany({
       where: {
         startTime: { lte: new Date() },
@@ -85,7 +108,7 @@ export class SettlementService {
       for (const pick of pending) {
         const outcome = result.grade(pick.market, pick.selection);
         // Idempotent: only transition picks that are still pending.
-        await this.prisma.pick.updateMany({
+        const { count } = await this.prisma.pick.updateMany({
           where: { id: pick.id, status: 'pending' },
           data: {
             status: outcome,
@@ -93,6 +116,7 @@ export class SettlementService {
             settledAt: new Date(),
           },
         });
+        settledCount += count;
         affected.add(pick.tipsterId);
       }
       await this.prisma.event.update({
@@ -100,6 +124,10 @@ export class SettlementService {
         data: { status: 'finished' },
       });
     }
+
+    // Number of picks actually graded this cycle, exposed to runOnce so the
+    // settlement throughput metric (OB-093) counts picks, not tipsters.
+    this.lastSettledCount = settledCount;
 
     if (affected.size > 0) {
       this.log.log(`Settled picks for ${affected.size} tipster(s)`);

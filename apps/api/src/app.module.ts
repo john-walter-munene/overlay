@@ -5,6 +5,7 @@ import { PrismaService } from './prisma.service';
 import { globalThrottleRule } from './common/throttling';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { PicksModule } from './modules/picks/picks.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { TipstersModule } from './modules/tipsters/tipsters.module';
@@ -30,6 +31,7 @@ import { SettlementModule } from './workers/settlement.module';
     ThrottlerModule.forRoot([globalThrottleRule()]),
     AuthModule,
     HealthModule,
+    MetricsModule,
     TipstersModule,
     EventsModule,
     PicksModule,

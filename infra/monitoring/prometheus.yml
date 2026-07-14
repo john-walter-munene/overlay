@@ -1,0 +1,31 @@
+# Overlay Bets — Prometheus config (OB-093).
+#
+# Scrapes the API's /metrics endpoint and evaluates the SLO alert rules in
+# alerts.yml, firing to Alertmanager (which pages on-call). Point `targets` at
+# your API host(s); on Render/Vercel expose /api/metrics on the internal network
+# or protect it at the ingress (it carries no secrets but is operational data).
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: overlay-api
+    metrics_path: /api/metrics
+    static_configs:
+      - targets: ["overlay-api:4000"]
+
+  # The settlement worker exposes the same registry when run standalone; scrape
+  # it too so queue-depth/settlement metrics are captured even in queue mode.
+  - job_name: overlay-worker
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["overlay-worker:9100"]
