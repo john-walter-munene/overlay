@@ -17,6 +17,7 @@ export default function SiteFooter() {
           <Link href="/blog">Blog</Link>
           <Link href="/legal/terms">Terms of Service</Link>
           <Link href="/legal/privacy">Privacy Policy</Link>
+          <Link href="/legal/responsible-gambling">Responsible Gambling</Link>
         </nav>
         <p className="site-footer__legal">
           Information only — Overlay Bets is a sports-information and analytics
