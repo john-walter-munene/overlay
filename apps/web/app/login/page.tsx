@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signIn } from '../../lib/auth';
+import { signIn, getProfile } from '../../lib/auth';
 import { formStyles } from '../formStyles';
 
 export default function LoginPage() {
@@ -23,7 +23,18 @@ export default function LoginPage() {
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('next')
           : null;
-      router.push(next || '/account');
+      if (next) {
+        router.push(next);
+        return;
+      }
+      const profile = await getProfile();
+      router.push(
+        profile?.role === 'admin'
+          ? '/admin'
+          : profile?.role === 'tipster'
+            ? '/dashboard'
+            : '/account',
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
