@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { register, setToken } from '../../lib/auth';
-import { validatePassword } from '@overlay/shared/password';
+import { signUp } from '../../lib/auth';
 import { formStyles } from '../formStyles';
 
 export default function SignupPage() {
@@ -13,20 +12,20 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'user' | 'tipster'>('user');
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const { valid, errors } = validatePassword(password);
-    if (!valid) {
-      setError(errors[0]);
-      return;
-    }
+    setInfo(null);
     setLoading(true);
     try {
-      const { token } = await register(email, password, role);
-      setToken(token);
+      const { needsConfirmation } = await signUp(email, password, role);
+      if (needsConfirmation) {
+        setInfo('Check your email to confirm your account, then sign in.');
+        return;
+      }
       router.push(role === 'tipster' ? '/dashboard' : '/account');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -69,6 +68,7 @@ export default function SignupPage() {
           </select>
         </label>
         {error ? <p style={formStyles.error}>{error}</p> : null}
+        {info ? <p style={{ color: '#6ee7b7' }}>{info}</p> : null}
         <button style={formStyles.button} disabled={loading}>
           {loading ? 'Creating…' : 'Create account'}
         </button>

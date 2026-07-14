@@ -2,15 +2,16 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { currentSession } from '../lib/auth';
+import { getProfile } from '../lib/auth';
 
 export default function SiteHeader() {
   const [role, setRole] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setRole(currentSession()?.role ?? null);
-    setReady(true);
+    getProfile()
+      .then((p) => setRole(p?.role ?? null))
+      .finally(() => setReady(true));
   }, []);
 
   return (

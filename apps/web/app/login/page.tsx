@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { login, setToken } from '../../lib/auth';
+import { signIn } from '../../lib/auth';
 import { formStyles } from '../formStyles';
 
 export default function LoginPage() {
@@ -18,8 +18,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { token } = await login(email, password);
-      setToken(token);
+      await signIn(email, password);
       router.push('/account');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

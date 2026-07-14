@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authFetch, clearToken, currentSession } from '../../lib/auth';
+import { authFetch, signOut, getProfile, supabase } from '../../lib/auth';
 
 interface Subscription {
   id: string;
@@ -19,21 +19,24 @@ export default function AccountPage() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const session = currentSession();
-    if (!session) {
-      router.replace('/login');
-      return;
-    }
-    setRole(session.role);
-    setEmail(session.sub);
-    authFetch('/api/subscriptions/me')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setSubs(data as Subscription[]))
-      .catch(() => setSubs([]));
+    (async () => {
+      const profile = await getProfile();
+      if (!profile) {
+        router.replace('/login');
+        return;
+      }
+      setRole(profile.role);
+      const { data } = await supabase().auth.getUser();
+      setEmail(data.user?.email ?? null);
+      authFetch('/api/subscriptions/me')
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setSubs(data as Subscription[]))
+        .catch(() => setSubs([]));
+    })();
   }, [router]);
 
-  function logout() {
-    clearToken();
+  async function logout() {
+    await signOut();
     router.push('/');
   }
 

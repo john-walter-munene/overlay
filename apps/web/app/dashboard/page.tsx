@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authFetch, currentSession } from '../../lib/auth';
+import { authFetch, getProfile } from '../../lib/auth';
 import { API_URL } from '../../lib/api';
 import { formStyles } from '../formStyles';
 
@@ -47,21 +47,23 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const session = currentSession();
-    if (!session) {
-      router.replace('/login');
-      return;
-    }
-    if (session.role !== 'tipster' || !session.tipsterId) {
-      router.replace('/account');
-      return;
-    }
-    setTipsterId(session.tipsterId);
-    fetch(`${API_URL}/api/events/upcoming`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setEvents(data as EventRow[]))
-      .catch(() => setEvents([]));
-    loadPicks(session.tipsterId);
+    (async () => {
+      const profile = await getProfile();
+      if (!profile) {
+        router.replace('/login');
+        return;
+      }
+      if (profile.role !== 'tipster' || !profile.tipsterId) {
+        router.replace('/account');
+        return;
+      }
+      setTipsterId(profile.tipsterId);
+      fetch(`${API_URL}/api/events/upcoming`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => setEvents(data as EventRow[]))
+        .catch(() => setEvents([]));
+      loadPicks(profile.tipsterId);
+    })();
   }, [router, loadPicks]);
 
   async function submitPick(e: React.FormEvent) {

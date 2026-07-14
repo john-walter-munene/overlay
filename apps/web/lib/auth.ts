@@ -1,53 +1,41 @@
 'use client';
 
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { API_URL } from './api';
 
-const TOKEN_KEY = 'ob_token';
-
-export interface SessionClaims {
-  sub: string;
+/** Resolved local profile returned by GET /api/auth/me. */
+export interface Profile {
+  userId: string;
   role: 'user' | 'tipster' | 'admin';
   tipsterId?: string;
-  exp?: number;
 }
 
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
-}
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
+let client: SupabaseClient | null = null;
 
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-}
-
-/** Decode JWT claims client-side (no verification — display/UX only). */
-export function decodeSession(token: string | null): SessionClaims | null {
-  if (!token) return null;
-  try {
-    const payload = token.split('.')[1];
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    const claims = JSON.parse(json) as SessionClaims;
-    if (claims.exp && claims.exp * 1000 < Date.now()) return null;
-    return claims;
-  } catch {
-    return null;
+export function supabase(): SupabaseClient {
+  if (!client) {
+    client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true },
+    });
   }
+  return client;
 }
 
-export function currentSession(): SessionClaims | null {
-  return decodeSession(getToken());
+/** Current Supabase access token (JWT the API verifies), or null. */
+export async function getAccessToken(): Promise<string | null> {
+  const { data } = await supabase().auth.getSession();
+  return data.session?.access_token ?? null;
 }
 
-/** Authenticated fetch that attaches the bearer token. */
+/** Authenticated fetch that attaches the Supabase access token. */
 export async function authFetch(
   path: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const token = getToken();
+  const token = await getAccessToken();
   return fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
@@ -58,41 +46,42 @@ export async function authFetch(
   });
 }
 
-export async function login(
-  email: string,
-  password: string,
-): Promise<{ token: string }> {
-  const res = await fetch(`${API_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+export async function signIn(email: string, password: string): Promise<void> {
+  const { error } = await supabase().auth.signInWithPassword({
+    email,
+    password,
   });
-  if (!res.ok) throw new Error('Invalid email or password');
-  return res.json();
+  if (error) throw new Error(error.message);
 }
 
-export async function register(
+/**
+ * Sign up with Supabase. The chosen role is stored in user_metadata so the API
+ * provisions the right local role on first authenticated request. Returns
+ * needsConfirmation=true when email confirmation is required (no session yet).
+ */
+export async function signUp(
   email: string,
   password: string,
   role: 'user' | 'tipster',
-): Promise<{ token: string }> {
-  const res = await fetch(`${API_URL}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password, role }),
+): Promise<{ needsConfirmation: boolean }> {
+  const { data, error } = await supabase().auth.signUp({
+    email,
+    password,
+    options: { data: { role } },
   });
-  if (!res.ok) {
-    if (res.status === 409) {
-      throw new Error('That email is already registered');
-    }
-    if (res.status === 400) {
-      const detail = await res
-        .json()
-        .then((b) => (Array.isArray(b?.message) ? b.message[0] : b?.message))
-        .catch(() => null);
-      throw new Error(detail || 'Password does not meet requirements');
-    }
-    throw new Error('Registration failed');
-  }
-  return res.json();
+  if (error) throw new Error(error.message);
+  return { needsConfirmation: !data.session };
+}
+
+export async function signOut(): Promise<void> {
+  await supabase().auth.signOut();
+}
+
+/** Fetch the resolved app profile (role, tipsterId) from the API, or null. */
+export async function getProfile(): Promise<Profile | null> {
+  const token = await getAccessToken();
+  if (!token) return null;
+  const res = await authFetch('/api/auth/me');
+  if (!res.ok) return null;
+  return (await res.json()) as Profile;
 }

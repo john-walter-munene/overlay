@@ -1,18 +1,19 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import { Controller, Get, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
+import { CurrentUser } from '../../common/current-user.decorator';
+import type { AuthUser } from '../../common/crypto';
 
+/**
+ * Auth is handled by Supabase (OB-145). The API only exposes the resolved
+ * local profile for the authenticated Supabase user; sign-up / sign-in happen
+ * client-side against Supabase.
+ */
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
-
-  @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.auth.register(dto);
-  }
-
-  @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.auth.login(dto);
+  /** Resolved local profile (userId, role, tipsterId) for the current user. */
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  me(@CurrentUser() user: AuthUser): AuthUser {
+    return user;
   }
 }
