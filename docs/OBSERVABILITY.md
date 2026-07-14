@@ -1,4 +1,3 @@
-# Overlay Bets — Observability: Metrics, SLOs & Alerting (OB-093)
 
 The API and settlement worker emit Prometheus metrics that back a small set of
 Service Level Objectives (SLOs). Prometheus scrapes them, evaluates the alert

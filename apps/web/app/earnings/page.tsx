@@ -164,6 +164,201 @@ export default function EarningsPage() {
           )}
         </>
       )}
+
+      <PayoutSettings />
     </main>
+  );
+}
+
+type PayoutMethod = 'stripe' | 'crypto' | 'mobile_money';
+
+const CHAINS = ['ethereum', 'polygon', 'tron', 'bsc', 'solana'];
+const NETWORKS = ['mpesa', 'mtn_momo', 'airtel_money'];
+
+/** Tipster payout-destination settings (OB-06x): pick the rail + its details. */
+function PayoutSettings() {
+  const [method, setMethod] = useState<PayoutMethod | ''>('');
+  const [walletAddress, setWalletAddress] = useState('');
+  const [walletChain, setWalletChain] = useState('ethereum');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [mobileNetwork, setMobileNetwork] = useState('mpesa');
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await authFetch('/api/tipsters/me/profile');
+      if (!res.ok) return;
+      const p = (await res.json()) as {
+        payoutMethod: PayoutMethod | null;
+        payoutWalletAddress: string | null;
+        payoutWalletChain: string | null;
+        payoutMobileNumber: string | null;
+        payoutMobileNetwork: string | null;
+      };
+      setMethod(p.payoutMethod ?? '');
+      setWalletAddress(p.payoutWalletAddress ?? '');
+      if (p.payoutWalletChain) setWalletChain(p.payoutWalletChain);
+      setMobileNumber(p.payoutMobileNumber ?? '');
+      if (p.payoutMobileNetwork) setMobileNetwork(p.payoutMobileNetwork);
+    })();
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    setBusy(true);
+    try {
+      const body: Record<string, unknown> = { payoutMethod: method };
+      if (method === 'crypto') {
+        body.payoutWalletAddress = walletAddress.trim();
+        body.payoutWalletChain = walletChain;
+      }
+      if (method === 'mobile_money') {
+        body.payoutMobileNumber = mobileNumber.trim();
+        body.payoutMobileNetwork = mobileNetwork;
+      }
+      const res = await authFetch('/api/tipsters/me', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      setMsg('Payout settings saved ✓');
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputStyle = {
+    display: 'block',
+    marginTop: '0.3rem',
+    padding: '0.5rem 0.6rem',
+    borderRadius: 8,
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color: 'var(--fg)',
+    minWidth: 260,
+  } as const;
+  const labelStyle = {
+    display: 'block',
+    color: 'var(--muted)',
+    fontSize: '0.85rem',
+    marginBottom: '0.75rem',
+  } as const;
+
+  return (
+    <section
+      style={{
+        marginTop: '2.5rem',
+        padding: '1.25rem',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+      }}
+    >
+      <h2 style={{ marginTop: 0 }}>Payout settings</h2>
+      <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+        Choose how you’d like to be paid. We route your monthly payout to this
+        destination.
+      </p>
+      <form onSubmit={save}>
+        <label style={labelStyle}>
+          Payout method
+          <select
+            style={inputStyle}
+            value={method}
+            onChange={(e) => setMethod(e.target.value as PayoutMethod)}
+          >
+            <option value="">Select…</option>
+            <option value="stripe">Bank / card (Stripe)</option>
+            <option value="crypto">Crypto (stablecoin)</option>
+            <option value="mobile_money">Mobile money</option>
+          </select>
+        </label>
+
+        {method === 'stripe' ? (
+          <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+            Connect your Stripe payout account from the onboarding wizard.
+          </p>
+        ) : null}
+
+        {method === 'crypto' ? (
+          <>
+            <label style={labelStyle}>
+              Wallet address
+              <input
+                style={inputStyle}
+                placeholder="0x… / T… / wallet address"
+                value={walletAddress}
+                onChange={(e) => setWalletAddress(e.target.value)}
+              />
+            </label>
+            <label style={labelStyle}>
+              Chain
+              <select
+                style={inputStyle}
+                value={walletChain}
+                onChange={(e) => setWalletChain(e.target.value)}
+              >
+                {CHAINS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
+
+        {method === 'mobile_money' ? (
+          <>
+            <label style={labelStyle}>
+              Mobile number
+              <input
+                style={inputStyle}
+                placeholder="+254700000000"
+                inputMode="tel"
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value)}
+              />
+            </label>
+            <label style={labelStyle}>
+              Network
+              <select
+                style={inputStyle}
+                value={mobileNetwork}
+                onChange={(e) => setMobileNetwork(e.target.value)}
+              >
+                {NETWORKS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
+
+        <button
+          type="submit"
+          disabled={busy || !method}
+          style={{
+            background: 'var(--accent)',
+            color: 'var(--on-accent)',
+            border: 'none',
+            borderRadius: 8,
+            padding: '0.6rem 1.2rem',
+            fontWeight: 600,
+            cursor: busy || !method ? 'default' : 'pointer',
+          }}
+        >
+          {busy ? 'Saving…' : 'Save payout settings'}
+        </button>
+        {msg ? (
+          <p style={{ color: 'var(--accent)', marginTop: '0.75rem' }}>{msg}</p>
+        ) : null}
+      </form>
+    </section>
   );
 }

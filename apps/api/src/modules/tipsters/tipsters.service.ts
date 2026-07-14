@@ -25,6 +25,12 @@ export interface UpdateTipsterInput {
   socialX?: string;
   socialInstagram?: string;
   socialTelegram?: string;
+  // Payout destination (OB-06x).
+  payoutMethod?: 'stripe' | 'crypto' | 'mobile_money';
+  payoutWalletAddress?: string;
+  payoutWalletChain?: string;
+  payoutMobileNumber?: string;
+  payoutMobileNetwork?: string;
 }
 
 /** Metadata for a stored identity document plus optional social handles. */
@@ -150,6 +156,11 @@ export class TipstersService {
       socialTelegram: tipster.socialTelegram,
       identityVerified: tipster.identityVerified,
       identityDocName: tipster.identityDocName,
+      payoutMethod: tipster.payoutMethod,
+      payoutWalletAddress: tipster.payoutWalletAddress,
+      payoutWalletChain: tipster.payoutWalletChain,
+      payoutMobileNumber: tipster.payoutMobileNumber,
+      payoutMobileNetwork: tipster.payoutMobileNetwork,
     };
   }
 

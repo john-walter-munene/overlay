@@ -32,6 +32,10 @@
     "./countries": {
       "types": "./src/countries.ts",
       "default": "./src/countries.ts"
+    },
+    "./currencies": {
+      "types": "./src/currencies.ts",
+      "default": "./src/currencies.ts"
     }
   },
   "scripts": {

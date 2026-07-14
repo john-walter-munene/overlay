@@ -52,6 +52,14 @@ class UpdateTipsterDto {
   @IsOptional() @IsString() @MaxLength(120) socialX?: string;
   @IsOptional() @IsString() @MaxLength(120) socialInstagram?: string;
   @IsOptional() @IsString() @MaxLength(120) socialTelegram?: string;
+  @IsOptional() @IsIn(['stripe', 'crypto', 'mobile_money']) payoutMethod?:
+    | 'stripe'
+    | 'crypto'
+    | 'mobile_money';
+  @IsOptional() @IsString() @MaxLength(120) payoutWalletAddress?: string;
+  @IsOptional() @IsString() @MaxLength(40) payoutWalletChain?: string;
+  @IsOptional() @IsString() @MaxLength(40) payoutMobileNumber?: string;
+  @IsOptional() @IsString() @MaxLength(40) payoutMobileNetwork?: string;
 }
 
 class SubmitVerificationDto {

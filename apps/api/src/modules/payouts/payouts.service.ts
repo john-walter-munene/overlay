@@ -1,9 +1,10 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { PAYMENT_PROVIDER } from '../../integrations/payments/payments.module';
-import type { PaymentProvider } from '../../integrations/payments/payment-provider.interface';
+import { PAYMENT_REGISTRY } from '../../integrations/payments/payments.module';
+import type { PaymentProviderRegistry } from '../../integrations/payments/payment-provider.registry';
 import { computePayout, summarizeEarnings } from './payouts.math';
+import { resolvePayoutTarget } from './payout-destination';
 
 @Injectable()
 export class PayoutsService {
@@ -12,7 +13,7 @@ export class PayoutsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly subs: SubscriptionsService,
-    @Inject(PAYMENT_PROVIDER) private readonly payments: PaymentProvider,
+    @Inject(PAYMENT_REGISTRY) private readonly registry: PaymentProviderRegistry,
   ) {}
 
   private get feeRate(): number {
@@ -93,13 +94,19 @@ export class PayoutsService {
         },
       });
 
-      if (tipster.stripeAccountId) {
+      // Route the transfer to the provider the tipster chose to be paid on
+      // (Stripe / crypto / mobile money). No complete destination → leave the
+      // payout pending for them to claim once they add one.
+      const target = resolvePayoutTarget(tipster);
+      if (target) {
         try {
-          const transfer = await this.payments.transferToTipster({
-            tipsterAccountId: tipster.stripeAccountId,
-            amountCents: netCents,
-            idempotencyKey: `${tipster.userId}:${period}`,
-          });
+          const transfer = await this.registry
+            .get(target.provider)
+            .transferToTipster({
+              destination: target.destination,
+              amountCents: netCents,
+              idempotencyKey: `${tipster.userId}:${period}`,
+            });
           await this.prisma.payout.update({
             where: { id: payout.id },
             data: { status: 'paid', stripeTransferId: transfer.reference },

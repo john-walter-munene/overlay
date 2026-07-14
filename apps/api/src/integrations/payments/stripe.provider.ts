@@ -3,6 +3,8 @@ import type {
   BillingPortalSession,
   CheckoutSession,
   PaymentProvider,
+  PayoutDestination,
+  ProviderCapabilities,
   SubscriptionEvent,
   TransferResult,
 } from './payment-provider.interface';
@@ -12,10 +14,22 @@ import type {
  * the app builds/runs without the dependency until Stripe is provisioned.
  * Fill in price/product wiring during Phase 3 integration.
  * Env: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET.
+ *
+ * Settles cards plus the Apple Pay / Google Pay wallets, which are card
+ * methods that tokenize through Stripe (enabled via the dashboard + Apple Pay
+ * domain verification), and supports recurring billing natively.
  */
 @Injectable()
 export class StripePaymentProvider implements PaymentProvider {
   readonly name = 'stripe';
+
+  readonly capabilities: ProviderCapabilities = {
+    recurring: true,
+    billingPortal: true,
+    payouts: true,
+    methods: ['card', 'apple_pay', 'google_pay'],
+  };
+
   private readonly log = new Logger(StripePaymentProvider.name);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private client: any;
@@ -59,12 +73,12 @@ export class StripePaymentProvider implements PaymentProvider {
     return { url: session.url, reference: session.id };
   }
 
-  parseWebhook(rawBody: string, signature: string): SubscriptionEvent | null {
+  parseWebhook(rawBody: string, headers: Record<string, string>): SubscriptionEvent | null {
     // TODO: verify with stripe.webhooks.constructEvent(rawBody, signature, secret)
     // and map checkout.session.completed / customer.subscription.* events.
     this.log.warn('Stripe webhook parsing not yet implemented');
     void rawBody;
-    void signature;
+    void headers;
     return null;
   }
 
@@ -83,16 +97,19 @@ export class StripePaymentProvider implements PaymentProvider {
   }
 
   async transferToTipster(params: {
-    tipsterAccountId: string;
+    destination: PayoutDestination;
     amountCents: number;
     idempotencyKey: string;
   }): Promise<TransferResult> {
+    if (params.destination.kind !== 'stripe') {
+      throw new Error('Stripe provider requires a Stripe payout destination');
+    }
     const stripe = await this.stripe();
     const transfer = await stripe.transfers.create(
       {
         amount: params.amountCents,
         currency: 'usd',
-        destination: params.tipsterAccountId,
+        destination: params.destination.accountId,
       },
       { idempotencyKey: params.idempotencyKey },
     );

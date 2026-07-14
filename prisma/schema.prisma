@@ -88,6 +88,15 @@ model Tipster {
   // Billing cadence the subscription price is charged on (OB-020).
   billingInterval        BillingInterval @default(monthly)
   stripeAccountId        String?
+  // Payout destination (OB-06x): which rail a tipster is paid out on and its
+  // details. `payoutMethod` is one of `stripe` | `crypto` | `mobile_money`;
+  // Stripe uses stripeAccountId, crypto the wallet fields, mobile money the
+  // phone + network fields.
+  payoutMethod           String?
+  payoutWalletAddress    String?
+  payoutWalletChain      String?
+  payoutMobileNumber     String?
+  payoutMobileNetwork    String?
   // Onboarding wizard (OB-020): Stripe Connect onboarding + identity
   // verification progress. Publishing is gated until every required step
   // (profile, sports, bio, pricing, Stripe) is complete; verification is an
@@ -167,6 +176,8 @@ model Subscription {
   user                 User               @relation(fields: [userId], references: [id])
   tipsterId            String
   tipster              Tipster            @relation(fields: [tipsterId], references: [userId])
+  // Which payment provider settles this subscription (stripe, crypto, momo…).
+  provider             String             @default("stripe")
   stripeSubscriptionId String?            @unique
   status               SubscriptionStatus @default(active)
   currentPeriodEnd     DateTime?
