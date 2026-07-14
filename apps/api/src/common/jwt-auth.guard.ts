@@ -28,7 +28,9 @@ export class JwtAuthGuard implements CanActivate {
       const user: AuthUser = await this.auth.provisionSupabaseUser({
         supabaseUserId: claims.sub,
         email: claims.email,
-        role: claims.user_metadata?.role ?? claims.app_metadata?.role,
+        // app_metadata is admin-set (trusted); user_metadata is self-selected.
+        appRole: claims.app_metadata?.role,
+        requestedRole: claims.user_metadata?.role,
       });
       req.user = user;
       return true;

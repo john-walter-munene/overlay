@@ -8,16 +8,23 @@ export class AuthService {
 
   /**
    * Resolve (or create) the local User for an authenticated Supabase identity
-   * (OB-145). Called by the auth guard on each request. Links by
-   * supabaseUserId, adopting an existing row with the same email (e.g. the
-   * seeded admin) on first login, otherwise provisioning a new user.
+   * (OB-145). Links by supabaseUserId, adopting an existing row with the same
+   * email (e.g. the seeded admin) on first login.
+   *
+   * Roles: `appRole` comes from Supabase **app_metadata** (only settable by an
+   * admin / the dashboard) and is TRUSTED — it can grant any role incl. admin,
+   * and is authoritative (promotes/syncs existing users). `requestedRole` comes
+   * from **user_metadata** (self-selected at signup, user-editable) so it is
+   * capped to non-privileged roles (user/tipster) — never admin.
    */
   async provisionSupabaseUser(params: {
     supabaseUserId: string;
     email?: string;
-    role?: string;
+    appRole?: string;
+    requestedRole?: string;
   }): Promise<AuthUser> {
     const { supabaseUserId, email } = params;
+    const trusted = AuthService.trustedRole(params.appRole);
 
     let user = await this.prisma.user.findUnique({ where: { supabaseUserId } });
 
@@ -32,23 +39,21 @@ export class AuthService {
     }
 
     if (!user) {
-      const desiredRole = AuthService.normalizeRole(params.role);
-      user = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.user.create({
-          data: {
-            supabaseUserId,
-            email: email ?? `${supabaseUserId}@users.noreply.overlay`,
-            role: desiredRole,
-          },
-        });
-        if (desiredRole === 'tipster') {
-          await tx.tipster.upsert({
-            where: { userId: created.id },
-            create: { userId: created.id, sports: [] },
-            update: {},
-          });
-        }
-        return created;
+      const role = trusted ?? AuthService.selfRole(params.requestedRole);
+      user = await this.provisionNewUser(supabaseUserId, email, role);
+    } else if (trusted && user.role !== trusted) {
+      // app_metadata is authoritative — promote/sync the existing user.
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: trusted },
+      });
+    }
+
+    if (user.role === 'tipster') {
+      await this.prisma.tipster.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, sports: [] },
+        update: {},
       });
     }
 
@@ -59,7 +64,31 @@ export class AuthService {
     };
   }
 
-  private static normalizeRole(role?: string): 'user' | 'tipster' | 'admin' {
-    return role === 'tipster' || role === 'admin' ? role : 'user';
+  private provisionNewUser(
+    supabaseUserId: string,
+    email: string | undefined,
+    role: 'user' | 'tipster' | 'admin',
+  ) {
+    return this.prisma.user.create({
+      data: {
+        supabaseUserId,
+        email: email ?? `${supabaseUserId}@users.noreply.overlay`,
+        role,
+      },
+    });
+  }
+
+  /** Trusted role from app_metadata (admin-set); may be admin. */
+  private static trustedRole(
+    role?: string,
+  ): 'user' | 'tipster' | 'admin' | null {
+    return role === 'admin' || role === 'tipster' || role === 'user'
+      ? role
+      : null;
+  }
+
+  /** Self-selected role at signup — never privileged. */
+  private static selfRole(role?: string): 'user' | 'tipster' {
+    return role === 'tipster' ? 'tipster' : 'user';
   }
 }
