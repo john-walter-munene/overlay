@@ -44,6 +44,7 @@ export default function DashboardPage() {
     selection: '',
     oddsAtPick: '2.00',
     stakeUnits: '1',
+    note: '',
   });
   const [msg, setMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -110,6 +111,7 @@ export default function DashboardPage() {
           selection: form.selection,
           oddsAtPick: Number(form.oddsAtPick),
           stakeUnits: Number(form.stakeUnits),
+          note: form.note.trim() || undefined,
         }),
       });
       if (!res.ok) {
@@ -119,7 +121,7 @@ export default function DashboardPage() {
         throw new Error(body.message ?? `Failed (${res.status})`);
       }
       setMsg('Pick locked ✓');
-      setForm((f) => ({ ...f, selection: '' }));
+      setForm((f) => ({ ...f, selection: '', note: '' }));
       if (tipsterId) await loadPicks(tipsterId);
       await loadPerformance();
     } catch (err) {
@@ -144,6 +146,11 @@ export default function DashboardPage() {
       <p style={{ margin: '0 0 0.5rem' }}>
         <Link href="/dashboard/profile" style={{ color: 'var(--accent)' }}>
           → Edit public profile
+        </Link>
+      </p>
+      <p style={{ margin: '0 0 0.5rem' }}>
+        <Link href="/admin/blog" style={{ color: 'var(--accent)' }}>
+          → Write an article
         </Link>
       </p>
 
@@ -227,6 +234,13 @@ export default function DashboardPage() {
           value={form.stakeUnits}
           onChange={(e) => setForm({ ...form, stakeUnits: e.target.value })}
           required
+        />
+        <textarea
+          style={{ ...formStyles.input, minHeight: 72, resize: 'vertical' }}
+          placeholder="Optional context / reasoning (shown to subscribers)"
+          value={form.note}
+          maxLength={280}
+          onChange={(e) => setForm({ ...form, note: e.target.value })}
         />
         {msg ? <p style={{ color: 'var(--accent)', margin: 0 }}>{msg}</p> : null}
         <button style={formStyles.button} disabled={submitting}>

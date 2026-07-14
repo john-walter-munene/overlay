@@ -57,11 +57,18 @@ export class TipstersService {
     });
     if (!tipster) throw new NotFoundException('Tipster not found');
 
-    const recentPicks = await this.prisma.pick.findMany({
-      where: { tipsterId, status: { not: 'pending' } },
-      orderBy: { settledAt: 'desc' },
-      take: 20,
-    });
+    const [recentPicks, articlesPublished] = await Promise.all([
+      this.prisma.pick.findMany({
+        where: { tipsterId, status: { not: 'pending' } },
+        orderBy: { settledAt: 'desc' },
+        take: 20,
+      }),
+      // Published articles authored by this tipster count toward the public
+      // profile — a signal of the analysis/content they contribute.
+      this.prisma.article.count({
+        where: { authorId: tipsterId, status: 'published' },
+      }),
+    ]);
 
     return {
       tipsterId,
@@ -69,6 +76,7 @@ export class TipstersService {
       sports: tipster.sports,
       subscriptionPriceCents: tipster.subscriptionPriceCents,
       stats: tipster.stats,
+      articlesPublished,
       recentPicks,
     };
   }

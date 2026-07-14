@@ -136,6 +136,21 @@ export default function FeedPage() {
                 </div>
               ) : null}
 
+              {p.note ? (
+                <p
+                  style={{
+                    margin: '0.5rem 0 0',
+                    color: '#c9d1d9',
+                    fontSize: '0.9rem',
+                    fontStyle: 'italic',
+                    borderLeft: '2px solid #30363d',
+                    paddingLeft: '0.6rem',
+                  }}
+                >
+                  {p.note}
+                </p>
+              ) : null}
+
               <div
                 style={{
                   color: '#6b7280',

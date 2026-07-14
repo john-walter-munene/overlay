@@ -116,6 +116,9 @@ model Pick {
   selection  String
   oddsAtPick Float
   stakeUnits Float   @default(1)
+  // Optional tipster-authored context / reasoning, captured at lock time.
+  // Not part of the integrity hash — it's commentary, not the wager itself.
+  note       String?
 
   // Integrity fields (set at lock time, never mutated)
   hash     String

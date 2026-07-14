@@ -1,4 +1,11 @@
-import { IsIn, IsNumber, IsString, Min } from 'class-validator';
+import {
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreatePickDto {
   @IsString()
@@ -18,4 +25,10 @@ export class CreatePickDto {
   @IsNumber()
   @Min(0.1)
   stakeUnits!: number;
+
+  /** Optional public context / reasoning shown to subscribers. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(280)
+  note?: string;
 }

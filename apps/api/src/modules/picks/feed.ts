@@ -20,6 +20,8 @@ export interface FeedPick {
   selection: string;
   oddsAtPick: number;
   stakeUnits: number;
+  /** Optional tipster-authored context, or null. */
+  note: string | null;
   status: string;
   clv: number | null;
   result: string | null;
