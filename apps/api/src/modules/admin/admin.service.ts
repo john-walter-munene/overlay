@@ -1,7 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma.service';
+import {
+  normalizeUsersQuery,
+  paginateUsers,
+  type RawUsersQuery,
+} from './users-query';
 
 type TipsterStatus = 'active' | 'suspended';
+
+/** Merge an optional free-text admin note into an audit-log payload. */
+function withNote(
+  payload: Prisma.InputJsonObject,
+  note?: string,
+): Prisma.InputJsonObject {
+  const trimmed = note?.trim();
+  return trimmed ? { ...payload, note: trimmed } : payload;
+}
 
 @Injectable()
 export class AdminService {
@@ -47,11 +62,25 @@ export class AdminService {
     };
   }
 
-  listUsers(opts: { take?: number; skip?: number } = {}) {
-    return this.prisma.user.findMany({
+  /**
+   * Search + paginate the users table for the admin console (OB-026). Search
+   * matches email case-insensitively. Returns a paged envelope so the UI can
+   * render page controls without a second count round-trip.
+   */
+  async listUsers(raw: RawUsersQuery = {}) {
+    const query = normalizeUsersQuery(raw);
+    const where: Prisma.UserWhereInput = query.search
+      ? { email: { contains: query.search, mode: 'insensitive' } }
+      : {};
+
+    const total = await this.prisma.user.count({ where });
+    const window = paginateUsers(total, query);
+
+    const items = await this.prisma.user.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
-      take: Math.min(opts.take ?? 50, 100),
-      skip: opts.skip ?? 0,
+      take: window.take,
+      skip: window.skip,
       select: {
         id: true,
         email: true,
@@ -60,12 +89,21 @@ export class AdminService {
         tipster: { select: { status: true } },
       },
     });
+
+    return {
+      items,
+      total,
+      page: window.page,
+      pageSize: window.pageSize,
+      totalPages: window.totalPages,
+    };
   }
 
   async setUserRole(
     actorId: string,
     userId: string,
     role: 'user' | 'tipster' | 'admin',
+    note?: string,
   ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
@@ -89,7 +127,7 @@ export class AdminService {
           action: 'user.role_changed',
           entity: 'User',
           entityId: userId,
-          payload: { role },
+          payload: withNote({ role }, note),
         },
       });
       return updated;
@@ -101,6 +139,7 @@ export class AdminService {
     actorId: string,
     tipsterId: string,
     status: TipsterStatus,
+    note?: string,
   ) {
     const tipster = await this.prisma.tipster.findUnique({
       where: { userId: tipsterId },
@@ -118,7 +157,7 @@ export class AdminService {
           action: `tipster.${status === 'suspended' ? 'suspended' : 'reinstated'}`,
           entity: 'Tipster',
           entityId: tipsterId,
-          payload: { status },
+          payload: withNote({ status }, note),
         },
       });
       return updated;

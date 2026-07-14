@@ -7,7 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsIn } from 'class-validator';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/roles.guard';
@@ -17,11 +17,21 @@ import type { AuthUser } from '../../common/crypto';
 class SetRoleDto {
   @IsIn(['user', 'tipster', 'admin'])
   role!: 'user' | 'tipster' | 'admin';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 class SetTipsterStatusDto {
   @IsIn(['active', 'suspended'])
   status!: 'active' | 'suspended';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 /** All admin routes require an authenticated admin principal. */
@@ -37,11 +47,12 @@ export class AdminController {
   }
 
   @Get('users')
-  users(@Query('take') take?: string, @Query('skip') skip?: string) {
-    return this.admin.listUsers({
-      take: take ? Number(take) : undefined,
-      skip: skip ? Number(skip) : undefined,
-    });
+  users(
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.admin.listUsers({ q, page, pageSize });
   }
 
   @Patch('users/:id/role')
@@ -50,7 +61,7 @@ export class AdminController {
     @Body() dto: SetRoleDto,
     @CurrentUser() actor: AuthUser,
   ) {
-    return this.admin.setUserRole(actor.userId, id, dto.role);
+    return this.admin.setUserRole(actor.userId, id, dto.role, dto.note);
   }
 
   @Patch('tipsters/:id/status')
@@ -59,7 +70,7 @@ export class AdminController {
     @Body() dto: SetTipsterStatusDto,
     @CurrentUser() actor: AuthUser,
   ) {
-    return this.admin.setTipsterStatus(actor.userId, id, dto.status);
+    return this.admin.setTipsterStatus(actor.userId, id, dto.status, dto.note);
   }
 
   @Get('audit-log')

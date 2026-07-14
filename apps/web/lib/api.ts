@@ -127,3 +127,32 @@ export async function listMarketplace(
     EMPTY_MARKETPLACE
   );
 }
+
+/** One step in the tipster performance time-series (mirrors @overlay/shared). */
+export interface PerformancePoint {
+  index: number;
+  settledAt: number | null;
+  cumulativeUnits: number;
+  roi: number;
+  yield: number;
+  clvAvg: number;
+  winRate: number;
+  drawdown: number;
+}
+
+/** Counts of a tipster's picks split by status. */
+export interface PickBreakdown {
+  pending: number;
+  won: number;
+  lost: number;
+  void: number;
+  settled: number;
+  total: number;
+}
+
+/** Payload of GET /api/picks/me/performance (OB-023). */
+export interface PerformanceDashboard {
+  series: PerformancePoint[];
+  breakdown: PickBreakdown;
+  stats: TipsterStats;
+}

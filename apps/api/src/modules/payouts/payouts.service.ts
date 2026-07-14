@@ -1,9 +1,9 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { PAYMENT_PROVIDER } from '../../integrations/payments/payments.module';
 import type { PaymentProvider } from '../../integrations/payments/payment-provider.interface';
-import { computePayout } from './payouts.math';
+import { computePayout, summarizeEarnings } from './payouts.math';
 
 @Injectable()
 export class PayoutsService {
@@ -17,6 +17,44 @@ export class PayoutsService {
 
   private get feeRate(): number {
     return Number(process.env.PLATFORM_FEE_RATE ?? 0.25);
+  }
+
+  /**
+   * Earnings overview for a tipster's own dashboard (OB-024): projected/current
+   * earnings from active subscribers, the platform fee, subscriber count and
+   * their payout history with statuses.
+   */
+  async getEarnings(tipsterId: string) {
+    const tipster = await this.prisma.tipster.findUnique({
+      where: { userId: tipsterId },
+    });
+    if (!tipster) throw new NotFoundException('Tipster not found');
+
+    const activeSubscribers =
+      await this.subs.countActiveSubscribers(tipsterId);
+
+    const payouts = await this.prisma.payout.findMany({
+      where: { tipsterId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const summary = summarizeEarnings(
+      activeSubscribers,
+      tipster.subscriptionPriceCents,
+      this.feeRate,
+      payouts,
+    );
+
+    return {
+      ...summary,
+      payouts: payouts.map((p) => ({
+        id: p.id,
+        period: p.period,
+        amountCents: p.amountCents,
+        status: p.status,
+        createdAt: p.createdAt,
+      })),
+    };
   }
 
   /**
