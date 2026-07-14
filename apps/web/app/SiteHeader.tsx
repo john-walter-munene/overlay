@@ -47,6 +47,11 @@ export default function SiteHeader() {
             Dashboard
           </Link>
         ) : null}
+        {role === 'admin' ? (
+          <Link href="/admin" style={{ color: '#9aa4b2' }}>
+            Admin
+          </Link>
+        ) : null}
       </nav>
       {ready ? (
         role ? (
