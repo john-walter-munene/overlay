@@ -467,9 +467,9 @@
 **Category:** Notifications · **Priority:** P2
 **Description:** Per-user preferences (email/push/off, instant vs daily digest) + unsubscribe links (CAN-SPAM).
 **Acceptance criteria:**
-- [ ] Preferences respected; one-click unsubscribe; digest batching.
+- [x] Preferences respected; one-click unsubscribe; digest batching.
 **Tests:**
-- [ ] Integration: opted-out user receives nothing; digest batches correctly.
+- [x] Integration: opted-out user receives nothing; digest batches correctly.
 
 ---
 
