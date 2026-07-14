@@ -87,6 +87,55 @@ export function centsToPriceUnits(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+/** A settled pick as far as the public CLV chart is concerned. */
+export interface ClvChartPick {
+  /** Closing-line value as a fraction (e.g. 0.023 = +2.3%), or null if ungraded. */
+  clv: number | null;
+  /** When the pick settled — used only to order the series chronologically. */
+  settledAt: string | number | Date | null;
+}
+
+/** Data for the public "CLV over time" chart on a tipster profile (OB-011). */
+export interface ClvChartData {
+  /** Cumulative average CLV in percent, oldest-first (one point per graded pick). */
+  points: number[];
+  /** Overall average CLV in percent across all graded picks (0 when none). */
+  averagePct: number;
+  /** Number of settled picks that carried a CLV value. */
+  sampleSize: number;
+}
+
+function toTime(value: string | number | Date | null): number {
+  if (value == null) return 0;
+  if (value instanceof Date) return value.getTime();
+  const t = new Date(value).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
+/**
+ * Build the public CLV chart series from a tipster's settled picks. Only picks
+ * with a graded CLV are counted; they are ordered oldest-first and reduced to a
+ * running cumulative-average CLV (in percent) so the line shows how the
+ * tipster's edge against the closing line has trended. Pure and unit-tested.
+ */
+export function buildClvChart(picks: ClvChartPick[]): ClvChartData {
+  const graded = picks
+    .filter((p) => typeof p.clv === 'number' && Number.isFinite(p.clv))
+    .sort((a, b) => toTime(a.settledAt) - toTime(b.settledAt));
+
+  const points: number[] = [];
+  let sum = 0;
+  graded.forEach((p, i) => {
+    sum += p.clv as number;
+    points.push((sum / (i + 1)) * 100);
+  });
+
+  const sampleSize = graded.length;
+  const averagePct = sampleSize === 0 ? 0 : (sum / sampleSize) * 100;
+
+  return { points, averagePct, sampleSize };
+}
+
 /**
  * Validate and normalize a profile draft. Pure and synchronous so it can run in
  * the browser for instant feedback and be unit-tested; the API re-validates.
