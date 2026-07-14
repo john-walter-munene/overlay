@@ -4,13 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "prebuild": "npm --prefix ../../packages/shared run build",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint"
   },
   "dependencies": {
-    "@overlay/shared": "*",
     "@supabase/supabase-js": "^2.110.4",
     "marked": "^12.0.2",
     "next": "^14.2.5",
