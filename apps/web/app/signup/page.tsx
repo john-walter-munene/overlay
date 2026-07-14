@@ -26,7 +26,13 @@ export default function SignupPage() {
         setInfo('Check your email to confirm your account, then sign in.');
         return;
       }
-      router.push(role === 'tipster' ? '/dashboard' : '/account');
+      const next =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('next')
+          : null;
+      router.push(
+        role === 'tipster' ? '/onboarding' : next || '/account',
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {

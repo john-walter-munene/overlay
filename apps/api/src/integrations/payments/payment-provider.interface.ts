@@ -9,6 +9,12 @@ export interface CheckoutSession {
   reference?: string;
 }
 
+/** A hosted billing-portal session the subscriber is redirected to. */
+export interface BillingPortalSession {
+  /** URL of the provider's billing portal (mock returns a synthetic URL). */
+  url: string;
+}
+
 export interface TransferResult {
   reference: string;
   amountCents: number;
@@ -35,6 +41,16 @@ export interface PaymentProvider {
 
   /** Verify + normalize a raw webhook payload into a SubscriptionEvent. */
   parseWebhook(rawBody: string, signature: string): SubscriptionEvent | null;
+
+  /**
+   * Create a billing-portal session where the subscriber can manage, cancel or
+   * resume their subscriptions (Stripe billing portal). `returnUrl` is where
+   * the provider sends the subscriber back to after they finish.
+   */
+  createBillingPortalSession(params: {
+    userId: string;
+    returnUrl: string;
+  }): Promise<BillingPortalSession>;
 
   /** Pay a tipster out (Stripe Connect transfer). */
   transferToTipster(params: {

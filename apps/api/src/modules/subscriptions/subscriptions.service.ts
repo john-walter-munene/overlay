@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { PAYMENT_PROVIDER } from '../../integrations/payments/payments.module';
+import { subscriptionStatusFromEvent } from '@overlay/shared';
 import type {
   PaymentProvider,
   SubscriptionEvent,
@@ -43,12 +44,7 @@ export class SubscriptionsService {
   }
 
   private upsertFromEvent(evt: SubscriptionEvent) {
-    const status =
-      evt.type === 'activated'
-        ? 'active'
-        : evt.type === 'past_due'
-          ? 'past_due'
-          : 'canceled';
+    const status = subscriptionStatusFromEvent(evt.type);
     return this.prisma.subscription.upsert({
       where: { userId_tipsterId: { userId: evt.userId, tipsterId: evt.tipsterId } },
       create: {
@@ -72,6 +68,14 @@ export class SubscriptionsService {
 
   listForUser(userId: string) {
     return this.prisma.subscription.findMany({ where: { userId } });
+  }
+
+  /**
+   * Create a billing-portal link where the subscriber can cancel/resume their
+   * subscriptions. `returnUrl` is where the provider sends them back afterwards.
+   */
+  createBillingPortal(userId: string, returnUrl: string) {
+    return this.payments.createBillingPortalSession({ userId, returnUrl });
   }
 
   /** Active subscriber count per tipster — used by payouts. */

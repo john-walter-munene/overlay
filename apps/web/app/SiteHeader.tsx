@@ -60,6 +60,9 @@ export default function SiteHeader() {
             <Link href="/admin/users" style={{ color: '#9aa4b2' }}>
               Users
             </Link>
+            <Link href="/admin/audit-log" style={{ color: '#9aa4b2' }}>
+              Audit log
+            </Link>
           </>
         ) : null}
       </nav>

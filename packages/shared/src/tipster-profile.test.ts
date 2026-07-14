@@ -6,6 +6,7 @@ import {
   priceUnitsToCents,
   centsToPriceUnits,
   validateTipsterProfile,
+  buildClvChart,
   TIPSTER_PROFILE_LIMITS,
 } from './tipster-profile.ts';
 
@@ -102,4 +103,39 @@ test('validateTipsterProfile rejects a price above the max', () => {
   });
   assert.equal(res.valid, false);
   assert.ok(res.errors.some((e) => e.toLowerCase().includes('price')));
+});
+
+test('buildClvChart orders picks oldest-first and builds a cumulative-average series', () => {
+  const res = buildClvChart([
+    { clv: 0.06, settledAt: '2024-01-03T00:00:00Z' },
+    { clv: 0.02, settledAt: '2024-01-01T00:00:00Z' },
+    { clv: 0.04, settledAt: '2024-01-02T00:00:00Z' },
+  ]);
+  assert.equal(res.sampleSize, 3);
+  // Oldest-first CLVs: 2%, 4%, 6% → running averages 2%, 3%, 4%.
+  assert.deepEqual(
+    res.points.map((p) => Number(p.toFixed(4))),
+    [2, 3, 4],
+  );
+  assert.equal(Number(res.averagePct.toFixed(4)), 4);
+});
+
+test('buildClvChart ignores picks without a graded CLV', () => {
+  const res = buildClvChart([
+    { clv: null, settledAt: '2024-01-01T00:00:00Z' },
+    { clv: 0.05, settledAt: '2024-01-02T00:00:00Z' },
+  ]);
+  assert.equal(res.sampleSize, 1);
+  assert.deepEqual(
+    res.points.map((p) => Number(p.toFixed(4))),
+    [5],
+  );
+  assert.equal(Number(res.averagePct.toFixed(4)), 5);
+});
+
+test('buildClvChart returns an empty series when there are no graded picks', () => {
+  const res = buildClvChart([{ clv: null, settledAt: null }]);
+  assert.deepEqual(res.points, []);
+  assert.equal(res.sampleSize, 0);
+  assert.equal(res.averagePct, 0);
 });

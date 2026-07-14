@@ -42,10 +42,19 @@ enum ArticleStatus {
   archived
 }
 
+/// Delivery cadence for a user's notifications (OB-033).
+/// `instant` fans out per pick; `daily` batches picks into one digest email.
+enum NotificationFrequency {
+  instant
+  daily
+}
+
 model User {
   id             String         @id @default(cuid())
   role           Role           @default(user)
   email          String         @unique
+  // User-chosen public handle (unique, lowercased). Optional until set.
+  username       String?        @unique
   // Supabase owns authentication; passwordHash is legacy/optional.
   passwordHash   String?
   supabaseUserId String?        @unique
@@ -54,6 +63,7 @@ model User {
   tipster       Tipster?
   subscriptions Subscription[]
   articles      Article[]
+  notificationPreference NotificationPreference?
 }
 
 model Tipster {
@@ -200,4 +210,17 @@ model Article {
 
   @@index([status, publishedAt])
   @@index([tags])
+}
+
+/// Per-user notification preferences (OB-033): channel opt-in (email/push, or
+/// both off = fully unsubscribed) and cadence (instant vs daily digest). The
+/// `unsubscribeToken` backs CAN-SPAM one-click unsubscribe links in emails.
+model NotificationPreference {
+  userId           String                @id
+  user             User                  @relation(fields: [userId], references: [id])
+  emailEnabled     Boolean               @default(true)
+  pushEnabled      Boolean               @default(true)
+  frequency        NotificationFrequency @default(instant)
+  unsubscribeToken String                @unique
+  updatedAt        DateTime              @updatedAt
 }

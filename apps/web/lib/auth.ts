@@ -97,3 +97,79 @@ export async function getProfile(): Promise<Profile | null> {
   if (!res.ok) return null;
   return (await res.json()) as Profile;
 }
+
+/** Enriched self-profile for the account page. */
+export interface FullProfile {
+  userId: string;
+  email: string;
+  username: string | null;
+  role: 'user' | 'tipster' | 'admin';
+  createdAt: string;
+  tipsterId: string | null;
+  subscriptionCount: number;
+}
+
+export async function getFullProfile(): Promise<FullProfile | null> {
+  const res = await authFetch('/api/users/me');
+  if (!res.ok) return null;
+  return (await res.json()) as FullProfile;
+}
+
+export async function checkUsername(
+  u: string,
+): Promise<{ available: boolean; valid: boolean }> {
+  const res = await authFetch(
+    `/api/users/username-available?u=${encodeURIComponent(u)}`,
+  );
+  if (!res.ok) return { available: false, valid: false };
+  return (await res.json()) as { available: boolean; valid: boolean };
+}
+
+export async function updateUsername(username: string): Promise<FullProfile> {
+  const res = await authFetch('/api/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify({ username }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as {
+      message?: string | string[];
+    };
+    throw new Error(
+      Array.isArray(body.message)
+        ? body.message[0]
+        : body.message ?? 'Failed to update username',
+    );
+  }
+  return (await res.json()) as FullProfile;
+}
+
+/** Change password for the signed-in user (Supabase). */
+export async function changePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase().auth.updateUser({ password: newPassword });
+  if (error) throw new Error(error.message);
+}
+
+/** Change email — Supabase sends a confirmation link to the new address. */
+export async function changeEmail(newEmail: string): Promise<void> {
+  const { error } = await supabase().auth.updateUser(
+    { email: newEmail },
+    {
+      emailRedirectTo:
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/auth/callback`
+          : undefined,
+    },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/** Send a password-reset email (logged-out flow). */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase().auth.resetPasswordForEmail(email, {
+    redirectTo:
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/reset-password`
+        : undefined,
+  });
+  if (error) throw new Error(error.message);
+}

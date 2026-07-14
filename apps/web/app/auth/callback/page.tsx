@@ -13,6 +13,13 @@ export default function AuthCallbackPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Capture the link type (signup / recovery / email_change) BEFORE the
+    // client consumes the URL hash, so we can route new tipsters to onboarding.
+    const hash =
+      typeof window !== 'undefined'
+        ? window.location.hash.replace(/^#/, '')
+        : '';
+    const linkType = new URLSearchParams(hash).get('type');
     const sb = supabase();
     let done = false;
 
@@ -20,13 +27,17 @@ export default function AuthCallbackPage() {
       if (done) return;
       done = true;
       const profile = await getProfile();
-      router.replace(
-        profile
-          ? profile.role === 'tipster'
-            ? '/dashboard'
-            : '/account'
-          : '/login',
-      );
+      let dest = '/login';
+      if (profile) {
+        if (profile.role === 'tipster') {
+          dest = linkType === 'signup' ? '/onboarding' : '/dashboard';
+        } else if (profile.role === 'admin') {
+          dest = '/admin';
+        } else {
+          dest = '/account';
+        }
+      }
+      router.replace(dest);
     };
 
     const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {

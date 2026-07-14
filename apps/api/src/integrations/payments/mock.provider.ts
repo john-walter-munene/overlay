@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type {
+  BillingPortalSession,
   CheckoutSession,
   PaymentProvider,
   SubscriptionEvent,
@@ -26,6 +27,18 @@ export class MockPaymentProvider implements PaymentProvider {
       url: `${webAppUrl}/subscribe/success?ref=${reference}`,
       reference,
     };
+  }
+
+  async createBillingPortalSession(params: {
+    userId: string;
+    returnUrl: string;
+  }): Promise<BillingPortalSession> {
+    // No real Stripe portal locally: point the subscriber at the in-app mock
+    // portal, which cancels/resumes by firing the same webhook as production.
+    void params.userId;
+    void params.returnUrl;
+    const webAppUrl = process.env.WEB_APP_URL ?? 'http://localhost:3000';
+    return { url: `${webAppUrl}/account/subscriptions/portal` };
   }
 
   parseWebhook(rawBody: string): SubscriptionEvent | null {

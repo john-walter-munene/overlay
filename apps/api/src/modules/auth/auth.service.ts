@@ -38,18 +38,23 @@ export class AuthService {
       }
     }
 
+    // Only ensure the Tipster row when the user is first created as, or promoted
+    // to, a tipster — not on every request.
+    let ensureTipster = false;
     if (!user) {
       const role = trusted ?? AuthService.selfRole(params.requestedRole);
       user = await this.provisionNewUser(supabaseUserId, email, role);
+      ensureTipster = role === 'tipster';
     } else if (trusted && user.role !== trusted) {
       // app_metadata is authoritative — promote/sync the existing user.
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: { role: trusted },
       });
+      ensureTipster = trusted === 'tipster';
     }
 
-    if (user.role === 'tipster') {
+    if (ensureTipster) {
       await this.prisma.tipster.upsert({
         where: { userId: user.id },
         create: { userId: user.id, sports: [] },

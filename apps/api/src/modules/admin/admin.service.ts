@@ -6,6 +6,12 @@ import {
   paginateUsers,
   type RawUsersQuery,
 } from './users-query';
+import {
+  buildAuditLogWhere,
+  normalizeAuditLogQuery,
+  paginateAuditLog,
+  type RawAuditLogQuery,
+} from './audit-query';
 
 type TipsterStatus = 'active' | 'suspended';
 
@@ -164,12 +170,32 @@ export class AdminService {
     });
   }
 
-  listAuditLog(opts: { entity?: string; take?: number; skip?: number } = {}) {
-    return this.prisma.auditLog.findMany({
-      where: opts.entity ? { entity: opts.entity } : {},
+  /**
+   * Search + paginate the audit log for the admin viewer (OB-027). Filters by
+   * entity (exact), actor/action (case-insensitive substring) and a createdAt
+   * date range. Returns a paged envelope so the UI can render page controls
+   * without a second count round-trip.
+   */
+  async listAuditLog(raw: RawAuditLogQuery = {}) {
+    const query = normalizeAuditLogQuery(raw);
+    const where = buildAuditLogWhere(query) as Prisma.AuditLogWhereInput;
+
+    const total = await this.prisma.auditLog.count({ where });
+    const window = paginateAuditLog(total, query);
+
+    const items = await this.prisma.auditLog.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
-      take: Math.min(opts.take ?? 100, 200),
-      skip: opts.skip ?? 0,
+      take: window.take,
+      skip: window.skip,
     });
+
+    return {
+      items,
+      total,
+      page: window.page,
+      pageSize: window.pageSize,
+      totalPages: window.totalPages,
+    };
   }
 }

@@ -76,13 +76,21 @@ export class AdminController {
   @Get('audit-log')
   auditLog(
     @Query('entity') entity?: string,
-    @Query('take') take?: string,
-    @Query('skip') skip?: string,
+    @Query('actor') actor?: string,
+    @Query('action') action?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
     return this.admin.listAuditLog({
       entity,
-      take: take ? Number(take) : undefined,
-      skip: skip ? Number(skip) : undefined,
+      actor,
+      action,
+      from,
+      to,
+      page,
+      pageSize,
     });
   }
 }
