@@ -82,11 +82,17 @@ export async function register(
     body: JSON.stringify({ email, password, role }),
   });
   if (!res.ok) {
-    const msg =
-      res.status === 409
-        ? 'That email is already registered'
-        : 'Registration failed';
-    throw new Error(msg);
+    if (res.status === 409) {
+      throw new Error('That email is already registered');
+    }
+    if (res.status === 400) {
+      const detail = await res
+        .json()
+        .then((b) => (Array.isArray(b?.message) ? b.message[0] : b?.message))
+        .catch(() => null);
+      throw new Error(detail || 'Password does not meet requirements');
+    }
+    throw new Error('Registration failed');
   }
   return res.json();
 }

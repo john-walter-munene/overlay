@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { validatePassword, isPwnedPassword } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
 import { hashPassword, verifyPassword, type AuthUser } from '../../common/crypto';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
@@ -15,8 +17,28 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
+  /**
+   * Enforce the shared password policy (OB-005) and, when enabled, reject
+   * known-breached passwords via the HIBP k-anonymity API. Fails open on
+   * network errors so an outage never blocks a legitimate signup/reset.
+   */
+  async assertPasswordStrength(password: string): Promise<void> {
+    const { valid, errors } = validatePassword(password);
+    if (!valid) throw new BadRequestException(errors);
+
+    if (process.env.PASSWORD_BREACH_CHECK === 'true') {
+      if (await isPwnedPassword(password)) {
+        throw new BadRequestException(
+          'This password has appeared in a data breach; choose a different one',
+        );
+      }
+    }
+  }
+
   /** Register a user (and a Tipster profile when role === 'tipster'). */
   async register(dto: RegisterDto): Promise<{ token: string }> {
+    await this.assertPasswordStrength(dto.password);
+
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });

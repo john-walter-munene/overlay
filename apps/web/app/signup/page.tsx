@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { register, setToken } from '../../lib/auth';
+import { validatePassword } from '@overlay/shared/password';
 import { formStyles } from '../formStyles';
 
 export default function SignupPage() {
@@ -17,8 +18,9 @@ export default function SignupPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    const { valid, errors } = validatePassword(password);
+    if (!valid) {
+      setError(errors[0]);
       return;
     }
     setLoading(true);

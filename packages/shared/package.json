@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./password": {
+      "types": "./dist/password.d.ts",
+      "default": "./dist/password.js"
     }
   },
   "scripts": {

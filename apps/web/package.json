@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "prebuild": "npm --prefix ../../packages/shared run build",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint"
   },
   "dependencies": {
+    "@overlay/shared": "*",
     "marked": "^12.0.2",
     "next": "^14.2.5",
     "react": "^18.3.1",
