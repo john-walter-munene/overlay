@@ -14,6 +14,7 @@ import { PayoutsModule } from './modules/payouts/payouts.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { UsersModule } from './modules/users/users.module';
 import { SettlementModule } from './workers/settlement.module';
 
 /**
@@ -37,6 +38,7 @@ import { SettlementModule } from './workers/settlement.module';
     NotificationsModule,
     ArticlesModule,
     AdminModule,
+    UsersModule,
     SettlementModule,
   ],
   providers: [
