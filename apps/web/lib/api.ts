@@ -62,6 +62,7 @@ export interface TipsterProfile {
   sports: string[];
   subscriptionPriceCents: number;
   stats: TipsterStats | null;
+  articlesPublished: number;
   recentPicks: {
     id: string;
     market: string;
@@ -69,6 +70,7 @@ export interface TipsterProfile {
     oddsAtPick: number;
     status: string;
     clv: number | null;
+    note: string | null;
     settledAt: string | null;
   }[];
 }
@@ -216,6 +218,8 @@ export interface FeedPick {
   status: string;
   clv: number | null;
   result: string | null;
+  /** Optional tipster-authored context, or null. */
+  note: string | null;
   /** Lock time as epoch milliseconds. */
   lockedAt: number;
   /** Settlement time as epoch milliseconds, or null while pending. */

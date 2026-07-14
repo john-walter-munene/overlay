@@ -157,6 +157,12 @@ export default async function TipsterPage({
       {t.sports.length ? (
         <p style={{ color: 'var(--muted)', marginTop: 0 }}>{t.sports.join(' · ')}</p>
       ) : null}
+      {t.articlesPublished > 0 ? (
+        <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+          ✍️ {t.articlesPublished} published article
+          {t.articlesPublished === 1 ? '' : 's'}
+        </p>
+      ) : null}
 
       <section
         style={{
@@ -239,7 +245,21 @@ export default async function TipsterPage({
           <tbody>
             {t.recentPicks.map((p) => (
               <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <td style={{ padding: '0.5rem 0' }}>{p.selection}</td>
+                <td style={{ padding: '0.5rem 0' }}>
+                  {p.selection}
+                  {p.note ? (
+                    <div
+                      style={{
+                        color: 'var(--muted)',
+                        fontSize: '0.82rem',
+                        fontStyle: 'italic',
+                        marginTop: '0.2rem',
+                      }}
+                    >
+                      {p.note}
+                    </div>
+                  ) : null}
+                </td>
                 <td>{p.market}</td>
                 <td>{p.oddsAtPick.toFixed(2)}</td>
                 <td>

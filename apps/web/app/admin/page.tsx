@@ -56,6 +56,12 @@ export default function AdminPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const [period, setPeriod] = useState(currentMonth);
+  const [sport, setSport] = useState('');
+  const [opMsg, setOpMsg] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+
   useEffect(() => {
     (async () => {
       const profile = await getProfile();
@@ -76,6 +82,68 @@ export default function AdminPage() {
     })();
   }, [router]);
 
+  async function runPayouts(e: React.FormEvent) {
+    e.preventDefault();
+    setOpMsg(null);
+    setRunning(true);
+    try {
+      const res = await authFetch('/api/payouts/run', {
+        method: 'POST',
+        body: JSON.stringify({ period }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          message?: string | string[];
+        };
+        throw new Error(
+          (Array.isArray(body.message) ? body.message[0] : body.message) ??
+            `Failed (${res.status})`,
+        );
+      }
+      const data = (await res.json()) as { processed?: number };
+      setOpMsg(
+        `Payouts run for ${period}${
+          data.processed != null ? ` — ${data.processed} processed` : ''
+        } ✓`,
+      );
+    } catch (err) {
+      setOpMsg(err instanceof Error ? err.message : 'Failed to run payouts');
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  async function ingestEvents(e: React.FormEvent) {
+    e.preventDefault();
+    setOpMsg(null);
+    if (!sport.trim()) {
+      setOpMsg('Enter a sport to ingest.');
+      return;
+    }
+    setRunning(true);
+    try {
+      const res = await authFetch('/api/events/ingest', {
+        method: 'POST',
+        body: JSON.stringify({ sport: sport.trim() }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          message?: string | string[];
+        };
+        throw new Error(
+          (Array.isArray(body.message) ? body.message[0] : body.message) ??
+            `Failed (${res.status})`,
+        );
+      }
+      const data = (await res.json()) as { ingested?: number };
+      setOpMsg(`Ingested ${data.ingested ?? 0} ${sport.trim()} events ✓`);
+    } catch (err) {
+      setOpMsg(err instanceof Error ? err.message : 'Failed to ingest events');
+    } finally {
+      setRunning(false);
+    }
+  }
+
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1>Admin dashboard</h1>
@@ -93,6 +161,7 @@ export default function AdminPage() {
       >
         {[
           { href: '/admin/users', label: 'Users & roles' },
+          { href: '/admin/settlements', label: 'Settlements' },
           { href: '/admin/audit-log', label: 'Audit log' },
           { href: '/admin/blog', label: 'Blog authoring' },
         ].map((item) => (
@@ -112,15 +181,6 @@ export default function AdminPage() {
             {item.label} →
           </Link>
         ))}
-      </nav>
-
-      <nav style={{ display: 'flex', gap: '1rem', margin: '1rem 0 0' }}>
-        <a href="/admin/users" style={{ color: '#6ea8fe' }}>
-          Manage users →
-        </a>
-        <a href="/admin/settlements" style={{ color: '#6ea8fe' }}>
-          Settlement oversight →
-        </a>
       </nav>
 
       {error ? (
@@ -166,6 +226,100 @@ export default function AdminPage() {
           />
         </div>
       )}
+
+      <section
+        style={{
+          marginTop: '2.5rem',
+          background: '#111826',
+          border: '1px solid #1c2430',
+          borderRadius: 12,
+          padding: '1.5rem',
+        }}
+      >
+        <h2 style={{ marginTop: 0, fontSize: '1.2rem' }}>Operations</h2>
+        <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+          Run monthly tipster payouts and ingest fixtures from the sports
+          provider.
+        </p>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: '1.5rem',
+          }}
+        >
+          <form onSubmit={runPayouts} style={{ display: 'grid', gap: '0.5rem' }}>
+            <label style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+              Payout period (YYYY-MM)
+            </label>
+            <input
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              placeholder="2026-07"
+              pattern="\d{4}-\d{2}"
+              style={{
+                background: '#0d1117',
+                border: '1px solid #1c2430',
+                borderRadius: 8,
+                padding: '0.5rem 0.7rem',
+                color: 'inherit',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={running}
+              style={{
+                background: '#238636',
+                border: 'none',
+                borderRadius: 8,
+                padding: '0.55rem 0.95rem',
+                color: '#fff',
+                cursor: running ? 'default' : 'pointer',
+              }}
+            >
+              {running ? 'Working…' : 'Run payouts'}
+            </button>
+          </form>
+
+          <form
+            onSubmit={ingestEvents}
+            style={{ display: 'grid', gap: '0.5rem' }}
+          >
+            <label style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+              Ingest events (sport)
+            </label>
+            <input
+              value={sport}
+              onChange={(e) => setSport(e.target.value)}
+              placeholder="soccer_epl"
+              style={{
+                background: '#0d1117',
+                border: '1px solid #1c2430',
+                borderRadius: 8,
+                padding: '0.5rem 0.7rem',
+                color: 'inherit',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={running}
+              style={{
+                background: '#1f6feb',
+                border: 'none',
+                borderRadius: 8,
+                padding: '0.55rem 0.95rem',
+                color: '#fff',
+                cursor: running ? 'default' : 'pointer',
+              }}
+            >
+              {running ? 'Working…' : 'Ingest events'}
+            </button>
+          </form>
+        </div>
+        {opMsg ? (
+          <p style={{ marginTop: '1rem', color: 'var(--muted)' }}>{opMsg}</p>
+        ) : null}
+      </section>
     </main>
   );
 }

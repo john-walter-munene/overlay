@@ -10,7 +10,12 @@ import {
   updateUsername,
   changePassword,
   changeEmail,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  exportMyData,
+  deleteMyAccount,
   type FullProfile,
+  type NotificationPreferences,
 } from '../../lib/auth';
 import { formStyles } from '../formStyles';
 
@@ -44,6 +49,12 @@ export default function AccountPage() {
   const [newPassword, setNewPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
 
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const [prefsMsg, setPrefsMsg] = useState<string | null>(null);
+
+  const [privacyMsg, setPrivacyMsg] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     (async () => {
       const p = await getFullProfile();
@@ -57,6 +68,7 @@ export default function AccountPage() {
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => setSubs(data as Subscription[]))
         .catch(() => setSubs([]));
+      getNotificationPreferences().then(setPrefs);
     })();
   }, [router]);
 
@@ -102,6 +114,49 @@ export default function AccountPage() {
   async function logout() {
     await signOut();
     router.push('/');
+  }
+
+  async function savePrefs(patch: Partial<NotificationPreferences>) {
+    setPrefsMsg(null);
+    const previous = prefs;
+    setPrefs((cur) => (cur ? { ...cur, ...patch } : cur));
+    try {
+      const updated = await updateNotificationPreferences(patch);
+      setPrefs(updated);
+      setPrefsMsg('Saved \u2713');
+    } catch (err) {
+      setPrefs(previous);
+      setPrefsMsg(err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
+  async function downloadData() {
+    setPrivacyMsg(null);
+    try {
+      await exportMyData();
+      setPrivacyMsg('Export downloaded \u2713');
+    } catch (err) {
+      setPrivacyMsg(err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
+  async function deleteAccount() {
+    if (
+      !window.confirm(
+        'Delete your account? This anonymizes your personal data and cannot be undone.',
+      )
+    ) {
+      return;
+    }
+    setPrivacyMsg(null);
+    setDeleting(true);
+    try {
+      await deleteMyAccount();
+      router.push('/');
+    } catch (err) {
+      setPrivacyMsg(err instanceof Error ? err.message : 'Failed');
+      setDeleting(false);
+    }
   }
 
   if (!profile) {
@@ -215,6 +270,94 @@ export default function AccountPage() {
           {passwordMsg ? <p style={labelStyle}>{passwordMsg}</p> : null}
           <button style={formStyles.button}>Update password</button>
         </form>
+      </section>
+
+      {/* --- Notification preferences --- */}
+      <section style={cardStyle}>
+        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Notifications</h2>
+        {prefs === null ? (
+          <p style={labelStyle}>Loading…</p>
+        ) : (
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+            >
+              <input
+                type="checkbox"
+                checked={prefs.emailEnabled}
+                onChange={(e) => savePrefs({ emailEnabled: e.target.checked })}
+              />
+              Email notifications
+            </label>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+            >
+              <input
+                type="checkbox"
+                checked={prefs.pushEnabled}
+                onChange={(e) => savePrefs({ pushEnabled: e.target.checked })}
+              />
+              Push notifications
+            </label>
+            <label style={{ display: 'grid', gap: '0.3rem' }}>
+              <span style={labelStyle}>New-pick delivery</span>
+              <select
+                style={formStyles.input}
+                value={prefs.frequency}
+                onChange={(e) =>
+                  savePrefs({
+                    frequency: e.target.value as 'instant' | 'daily',
+                  })
+                }
+              >
+                <option value="instant">Instant — every pick</option>
+                <option value="daily">Daily digest</option>
+              </select>
+            </label>
+            {prefsMsg ? <p style={labelStyle}>{prefsMsg}</p> : null}
+          </div>
+        )}
+      </section>
+
+      {/* --- Privacy & data --- */}
+      <section style={cardStyle}>
+        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Privacy &amp; data</h2>
+        <p style={labelStyle}>
+          Download everything we hold about you, or permanently delete your
+          account.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={downloadData}
+            style={{
+              ...formStyles.button,
+              width: 'auto',
+              background: 'transparent',
+              color: 'var(--accent)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            Download my data
+          </button>
+          <button
+            type="button"
+            onClick={deleteAccount}
+            disabled={deleting}
+            style={{
+              ...formStyles.button,
+              width: 'auto',
+              background: 'transparent',
+              color: '#f85149',
+              border: '1px solid #f85149',
+            }}
+          >
+            {deleting ? 'Deleting…' : 'Delete account'}
+          </button>
+        </div>
+        {privacyMsg ? (
+          <p style={{ ...labelStyle, marginTop: '0.75rem' }}>{privacyMsg}</p>
+        ) : null}
       </section>
 
       {/* --- Subscriptions --- */}

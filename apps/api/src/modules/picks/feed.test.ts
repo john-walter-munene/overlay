@@ -15,6 +15,7 @@ function pick(over: Partial<FeedPick>): FeedPick {
     selection: 'Home',
     oddsAtPick: 2,
     stakeUnits: 1,
+    note: null,
     status: 'pending',
     clv: null,
     result: null,

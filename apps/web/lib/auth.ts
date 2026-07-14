@@ -173,3 +173,52 @@ export async function requestPasswordReset(email: string): Promise<void> {
   });
   if (error) throw new Error(error.message);
 }
+
+/** Notification channel/cadence preferences (GET/PUT /api/notifications/preferences). */
+export interface NotificationPreferences {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  frequency: 'instant' | 'daily';
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferences | null> {
+  const res = await authFetch('/api/notifications/preferences');
+  if (!res.ok) return null;
+  return (await res.json()) as NotificationPreferences;
+}
+
+export async function updateNotificationPreferences(
+  patch: Partial<NotificationPreferences>,
+): Promise<NotificationPreferences> {
+  const res = await authFetch('/api/notifications/preferences', {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error('Failed to save notification preferences');
+  return (await res.json()) as NotificationPreferences;
+}
+
+/** Download the caller's full personal-data export as a JSON file (GDPR). */
+export async function exportMyData(): Promise<void> {
+  const res = await authFetch('/api/privacy/export');
+  if (!res.ok) throw new Error('Failed to export your data');
+  const data = await res.json();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: 'application/json',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `overlay-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** Erase the caller's account (anonymizes PII), then sign out. */
+export async function deleteMyAccount(): Promise<void> {
+  const res = await authFetch('/api/privacy/me', { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete your account');
+  await signOut();
+}
