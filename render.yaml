@@ -67,6 +67,9 @@ services:
         value: mock
       - key: SPORTS_API_PROVIDER
         value: mock
+      # Supabase Auth (OB-145) — public project URL; API verifies JWTs via JWKS.
+      - key: SUPABASE_URL
+        value: https://yseftsncbkclepvursfn.supabase.co
       - key: NOTIFIER_PROVIDER
         value: mock
       # Public URL of the web app — used to build post-checkout redirect URLs.

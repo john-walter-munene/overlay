@@ -15,7 +15,7 @@ export function validateEnv(): void {
     PICK_HASH_PEPPER: 'change-me',
   };
 
-  const required = ['DATABASE_URL'];
+  const required = ['DATABASE_URL', 'SUPABASE_URL'];
   const problems: string[] = [];
 
   for (const key of required) {
