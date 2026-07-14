@@ -57,6 +57,21 @@ The defaults work out of the box for local testing:
 > **Tip:** For a fully keyless first run, set `SPORTS_API_PROVIDER=mock` in `.env`.
 > Switch to `the-odds-api` / `api-football` later once you have keys.
 
+### Auth (Supabase)
+
+This project uses **Supabase Auth** (OB-145). Create a free project at
+[supabase.com](https://supabase.com), then set in `.env`:
+
+- `SUPABASE_URL` — Project Settings → API → **Project URL** (the API verifies
+  access tokens against the project's JWKS — no secret needed).
+- `NEXT_PUBLIC_SUPABASE_URL` — same URL (browser client).
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Project Settings → API → **anon public** key.
+
+In the Supabase dashboard: enable **Auth → Providers → Email**, and add your
+local + deployed origins under **Auth → URL Configuration → Redirect URLs**.
+For quick local testing, turn **"Confirm email" off** so signup logs you in
+immediately (otherwise you must confirm via the emailed link first).
+
 ---
 
 ## 5. Set up the database
