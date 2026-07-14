@@ -1,0 +1,35 @@
+# Overlay Bets — Alertmanager routing (OB-093).
+#
+# Routes SLO alerts to the on-call so a breach pages a human (acceptance
+# criterion: "on-call notified on breach"). severity=page -> PagerDuty (24/7
+# paging); severity=ticket -> Slack (business-hours triage). Replace the
+# *_CONFIG placeholders with real integration keys via your secrets manager —
+# never commit real keys (see the no-secrets policy).
+
+route:
+  receiver: slack-tickets
+  group_by: ["alertname", "service"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = page
+      receiver: pagerduty-oncall
+      continue: true
+    - matchers:
+        - severity = ticket
+      receiver: slack-tickets
+
+receivers:
+  - name: pagerduty-oncall
+    pagerduty_configs:
+      - service_key_file: /etc/alertmanager/secrets/pagerduty_key
+        description: "{{ .CommonAnnotations.summary }}"
+
+  - name: slack-tickets
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack_webhook
+        channel: "#overlay-alerts"
+        title: "{{ .CommonAnnotations.summary }}"
+        text: "{{ .CommonAnnotations.description }}\nRunbook: {{ .CommonAnnotations.runbook_url }}"

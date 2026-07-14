@@ -4,6 +4,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaService } from './prisma.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { PicksModule } from './modules/picks/picks.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { TipstersModule } from './modules/tipsters/tipsters.module';
@@ -30,6 +31,7 @@ import { SettlementModule } from './workers/settlement.module';
     ]),
     AuthModule,
     HealthModule,
+    MetricsModule,
     TipstersModule,
     EventsModule,
     PicksModule,

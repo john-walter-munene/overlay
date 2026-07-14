@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { httpErrorsTotal } from './metrics';
 
 /**
  * Catch-all exception filter. Returns a consistent JSON error envelope and,
@@ -51,5 +52,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       path: req?.url,
       timestamp: new Date().toISOString(),
     });
+
+    // OB-093: count server errors (>=500) for the API error-rate SLO. Client
+    // errors (4xx) are expected traffic and excluded so the SLI reflects faults.
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      httpErrorsTotal.inc({ status: String(status) });
+    }
   }
 }

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { PAYMENT_PROVIDER } from '../../integrations/payments/payments.module';
+import { webhookEventsTotal } from '../../common/metrics';
 import type {
   PaymentProvider,
   SubscriptionEvent,
@@ -36,9 +37,15 @@ export class SubscriptionsService {
 
   /** Apply a verified provider webhook to subscription state. */
   async applyWebhook(rawBody: string, signature: string) {
+    // OB-093: a null event means the signature/payload failed verification —
+    // the webhook-failure SLI. Successful applies are counted as "handled".
     const evt = this.payments.parseWebhook(rawBody, signature);
-    if (!evt) return { handled: false };
+    if (!evt) {
+      webhookEventsTotal.inc({ result: 'failed' });
+      return { handled: false };
+    }
     await this.upsertFromEvent(evt);
+    webhookEventsTotal.inc({ result: 'handled' });
     return { handled: true };
   }
 
