@@ -37,9 +37,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       # Pure-logic tests (stats, integrity, odds/results mappers, payout math)
-      # run on Node's native TS type-stripping — no install needed. Globs are
-      # quoted so Node's test runner expands them recursively (not the shell).
+      # run on Node's native TS type-stripping. Some now import the built
+      # `@overlay/shared` package (e.g. the grading engine used by the sports
+      # mappers), so install workspace links and build shared first.
+      # --ignore-scripts skips the Prisma engine download to keep this fast.
+      - name: Install workspace (links only)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build shared package
+        run: npm run build -w @overlay/shared
       - name: Run unit tests
         run: npm run test:unit
 
