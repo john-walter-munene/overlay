@@ -19,6 +19,7 @@ import {
   normalizeSettlementsQuery,
   type RawSettlementsQuery,
 } from './settlements';
+import {
   buildAuditLogWhere,
   normalizeAuditLogQuery,
   paginateAuditLog,
@@ -276,9 +277,7 @@ export class AdminService {
     }
   }
 
-  listAuditLog(opts: { entity?: string; take?: number; skip?: number } = {}) {
-    return this.prisma.auditLog.findMany({
-      where: opts.entity ? { entity: opts.entity } : {},
+  /**
    * Search + paginate the audit log for the admin viewer (OB-027). Filters by
    * entity (exact), actor/action (case-insensitive substring) and a createdAt
    * date range. Returns a paged envelope so the UI can render page controls
