@@ -14,8 +14,8 @@
       "default": "./dist/password.js"
     },
     "./tipster-profile": {
-      "types": "./dist/tipster-profile.d.ts",
-      "default": "./dist/tipster-profile.js"
+      "types": "./src/tipster-profile.ts",
+      "default": "./src/tipster-profile.ts"
     }
   },
   "scripts": {
