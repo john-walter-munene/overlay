@@ -156,3 +156,27 @@ export interface PerformanceDashboard {
   breakdown: PickBreakdown;
   stats: TipsterStats;
 }
+
+/** One step of the tipster onboarding wizard (OB-020). */
+export type OnboardingStepKey =
+  | 'bio'
+  | 'sports'
+  | 'pricing'
+  | 'stripe'
+  | 'verification';
+
+export interface OnboardingStep {
+  key: OnboardingStepKey;
+  label: string;
+  complete: boolean;
+}
+
+/** Payload of GET /api/tipsters/me/onboarding (OB-020). */
+export interface OnboardingStatus {
+  steps: OnboardingStep[];
+  completedSteps: number;
+  totalSteps: number;
+  complete: boolean;
+  canPublish: boolean;
+  nextStep: OnboardingStepKey | null;
+}

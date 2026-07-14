@@ -396,12 +396,20 @@ async function main() {
 
     await prisma.tipster.upsert({
       where: { userId: user.id },
-      update: { bio: t.bio, sports: t.sports, subscriptionPriceCents: t.priceCents },
+      update: {
+        bio: t.bio,
+        sports: t.sports,
+        subscriptionPriceCents: t.priceCents,
+        stripeOnboarded: true,
+        identityVerified: true,
+      },
       create: {
         userId: user.id,
         bio: t.bio,
         sports: t.sports,
         subscriptionPriceCents: t.priceCents,
+        stripeOnboarded: true,
+        identityVerified: true,
         status: 'active',
       },
     });

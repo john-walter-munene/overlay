@@ -31,7 +31,7 @@ export default function SignupPage() {
           ? new URLSearchParams(window.location.search).get('next')
           : null;
       router.push(
-        role === 'tipster' ? '/dashboard' : next || '/account',
+        role === 'tipster' ? '/onboarding' : next || '/account',
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

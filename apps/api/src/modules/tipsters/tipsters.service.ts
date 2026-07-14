@@ -7,6 +7,10 @@ import {
   type MarketplaceRow,
   type RawMarketplaceQuery,
 } from './marketplace';
+import {
+  computeOnboardingStatus,
+  type OnboardingStatus,
+} from './onboarding';
 
 @Injectable()
 export class TipstersService {
@@ -78,5 +82,40 @@ export class TipstersService {
       where: { userId: tipsterId },
       data,
     });
+  }
+
+  /**
+   * Onboarding wizard status for the caller (OB-020): per-step completion,
+   * the next step to complete and whether they may publish picks yet.
+   */
+  async getOnboarding(tipsterId: string): Promise<OnboardingStatus> {
+    const tipster = await this.prisma.tipster.findUnique({
+      where: { userId: tipsterId },
+    });
+    if (!tipster) throw new NotFoundException('Tipster not found');
+    return computeOnboardingStatus(tipster);
+  }
+
+  /**
+   * Mark the Stripe Connect onboarding step complete (OB-020). Real Connect
+   * onboarding (account link + `details_submitted` webhook) lands in OB-040;
+   * until then this records that the tipster has connected payouts so the
+   * wizard can progress.
+   */
+  async completeStripeOnboarding(tipsterId: string): Promise<OnboardingStatus> {
+    await this.prisma.tipster.update({
+      where: { userId: tipsterId },
+      data: { stripeOnboarded: true },
+    });
+    return this.getOnboarding(tipsterId);
+  }
+
+  /** Mark the identity-verification step complete (OB-020). */
+  async completeVerification(tipsterId: string): Promise<OnboardingStatus> {
+    await this.prisma.tipster.update({
+      where: { userId: tipsterId },
+      data: { identityVerified: true },
+    });
+    return this.getOnboarding(tipsterId);
   }
 }

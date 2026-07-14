@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '../../prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { canPublishPicks } from '../tipsters/onboarding';
 import { CreatePickDto } from './dto/create-pick.dto';
 
 @Injectable()
@@ -34,6 +35,18 @@ export class PicksService {
    * The pick is append-only afterwards (see docs/ARCHITECTURE.md §4).
    */
   async createLockedPick(tipsterId: string, dto: CreatePickDto) {
+    // Gate publishing on completed onboarding (OB-020): a tipster can't lock
+    // picks until bio, sports, pricing, Stripe payouts and verification are done.
+    const tipster = await this.prisma.tipster.findUnique({
+      where: { userId: tipsterId },
+    });
+    if (!tipster) throw new NotFoundException('Tipster not found');
+    if (!canPublishPicks(tipster)) {
+      throw new ForbiddenException(
+        'Complete onboarding before publishing picks',
+      );
+    }
+
     const event = await this.prisma.event.findUnique({
       where: { id: dto.eventId },
     });

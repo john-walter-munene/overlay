@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
 import { API_URL } from '../../lib/api';
-import type { PerformanceDashboard } from '../../lib/api';
+import type { OnboardingStatus, PerformanceDashboard } from '../../lib/api';
 import { formStyles } from '../formStyles';
 import PerformanceDashboardView from '../PerformanceDashboard';
 
@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [performance, setPerformance] = useState<PerformanceDashboard | null>(
     null,
   );
+  const [onboarding, setOnboarding] = useState<OnboardingStatus | null>(null);
   const [form, setForm] = useState({
     eventId: '',
     market: '1X2',
@@ -61,6 +62,15 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadOnboarding = useCallback(async () => {
+    try {
+      const res = await authFetch('/api/tipsters/me/onboarding');
+      if (res.ok) setOnboarding((await res.json()) as OnboardingStatus);
+    } catch {
+      setOnboarding(null);
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       const profile = await getProfile();
@@ -79,8 +89,9 @@ export default function DashboardPage() {
         .catch(() => setEvents([]));
       loadPicks(profile.tipsterId);
       loadPerformance();
+      loadOnboarding();
     })();
-  }, [router, loadPicks, loadPerformance]);
+  }, [router, loadPicks, loadPerformance, loadOnboarding]);
 
   async function submitPick(e: React.FormEvent) {
     e.preventDefault();
@@ -132,10 +143,28 @@ export default function DashboardPage() {
       </p>
 
       <h2 style={{ marginTop: '2rem' }}>Submit a pick</h2>
-      <form
-        onSubmit={submitPick}
-        style={{ ...formStyles.form, maxWidth: 520 }}
-      >
+      {onboarding && !onboarding.canPublish ? (
+        <div
+          style={{
+            border: '1px solid #1c2430',
+            borderRadius: 8,
+            padding: '1rem 1.2rem',
+            background: '#111826',
+          }}
+        >
+          <p style={{ margin: '0 0 0.5rem' }}>
+            Finish onboarding ({onboarding.completedSteps}/
+            {onboarding.totalSteps} steps) to unlock pick publishing.
+          </p>
+          <Link href="/onboarding" style={{ color: '#6ea8fe' }}>
+            → Complete onboarding
+          </Link>
+        </div>
+      ) : (
+        <form
+          onSubmit={submitPick}
+          style={{ ...formStyles.form, maxWidth: 520 }}
+        >
         <label style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>
           Event
           <select
@@ -199,6 +228,7 @@ export default function DashboardPage() {
           {submitting ? 'Locking…' : 'Lock pick'}
         </button>
       </form>
+      )}
 
       <PerformanceDashboardView data={performance} />
 

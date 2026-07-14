@@ -64,6 +64,11 @@ model Tipster {
   sports                 String[]
   subscriptionPriceCents Int      @default(0)
   stripeAccountId        String?
+  // Onboarding wizard (OB-020): Stripe Connect onboarding + identity
+  // verification progress. Publishing is gated until every required step
+  // (bio, sports, pricing, Stripe, verification) is complete.
+  stripeOnboarded        Boolean  @default(false)
+  identityVerified       Boolean  @default(false)
   status                 String   @default("active")
   createdAt              DateTime @default(now())
 

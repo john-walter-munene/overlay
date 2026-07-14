@@ -140,6 +140,14 @@ export default function AccountPage() {
             <Link href="/dashboard" style={{ color: '#6ea8fe' }}>
               → Go to tipster dashboard
             </Link>
+            {' · '}
+            <Link href="/onboarding" style={{ color: '#6ea8fe' }}>
+              Onboarding
+            </Link>
+            {' · '}
+            <Link href="/earnings" style={{ color: '#6ea8fe' }}>
+              Earnings
+            </Link>
           </p>
         ) : null}
       </div>

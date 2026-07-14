@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -43,5 +44,32 @@ export class TipstersController {
   updateMe(@Body() dto: UpdateTipsterDto, @CurrentUser() user: AuthUser) {
     if (!user.tipsterId) throw new ForbiddenException('Not a tipster account');
     return this.tipsters.updateProfile(user.tipsterId, dto);
+  }
+
+  /** Onboarding wizard status for the calling tipster (OB-020). */
+  @Get('me/onboarding')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('tipster')
+  onboarding(@CurrentUser() user: AuthUser) {
+    if (!user.tipsterId) throw new ForbiddenException('Not a tipster account');
+    return this.tipsters.getOnboarding(user.tipsterId);
+  }
+
+  /** Complete the Stripe Connect onboarding step (OB-020). */
+  @Post('me/onboarding/stripe')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('tipster')
+  completeStripe(@CurrentUser() user: AuthUser) {
+    if (!user.tipsterId) throw new ForbiddenException('Not a tipster account');
+    return this.tipsters.completeStripeOnboarding(user.tipsterId);
+  }
+
+  /** Complete the identity-verification step (OB-020). */
+  @Post('me/onboarding/verification')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('tipster')
+  completeVerification(@CurrentUser() user: AuthUser) {
+    if (!user.tipsterId) throw new ForbiddenException('Not a tipster account');
+    return this.tipsters.completeVerification(user.tipsterId);
   }
 }
