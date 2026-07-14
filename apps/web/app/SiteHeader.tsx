@@ -24,14 +24,6 @@ export default function SiteHeader() {
         <Link href="/" className="site-header__brand" onClick={closeMenu}>
           Overlay Bets
         </Link>
-        {role ? (
-          <Link href="/feed" style={{ color: '#9aa4b2' }}>
-            My feed
-          </Link>
-        ) : null}
-        {role === 'tipster' ? (
-          <Link href="/dashboard" style={{ color: '#9aa4b2' }}>
-            Dashboard
 
         <button
           type="button"
@@ -58,6 +50,11 @@ export default function SiteHeader() {
           <Link href="/blog" onClick={closeMenu}>
             Blog
           </Link>
+          {role ? (
+            <Link href="/feed" onClick={closeMenu}>
+              My feed
+            </Link>
+          ) : null}
           {role === 'tipster' ? (
             <Link href="/dashboard" onClick={closeMenu}>
               Dashboard
