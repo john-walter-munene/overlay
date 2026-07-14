@@ -52,8 +52,8 @@ export class StripePaymentProvider implements PaymentProvider {
         },
       ],
       client_reference_id: `${params.userId}:${params.tipsterId}`,
-      success_url: `${process.env.NEXT_PUBLIC_API_URL}/subscribe/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_API_URL}/subscribe/cancel`,
+      success_url: `${process.env.WEB_APP_URL ?? 'http://localhost:3000'}/subscribe/success`,
+      cancel_url: `${process.env.WEB_APP_URL ?? 'http://localhost:3000'}/subscribe/cancel`,
     });
     return { url: session.url, reference: session.id };
   }

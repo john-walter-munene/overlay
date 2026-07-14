@@ -69,6 +69,10 @@ services:
         value: mock
       - key: NOTIFIER_PROVIDER
         value: mock
+      # Public URL of the web app — used to build post-checkout redirect URLs.
+      # Set to your Vercel domain after the web app is deployed.
+      - key: WEB_APP_URL
+        sync: false
       # Set to your Vercel domain(s) after the web app is deployed.
       - key: CORS_ORIGINS
         sync: false

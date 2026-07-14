@@ -21,8 +21,9 @@ export class MockPaymentProvider implements PaymentProvider {
     priceCents: number;
   }): Promise<CheckoutSession> {
     const reference = `mock_sub_${params.userId}_${params.tipsterId}`;
+    const webAppUrl = process.env.WEB_APP_URL ?? 'http://localhost:3000';
     return {
-      url: `http://localhost:3000/subscribe/success?ref=${reference}`,
+      url: `${webAppUrl}/subscribe/success?ref=${reference}`,
       reference,
     };
   }
