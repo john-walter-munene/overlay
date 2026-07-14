@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaService } from './prisma.service';
+import { globalThrottleRule } from './common/throttling';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { PicksModule } from './modules/picks/picks.module';
@@ -21,13 +22,10 @@ import { SettlementModule } from './workers/settlement.module';
  */
 @Module({
   imports: [
-    // Global rate limiting: 120 requests / minute / IP by default.
-    ThrottlerModule.forRoot([
-      {
-        ttl: Number(process.env.THROTTLE_TTL_MS ?? 60_000),
-        limit: Number(process.env.THROTTLE_LIMIT ?? 120),
-      },
-    ]),
+    // Global rate limiting: 120 requests / minute / IP by default (OB-080).
+    // Sensitive routes (auth, pick submission, checkout, payout runs) tighten
+    // this further via @Throttle overrides. All limits are env-configurable.
+    ThrottlerModule.forRoot([globalThrottleRule()]),
     AuthModule,
     HealthModule,
     TipstersModule,

@@ -9,16 +9,19 @@ import {
 } from '@nestjs/common';
 import { PicksService } from './picks.service';
 import { CreatePickDto } from './dto/create-pick.dto';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
+import { writeThrottle } from '../../common/throttling';
 
 @Controller('picks')
 export class PicksController {
   constructor(private readonly picks: PicksService) {}
 
   @Post()
+  @Throttle(writeThrottle())
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('tipster')
   create(@Body() dto: CreatePickDto, @CurrentUser() user: AuthUser) {
