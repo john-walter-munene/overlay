@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
 import { API_URL } from '../../lib/api';
+import type { PerformanceDashboard } from '../../lib/api';
 import { formStyles } from '../formStyles';
+import PerformanceDashboardView from '../PerformanceDashboard';
 
 interface EventRow {
   id: string;
@@ -31,6 +33,9 @@ export default function DashboardPage() {
   const [tipsterId, setTipsterId] = useState<string | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [picks, setPicks] = useState<Pick[]>([]);
+  const [performance, setPerformance] = useState<PerformanceDashboard | null>(
+    null,
+  );
   const [form, setForm] = useState({
     eventId: '',
     market: '1X2',
@@ -44,6 +49,15 @@ export default function DashboardPage() {
   const loadPicks = useCallback(async (id: string) => {
     const res = await fetch(`${API_URL}/api/picks/tipster/${id}`);
     if (res.ok) setPicks((await res.json()) as Pick[]);
+  }, []);
+
+  const loadPerformance = useCallback(async () => {
+    try {
+      const res = await authFetch('/api/picks/me/performance');
+      if (res.ok) setPerformance((await res.json()) as PerformanceDashboard);
+    } catch {
+      setPerformance(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -63,8 +77,9 @@ export default function DashboardPage() {
         .then((data) => setEvents(data as EventRow[]))
         .catch(() => setEvents([]));
       loadPicks(profile.tipsterId);
+      loadPerformance();
     })();
-  }, [router, loadPicks]);
+  }, [router, loadPicks, loadPerformance]);
 
   async function submitPick(e: React.FormEvent) {
     e.preventDefault();
@@ -94,6 +109,7 @@ export default function DashboardPage() {
       setMsg('Pick locked ✓');
       setForm((f) => ({ ...f, selection: '' }));
       if (tipsterId) await loadPicks(tipsterId);
+      await loadPerformance();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Failed to submit');
     } finally {
@@ -177,6 +193,8 @@ export default function DashboardPage() {
           {submitting ? 'Locking…' : 'Lock pick'}
         </button>
       </form>
+
+      <PerformanceDashboardView data={performance} />
 
       <h2 style={{ marginTop: '2.5rem' }}>Your track record</h2>
       {picks.length === 0 ? (

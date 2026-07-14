@@ -28,6 +28,16 @@ export class PicksController {
     return this.picks.createLockedPick(user.tipsterId, dto);
   }
 
+  @Get('me/performance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('tipster')
+  myPerformance(@CurrentUser() user: AuthUser) {
+    if (!user.tipsterId) {
+      throw new ForbiddenException('Not a tipster account');
+    }
+    return this.picks.performanceForTipster(user.tipsterId);
+  }
+
   @Get('tipster/:tipsterId')
   listByTipster(@Param('tipsterId') tipsterId: string) {
     return this.picks.listByTipster(tipsterId);

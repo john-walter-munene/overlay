@@ -7,7 +7,9 @@ import {
 import {
   generateNonce,
   hashPick,
+  buildPerformanceDashboard,
   type PickPayload,
+  type SettledPick,
 } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -110,5 +112,27 @@ export class PicksService {
       orderBy: { lockedAt: 'desc' },
       take: 100,
     });
+  }
+
+  /**
+   * Performance dashboard for a tipster's own account (OB-023): cumulative
+   * ROI/yield/CLV/win-rate time-series, drawdown, streak and a pending-vs-settled
+   * breakdown. Built over ALL of the tipster's picks (pending included) with the
+   * shared, unit-tested performance engine.
+   */
+  async performanceForTipster(tipsterId: string) {
+    const picks = await this.prisma.pick.findMany({
+      where: { tipsterId },
+    });
+
+    const input: SettledPick[] = picks.map((p) => ({
+      oddsAtPick: p.oddsAtPick,
+      stakeUnits: p.stakeUnits,
+      status: p.status,
+      closingOdds: p.closingOdds,
+      settledAt: p.settledAt ? p.settledAt.getTime() : null,
+    }));
+
+    return buildPerformanceDashboard(input);
   }
 }
