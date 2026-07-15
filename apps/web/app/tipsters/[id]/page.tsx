@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { buildClvChart } from '@overlay/shared/tipster-profile';
 import { countryLabel, countryName, flagEmoji } from '@overlay/shared/countries';
 import { getTipster, SITE_URL } from '../../../lib/api';
-import LivePicks from './LivePicks';
+import TipsterTips from './TipsterTips';
 
 export const revalidate = 60;
 
@@ -251,56 +251,12 @@ export default async function TipsterPage({
       ) : null}
 
       <div style={{ margin: '1.5rem 0' }}>
-        <LivePicks
+        <TipsterTips
           tipsterId={t.tipsterId}
           priceCents={t.subscriptionPriceCents}
           billingInterval={t.billingInterval}
         />
       </div>
-
-      <h2 style={{ marginTop: '2rem' }}>Recent settled picks</h2>
-      {t.recentPicks.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>No settled picks yet.</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
-              <th style={{ padding: '0.5rem 0' }}>Selection</th>
-              <th>Market</th>
-              <th>Odds</th>
-              <th>CLV</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            {t.recentPicks.map((p) => (
-              <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <td style={{ padding: '0.5rem 0' }}>
-                  {p.selection}
-                  {p.note ? (
-                    <div
-                      style={{
-                        color: 'var(--muted)',
-                        fontSize: '0.82rem',
-                        fontStyle: 'italic',
-                        marginTop: '0.2rem',
-                      }}
-                    >
-                      {p.note}
-                    </div>
-                  ) : null}
-                </td>
-                <td>{p.market}</td>
-                <td>{p.oddsAtPick.toFixed(2)}</td>
-                <td>
-                  {p.clv != null ? `${(p.clv * 100).toFixed(1)}%` : '—'}
-                </td>
-                <td>{p.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
 
       <VerificationExplainer />
     </main>

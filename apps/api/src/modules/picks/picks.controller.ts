@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PicksService } from './picks.service';
@@ -15,6 +16,12 @@ import { RolesGuard, Roles } from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
 import { writeThrottle } from '../../common/throttling';
+
+type PickStatusFilter = 'open' | 'settled' | 'all';
+
+function normalizeStatusFilter(raw?: string): PickStatusFilter {
+  return raw === 'open' || raw === 'settled' ? raw : 'all';
+}
 
 @Controller('picks')
 export class PicksController {
@@ -29,6 +36,17 @@ export class PicksController {
       throw new ForbiddenException('Not a tipster account');
     }
     return this.picks.createLockedPick(user.tipsterId, dto);
+  }
+
+  /** A tipster's own tips ("My tips"), filterable by open / settled / all. */
+  @Get('me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('tipster')
+  myPicks(@Query('status') status: string, @CurrentUser() user: AuthUser) {
+    if (!user.tipsterId) {
+      throw new ForbiddenException('Not a tipster account');
+    }
+    return this.picks.listMine(user.tipsterId, normalizeStatusFilter(status));
   }
 
   @Get('me/performance')

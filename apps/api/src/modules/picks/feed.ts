@@ -37,6 +37,54 @@ export interface FeedPick {
   } | null;
 }
 
+/** A Prisma pick row (with its event included) as returned by findMany. */
+export interface PickRecord {
+  id: string;
+  tipsterId: string;
+  market: string;
+  selection: string;
+  oddsAtPick: number;
+  stakeUnits: number;
+  note: string | null;
+  status: string;
+  clv: number | null;
+  result: string | null;
+  lockedAt: Date;
+  settledAt: Date | null;
+  event: {
+    sport: string;
+    home: string;
+    away: string;
+    startTime: Date;
+  } | null;
+}
+
+/** Map a Prisma pick (with event) to the wire {@link FeedPick} shape. */
+export function toPickRow(p: PickRecord): FeedPick {
+  return {
+    id: p.id,
+    tipsterId: p.tipsterId,
+    market: p.market,
+    selection: p.selection,
+    oddsAtPick: p.oddsAtPick,
+    stakeUnits: p.stakeUnits,
+    note: p.note,
+    status: p.status,
+    clv: p.clv,
+    result: p.result,
+    lockedAt: p.lockedAt.getTime(),
+    settledAt: p.settledAt ? p.settledAt.getTime() : null,
+    event: p.event
+      ? {
+          sport: p.event.sport,
+          home: p.event.home,
+          away: p.event.away,
+          startTime: p.event.startTime.getTime(),
+        }
+      : null,
+  };
+}
+
 /**
  * Tipster ids the user is *currently entitled* to: only tipsters with an
  * `active` subscription. Canceled/past-due subscriptions confer no access.

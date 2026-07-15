@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
 import { API_URL } from '../../lib/api';
-import type { OnboardingStatus, PerformanceDashboard } from '../../lib/api';
+import type {
+  FeedPick,
+  OnboardingStatus,
+  PerformanceDashboard,
+} from '../../lib/api';
 import { formStyles } from '../formStyles';
 import PerformanceDashboardView from '../PerformanceDashboard';
 
@@ -18,14 +22,8 @@ interface EventRow {
   startTime: string;
 }
 
-interface Pick {
-  id: string;
-  market: string;
-  selection: string;
-  oddsAtPick: number;
-  status: string;
-  clv: number | null;
-}
+type TipsFilter = 'open' | 'settled' | 'all';
+type SettledOutcome = 'all' | 'won' | 'lost' | 'void';
 
 /** Market + best prices per selection, for the odds-driven pick form. */
 interface MarketOdds {
@@ -65,7 +63,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const [tipsterId, setTipsterId] = useState<string | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
-  const [picks, setPicks] = useState<Pick[]>([]);
+  const [myTips, setMyTips] = useState<FeedPick[]>([]);
+  const [tipsFilter, setTipsFilter] = useState<TipsFilter>('all');
+  const [settledOutcome, setSettledOutcome] = useState<SettledOutcome>('all');
   const [performance, setPerformance] = useState<PerformanceDashboard | null>(
     null,
   );
@@ -93,9 +93,13 @@ export default function DashboardPage() {
   const [eventOdds, setEventOdds] = useState<MarketOdds[] | null>(null);
   const [oddsLoading, setOddsLoading] = useState(false);
 
-  const loadPicks = useCallback(async (id: string) => {
-    const res = await fetch(`${API_URL}/api/picks/tipster/${id}`);
-    if (res.ok) setPicks((await res.json()) as Pick[]);
+  const loadMyTips = useCallback(async () => {
+    try {
+      const res = await authFetch('/api/picks/me?status=all');
+      setMyTips(res.ok ? ((await res.json()) as FeedPick[]) : []);
+    } catch {
+      setMyTips([]);
+    }
   }, []);
 
   const loadPerformance = useCallback(async () => {
@@ -231,20 +235,23 @@ export default function DashboardPage() {
       setTipsterId(profile.tipsterId);
       loadFilters();
       loadEvents('', '', '');
-      loadPicks(profile.tipsterId);
       loadPerformance();
       loadOnboarding();
       loadSubscribers();
     })();
   }, [
     router,
-    loadPicks,
     loadPerformance,
     loadOnboarding,
     loadSubscribers,
     loadFilters,
     loadEvents,
   ]);
+
+  // Load My Tips once the tipster is known (all statuses; filtered client-side).
+  useEffect(() => {
+    if (tipsterId) loadMyTips();
+  }, [tipsterId, loadMyTips]);
 
   // Refetch the event list whenever the sport/league/search filter changes.
   useEffect(() => {
@@ -279,7 +286,7 @@ export default function DashboardPage() {
       }
       setMsg('Pick locked ✓');
       setForm((f) => ({ ...f, selection: '', note: '' }));
-      if (tipsterId) await loadPicks(tipsterId);
+      await loadMyTips();
       await loadPerformance();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Failed to submit');
@@ -515,33 +522,166 @@ export default function DashboardPage() {
 
       <PerformanceDashboardView data={performance} />
 
-      <h2 style={{ marginTop: '2.5rem' }}>Your track record</h2>
-      {picks.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>No settled picks yet.</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
-              <th style={{ padding: '0.5rem 0' }}>Selection</th>
-              <th>Market</th>
-              <th>Odds</th>
-              <th>CLV</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            {picks.map((p) => (
-              <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
-                <td style={{ padding: '0.5rem 0' }}>{p.selection}</td>
-                <td>{p.market}</td>
-                <td>{p.oddsAtPick.toFixed(2)}</td>
-                <td>{p.clv != null ? `${(p.clv * 100).toFixed(1)}%` : '—'}</td>
-                <td>{p.status}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+      {(() => {
+        const openCount = myTips.filter((p) => p.status === 'pending').length;
+        const settledList = myTips.filter((p) => p.status !== 'pending');
+        const wonCount = settledList.filter(
+          (p) => outcomeBucket(p.status) === 'won',
+        ).length;
+        const lostCount = settledList.filter(
+          (p) => outcomeBucket(p.status) === 'lost',
+        ).length;
+        const voidCount = settledList.filter(
+          (p) => outcomeBucket(p.status) === 'void',
+        ).length;
+
+        const mainTabs: { key: TipsFilter; label: string; count: number }[] = [
+          { key: 'open', label: 'Open', count: openCount },
+          { key: 'settled', label: 'Settled', count: settledList.length },
+          { key: 'all', label: 'All', count: myTips.length },
+        ];
+        const subTabs: { key: SettledOutcome; label: string; count: number }[] =
+          [
+            { key: 'all', label: 'All', count: settledList.length },
+            { key: 'won', label: 'Won', count: wonCount },
+            { key: 'lost', label: 'Lost', count: lostCount },
+            { key: 'void', label: 'Void', count: voidCount },
+          ];
+
+        const rows =
+          tipsFilter === 'open'
+            ? myTips.filter((p) => p.status === 'pending')
+            : tipsFilter === 'all'
+              ? myTips
+              : settledList.filter(
+                  (p) =>
+                    settledOutcome === 'all' ||
+                    outcomeBucket(p.status) === settledOutcome,
+                );
+
+        return (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: '2.5rem',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+              }}
+            >
+              <h2 style={{ margin: 0 }}>My tips</h2>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                {mainTabs.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setTipsFilter(t.key)}
+                    style={pillStyle(tipsFilter === t.key)}
+                  >
+                    {t.label} ({t.count})
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {tipsFilter === 'settled' ? (
+              <div
+                style={{ display: 'flex', gap: '0.4rem', marginTop: '0.75rem' }}
+              >
+                {subTabs.map((t) => (
+                  <button
+                    key={t.key}
+                    type="button"
+                    onClick={() => setSettledOutcome(t.key)}
+                    style={pillStyle(settledOutcome === t.key, true)}
+                  >
+                    {t.label} ({t.count})
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {rows.length === 0 ? (
+              <p style={{ color: 'var(--muted)', marginTop: '1rem' }}>
+                {tipsFilter === 'open'
+                  ? 'No open tips right now.'
+                  : tipsFilter === 'settled'
+                    ? 'No settled tips in this view.'
+                    : 'No tips yet.'}
+              </p>
+            ) : (
+              <table
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  marginTop: '1rem',
+                }}
+              >
+                <thead>
+                  <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
+                    <th style={{ padding: '0.5rem 0' }}>Match</th>
+                    <th>Selection</th>
+                    <th>Market</th>
+                    <th>Odds</th>
+                    <th>CLV</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((p) => (
+                    <tr
+                      key={p.id}
+                      style={{ borderTop: '1px solid var(--border)' }}
+                    >
+                      <td style={{ padding: '0.5rem 0', color: 'var(--muted)' }}>
+                        {p.event ? `${p.event.home} v ${p.event.away}` : '—'}
+                      </td>
+                      <td>{p.selection}</td>
+                      <td>{p.market}</td>
+                      <td>{p.oddsAtPick.toFixed(2)}</td>
+                      <td>
+                        {p.clv != null ? `${(p.clv * 100).toFixed(1)}%` : '—'}
+                      </td>
+                      <td>{formatTipStatus(p.status)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
+        );
+      })()}
     </main>
   );
+}
+
+/** Bucket a pick status into its coarse settled outcome (halves fold in). */
+function outcomeBucket(status: string): 'won' | 'lost' | 'void' | null {
+  if (status === 'won' || status === 'half_won') return 'won';
+  if (status === 'lost' || status === 'half_lost') return 'lost';
+  if (status === 'void') return 'void';
+  return null;
+}
+
+/** Pill button style for the tips filter tabs. */
+function pillStyle(active: boolean, small = false): React.CSSProperties {
+  return {
+    background: active ? 'var(--accent)' : 'transparent',
+    color: active ? 'var(--on-accent)' : 'var(--muted)',
+    border: '1px solid var(--border)',
+    borderRadius: 999,
+    padding: small ? '0.25rem 0.75rem' : '0.3rem 0.9rem',
+    fontSize: small ? '0.8rem' : '0.85rem',
+    cursor: 'pointer',
+  };
+}
+
+/** Pretty pick-status label (handles Asian half results). */
+function formatTipStatus(status: string): string {
+  if (status === 'pending') return 'Open';
+  if (status === 'half_won') return '½ won';
+  if (status === 'half_lost') return '½ lost';
+  return status;
 }

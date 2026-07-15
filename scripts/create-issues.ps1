@@ -65,6 +65,9 @@ $areaMap = @{
   'Database'      = 'area:database'
   'Performance'   = 'area:performance'
   'Legal'         = 'area:legal'
+  'Tools'         = 'area:tools'
+  'Growth'        = 'area:growth'
+  'Reporting'     = 'area:reporting'
 }
 $labelColors = @{
   'priority:P0' = 'b60205'; 'priority:P1' = 'd93f0b'; 'priority:P2' = 'fbca04'

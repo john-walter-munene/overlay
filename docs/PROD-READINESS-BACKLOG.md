@@ -801,6 +801,119 @@
 
 ---
 
+## 19. Bettor Value & Growth Features
+
+> Feature requests aimed at growing the bettor audience (free-value top-of-funnel),
+> improving conversion/retention, and adding self-service tooling. These are mostly
+> `P1`/`P2` growth items rather than launch blockers.
+
+### OB-150 — Free daily tips hub with date calendar navigation
+**Category:** User UI · **Priority:** P1
+**Description:** A public, free "Daily Tips" page showing a curated set of tips per day, with a calendar/date strip (Yesterday · Today · Tomorrow + a mini calendar picker) so users can browse next/previous dates. This is a top-of-funnel, SEO-friendly free-value page inspired by FreeSuperTips / BettingTips-style daily tip listings. Free tips should be clearly separated from paid live picks and carry the "information only" disclaimer.
+**Acceptance criteria:**
+- [ ] Public `/tips` (or `/free-tips`) route listing free tips grouped by date.
+- [ ] Date navigation: previous/next day controls + a calendar date picker; deep-linkable per date (e.g. `/tips?date=YYYY-MM-DD`).
+- [ ] Only free, non-gated tips shown; each links to the tipster/profile; empty state for days with no tips.
+- [ ] SSR/ISR for SEO with per-date metadata; disclaimer displayed.
+**Tests:**
+- [ ] e2e: selecting next/previous date changes listed tips; empty date shows empty state.
+- [ ] Component: date-strip renders correct labels around "today".
+
+### OB-151 — Livescore section
+**Category:** Sports Data · **Priority:** P2 · **Depends on:** OB-045, OB-046
+**Description:** A livescore area showing in-play and recent fixture scores for supported sports/leagues, refreshing near-real-time. Requires a live-scores data feed (evaluate cost/rate limits in `VENDOR-SPIKE.md`). Read-only; complements (but is independent of) settlement.
+**Acceptance criteria:**
+- [ ] `/livescores` page listing live + today's fixtures with score, status (live/HT/FT), and clock.
+- [ ] Auto-refresh (polling or SSE) with graceful fallback; filter by sport/league.
+- [ ] Vendor coverage + cost + rate limits documented.
+**Tests:**
+- [ ] Integration (recorded fixtures): live/HT/FT states render correctly from mapped payloads.
+
+### OB-152 — Odds & bet calculator (converter + returns, multi-currency)
+**Category:** Tools · **Priority:** P2
+**Description:** A self-service calculator page with two tools: (1) an **odds-format converter** (decimal ⇄ fractional ⇄ American ⇄ implied probability), and (2) a **bet/returns calculator** computing potential returns and profit from stake + odds, with a currency selector for display formatting. Pure client-side, no PII, high SEO value. Reuse existing shared odds/currency helpers where possible.
+**Acceptance criteria:**
+- [ ] Odds converter handles decimal/fractional/American/implied with correct rounding and validation.
+- [ ] Returns calculator: returns = stake × decimal odds; profit = returns − stake; supports currency display formatting.
+- [ ] Accessible inputs, mobile-friendly; shareable/deep-linkable via query params (optional).
+**Tests:**
+- [ ] Unit: conversion correctness across formats incl. edge cases (evens, negative American).
+- [ ] Unit: returns/profit math for multiple stake/odds/currency combinations.
+
+### OB-153 — Free "rising tipster" tips + subscription graduation gating
+**Category:** Stats · **Priority:** P1
+**Description:** Lower onboarding friction by displaying new tipsters' tips **for free** initially, and only enable paid subscription gating once a tipster meets a graduation threshold. Requested rule: **≥ 60% win rate and > 15 settled bets**. Until graduated, show a clear "provisional" badge and keep tips free/public.
+> **Statistical caveat (from review):** 15 settled bets is a small sample — 60% over 15 bets is not yet statistically robust (the leaderboard elsewhere uses a 50+ minimum). Consider making the threshold configurable (a platform setting) and/or requiring a larger settled sample or confidence band before enabling paid gating. Implement with configurable values, defaulting to the requested 60% / 15-bet rule.
+**Acceptance criteria:**
+- [ ] Configurable graduation threshold (default: winRate ≥ 60% AND settledBets > 15).
+- [ ] Ungraduated tipsters' tips are free/public with a "provisional / rising tipster" badge.
+- [ ] On meeting the threshold, the tipster becomes eligible to gate live picks behind a subscription (does not auto-enable billing without tipster/admin action).
+- [ ] Threshold + eligibility derived only from verified settled picks.
+**Tests:**
+- [ ] Unit: eligibility evaluates correctly at boundaries (exactly 60% / exactly 15 / 16 bets).
+- [ ] Integration: crossing the threshold flips eligibility; regression below keeps/handles state per policy.
+
+### OB-154 — About Us / How It Works page
+**Category:** Content · **Priority:** P1
+**Description:** A public "About Us" page that explains the platform, the team/mission, and a clear **How It Works** section covering the trust model (locked/hashed picks, verified settled stats, CLV), how bettors find tipsters, and how tipsters get verified/paid. Improves trust and conversion; link from header/footer.
+**Acceptance criteria:**
+- [ ] `/about` page with mission + "How It Works" (bettor and tipster perspectives) + trust/verification explainer.
+- [ ] Linked in header and/or footer; SEO metadata; disclaimer present.
+**Tests:**
+- [ ] e2e: about page reachable from nav and renders sections.
+
+### OB-155 — Expand Privacy Policy content (GDPR/cookies)
+**Category:** Legal · **Priority:** P1 · **Depends on:** OB-140
+**Description:** A Privacy Policy page already exists at `/legal/privacy`; expand it into a complete, review-ready policy covering data collected, purposes, legal bases, third parties (Stripe, sports vendor, email provider), cookies/consent, retention, and data-subject rights (ties to OB-085). Same for keeping it consistent with the cookie consent banner.
+**Acceptance criteria:**
+- [ ] Privacy Policy covers data categories, purposes, processors, cookies, retention, and user rights.
+- [ ] Consistent with cookie consent + linked from footer (already linked).
+**Tests:**
+- [ ] e2e: privacy page reachable; key sections present.
+
+### OB-156 — Bookmaker affiliate program integration
+**Category:** Growth · **Priority:** P2
+**Description:** Let bettors sign up to partner bookmakers via affiliate links on the platform (a revenue stream). Manage a list of partner bookmakers with affiliate/tracking URLs, display them contextually (e.g. tips/odds pages), and disclose the affiliate relationship. Must preserve the "information only, not a bookmaker" positioning and be reviewed for jurisdiction/advertising compliance.
+> **Compliance note (from review):** verify affiliate/gambling advertising rules per jurisdiction and confirm this does not affect Stripe MCC positioning; likely geo-gated. Coordinate with OB-141.
+**Acceptance criteria:**
+- [ ] Admin-managed list of partner bookmakers with affiliate URLs + tracking params.
+- [ ] Affiliate links displayed with clear disclosure; optional geo-gating.
+- [ ] Click tracking/attribution for reporting.
+**Tests:**
+- [ ] Integration: affiliate link renders with correct tracking params; disclosure present.
+
+### OB-157 — Weekly betting email newsletter ("Picks of the Week") + email capture
+**Category:** Notifications · **Priority:** P2 · **Depends on:** OB-030
+**Description:** An email-capture control (e.g. footer/landing) where visitors subscribe to a weekly newsletter (e.g. "Picks of the Week"), plus a way to compose/send the weekly digest via the email provider. Includes double opt-in and one-click unsubscribe (CAN-SPAM/GDPR).
+**Acceptance criteria:**
+- [ ] Email-capture form with validation + double opt-in confirmation.
+- [ ] Newsletter subscribers stored with consent + unsubscribe token; one-click unsubscribe.
+- [ ] Weekly digest composed and sent via provider (manual trigger or scheduled).
+**Tests:**
+- [ ] Integration: subscribe → confirm → appears in list; unsubscribe removes; opted-out receives nothing.
+
+### OB-158 — Social profiles & links
+**Category:** Content · **Priority:** P2
+**Description:** Add the platform's social profiles/links (e.g. X/Twitter, Instagram, Telegram, YouTube) with icons in the footer (and optionally header), configurable rather than hard-coded.
+**Acceptance criteria:**
+- [ ] Configurable social links rendered with accessible icons in the footer.
+- [ ] Links open in new tab with `rel="noopener noreferrer"`.
+**Tests:**
+- [ ] Component: social icons render for configured links; hidden when unset.
+
+### OB-159 — Data export (Excel/PDF) per role
+**Category:** Reporting · **Priority:** P2
+**Description:** Allow users, tipsters, and admins to export relevant computations/reports as Excel (XLSX/CSV) and/or PDF — e.g. a bettor's subscription/activity, a tipster's performance and earnings, and admin metrics/audit views. Exports must respect authorization (users export only their own data).
+**Acceptance criteria:**
+- [ ] Role-scoped export endpoints producing XLSX/CSV and PDF for the defined report sets.
+- [ ] Authorization enforced (no cross-tenant export); large exports handled safely.
+- [ ] "Export" actions surfaced in the relevant dashboards.
+**Tests:**
+- [ ] Integration: each role exports only permitted data; file format valid/parseable.
+- [ ] Integration: cross-tenant export attempt denied.
+
+---
+
 ## Suggested delivery order (critical path)
 
 1. **Infra unblock:** OB-100 → OB-101 → OB-102 (get something deployed).

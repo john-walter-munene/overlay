@@ -16,7 +16,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { canPublishPicks } from '../tipsters/onboarding';
 import { CreatePickDto } from './dto/create-pick.dto';
-import { buildSubscriberFeed, entitledTipsterIds, type FeedPick } from './feed';
+import { buildSubscriberFeed, entitledTipsterIds, toPickRow, type FeedPick } from './feed';
 
 @Injectable()
 export class PicksService {
@@ -105,28 +105,68 @@ export class PicksService {
     return pick;
   }
 
-  /** Public track record: only SETTLED picks. Live/pending picks are gated. */
-  listByTipster(tipsterId: string) {
-    return this.prisma.pick.findMany({
+  /** Public track record: only SETTLED picks, newest first, with event context. */
+  async listByTipster(tipsterId: string): Promise<FeedPick[]> {
+    const picks = await this.prisma.pick.findMany({
       where: { tipsterId, status: { not: 'pending' } },
       orderBy: { lockedAt: 'desc' },
+      take: 100,
+      include: {
+        event: {
+          select: { sport: true, home: true, away: true, startTime: true },
+        },
+      },
     });
+    return picks.map((p) => toPickRow(p));
   }
 
   /**
-   * Live picks for a subscriber — includes still-pending (pre-event) picks.
-   * Gated: requires an active subscription to the tipster.
+   * A tipster's own picks ("My tips"), filterable by open (pending) vs settled.
+   * No subscription gate — the caller owns them.
    */
-  async listLiveForSubscriber(userId: string, tipsterId: string) {
+  async listMine(
+    tipsterId: string,
+    status?: 'open' | 'settled' | 'all',
+  ): Promise<FeedPick[]> {
+    const where: { tipsterId: string; status?: unknown } = { tipsterId };
+    if (status === 'open') where.status = 'pending';
+    else if (status === 'settled') where.status = { not: 'pending' };
+    const picks = await this.prisma.pick.findMany({
+      where: where as never,
+      orderBy: { lockedAt: 'desc' },
+      take: 200,
+      include: {
+        event: {
+          select: { sport: true, home: true, away: true, startTime: true },
+        },
+      },
+    });
+    return picks.map((p) => toPickRow(p));
+  }
+
+  /**
+   * Live picks for a subscriber — includes still-pending (pre-event) picks and
+   * settled ones, with event context. Gated: requires an active subscription.
+   */
+  async listLiveForSubscriber(
+    userId: string,
+    tipsterId: string,
+  ): Promise<FeedPick[]> {
     const entitled = await this.subs.isEntitled(userId, tipsterId);
     if (!entitled) {
       throw new ForbiddenException('Active subscription required');
     }
-    return this.prisma.pick.findMany({
+    const picks = await this.prisma.pick.findMany({
       where: { tipsterId },
       orderBy: { lockedAt: 'desc' },
       take: 100,
+      include: {
+        event: {
+          select: { sport: true, home: true, away: true, startTime: true },
+        },
+      },
     });
+    return picks.map((p) => toPickRow(p));
   }
 
   /**
