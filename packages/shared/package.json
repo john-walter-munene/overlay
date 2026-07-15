@@ -21,10 +21,6 @@
       "types": "./src/consent.ts",
       "default": "./src/consent.ts"
     },
-    "./age-gate": {
-      "types": "./src/age-gate.ts",
-      "default": "./src/age-gate.ts"
-    },
     "./markdown": {
       "types": "./src/markdown.ts",
       "default": "./src/markdown.ts"

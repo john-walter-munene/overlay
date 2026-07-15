@@ -2,7 +2,6 @@ import './globals.css';
 import SiteHeader from './SiteHeader';
 import SiteFooter from './SiteFooter';
 import CookieConsent from './CookieConsent';
-import AgeGate from './AgeGate';
 
 export const metadata = {
   metadataBase: new URL(
@@ -36,7 +35,6 @@ export default function RootLayout({
         </div>
         <SiteFooter />
         <CookieConsent />
-        <AgeGate />
       </body>
     </html>
   );
