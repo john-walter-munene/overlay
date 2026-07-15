@@ -65,8 +65,15 @@ services:
           property: connectionString
       - key: PAYMENTS_PROVIDER
         value: mock
+      # Sports data (OB-045). Provider + key + ingested leagues are set in the
+      # dashboard (sync:false) so the blueprint doesn't reset them to mock.
+      # The embedded worker (EMBED_WORKER=true) ingests these on a schedule.
       - key: SPORTS_API_PROVIDER
-        value: mock
+        sync: false
+      - key: SPORTS_API_KEY
+        sync: false
+      - key: INGEST_SPORTS
+        sync: false
       # Supabase Auth (OB-145) — public project URL; API verifies JWTs via JWKS.
       - key: SUPABASE_URL
         value: https://yseftsncbkclepvursfn.supabase.co

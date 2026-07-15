@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { createServer } from 'node:http';
 import { NestFactory } from '@nestjs/core';
+import { loadDotenv } from './common/load-env';
 import { AppModule } from './app.module';
 import { SettlementService } from './workers/settlement.service';
 import { startSettlementQueue } from './workers/settlement.queue';
@@ -17,6 +18,7 @@ import { EventsService } from './modules/events/events.service';
  *   - "interval" → in-process setInterval loop (default; zero infra for dev).
  */
 async function main() {
+  loadDotenv();
   const app = await NestFactory.createApplicationContext(AppModule);
   const settlement = app.get(SettlementService);
   const mode = process.env.WORKER_MODE ?? 'interval';
