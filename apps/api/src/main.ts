@@ -2,12 +2,15 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import { loadDotenv } from './common/load-env';
 import { AppModule } from './app.module';
 import { validateEnv } from './common/config';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 import { SettlementService } from './workers/settlement.service';
+import { EventsService } from './modules/events/events.service';
 
 async function bootstrap() {
+  loadDotenv();
   validateEnv();
 
   // rawBody: true preserves the exact request bytes on req.rawBody so payment
@@ -68,6 +71,27 @@ async function bootstrap() {
     void tick();
     setInterval(tick, intervalMs);
     log.log(`Embedded settlement worker running (every ${intervalMs}ms)`);
+
+    // Also ingest configured fixtures on a schedule (OB-045/OB-046) so a single
+    // API process keeps the events table fresh without a separate worker.
+    if (process.env.INGEST_SPORTS?.trim()) {
+      const events = app.get(EventsService);
+      const ingestMs = Number(process.env.INGEST_INTERVAL_MS ?? 15 * 60_000);
+      const ingestTick = async () => {
+        try {
+          const summary = await events.ingestConfigured();
+          const total = summary.reduce((n, s) => n + (s.ingested ?? 0), 0);
+          log.log(
+            `ingest cycle: ${total} fixture(s) across ${summary.length} sport(s)`,
+          );
+        } catch (err) {
+          log.error('ingest cycle failed', err as Error);
+        }
+      };
+      void ingestTick();
+      setInterval(ingestTick, ingestMs);
+      log.log(`Embedded ingestion running (every ${ingestMs}ms)`);
+    }
   }
 }
 
