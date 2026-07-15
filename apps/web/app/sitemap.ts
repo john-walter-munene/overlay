@@ -10,6 +10,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/`, changeFrequency: 'hourly', priority: 1 },
     { url: `${SITE_URL}/marketplace`, changeFrequency: 'hourly', priority: 0.9 },
     { url: `${SITE_URL}/blog`, changeFrequency: 'daily', priority: 0.8 },
+    {
+      url: `${SITE_URL}/tools/odds-calculator`,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
     { url: `${SITE_URL}/legal/terms`, changeFrequency: 'yearly', priority: 0.3 },
     {
       url: `${SITE_URL}/legal/privacy`,

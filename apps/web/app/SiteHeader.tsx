@@ -50,6 +50,9 @@ export default function SiteHeader() {
           <Link href="/blog" onClick={closeMenu}>
             Blog
           </Link>
+          <Link href="/tools/odds-calculator" onClick={closeMenu}>
+            Calculator
+          </Link>
           {role ? (
             <Link href="/feed" onClick={closeMenu}>
               My feed

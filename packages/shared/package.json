@@ -36,6 +36,10 @@
     "./currencies": {
       "types": "./src/currencies.ts",
       "default": "./src/currencies.ts"
+    },
+    "./odds": {
+      "types": "./src/odds.ts",
+      "default": "./src/odds.ts"
     }
   },
   "scripts": {
