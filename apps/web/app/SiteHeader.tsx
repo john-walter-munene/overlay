@@ -47,6 +47,9 @@ export default function SiteHeader() {
           <Link href="/marketplace" onClick={closeMenu}>
             Marketplace
           </Link>
+          <Link href="/about" onClick={closeMenu}>
+            About
+          </Link>
           <Link href="/blog" onClick={closeMenu}>
             Blog
           </Link>
