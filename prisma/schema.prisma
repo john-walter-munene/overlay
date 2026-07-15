@@ -265,3 +265,30 @@ model NotificationPreference {
   unsubscribeToken String                @unique
   updatedAt        DateTime              @updatedAt
 }
+
+/// Free "Daily Tips" hub (OB-150): admin-curated "bets of the day" shown
+/// publicly per calendar day and ungated (visible without sign-up). These are
+/// house tips not linked to any tipster, kept clearly separate from paid live
+/// picks and always carrying the "information only" disclaimer in the UI.
+model FreeTip {
+  id        String   @id @default(cuid())
+  /// The calendar day this tip is listed under (date-only, UTC).
+  tipDate   DateTime @db.Date
+  sport     String
+  league    String?
+  /// Fixture / matchup label, e.g. "Arsenal vs Chelsea".
+  match     String
+  market    String
+  selection String
+  /// Decimal odds for the selection, when provided.
+  odds      Float?
+  /// Optional short analysis / reasoning shown under the tip.
+  analysis  String?
+  /// Display ordering within a day (lower first), then createdAt.
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tipDate])
+}
+

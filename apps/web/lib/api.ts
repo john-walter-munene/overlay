@@ -124,6 +124,41 @@ export async function listArticleSlugs(): Promise<
   return (await getJson(`/api/articles/sitemap`)) ?? [];
 }
 
+/**
+ * A free "bet of the day" from the public Daily Tips hub (OB-150). Admin-curated
+ * and ungated — not linked to any tipster. `date` is the calendar day
+ * (`YYYY-MM-DD`) the tip is listed under.
+ */
+export interface FreeTip {
+  id: string;
+  date: string;
+  sport: string;
+  league: string | null;
+  match: string;
+  market: string;
+  selection: string;
+  odds: number | null;
+  analysis: string | null;
+}
+
+/** The public per-date free-tips payload. */
+export interface FreeTipsForDate {
+  date: string;
+  tips: FreeTip[];
+}
+
+/** Free tips for a single calendar day (defaults to today when date omitted). */
+export async function listFreeTips(date?: string): Promise<FreeTipsForDate> {
+  const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+  const data = await getJson<FreeTipsForDate>(`/api/free-tips${qs}`, 300);
+  return data ?? { date: date ?? '', tips: [] };
+}
+
+/** Distinct calendar days that currently have at least one free tip (for SEO). */
+export async function listFreeTipDates(): Promise<string[]> {
+  return (await getJson<string[]>(`/api/free-tips/dates`, 3600)) ?? [];
+}
+
 export interface TipsterStats {
   yield: number;
   clvAvg: number;

@@ -346,6 +346,55 @@ async function main() {
     console.log(`Article: ${a.slug}`);
   }
 
+  // --- Free "Daily Tips" hub (OB-150): admin-curated bets of the day ---
+  const utcMidnight = (offsetDays) => {
+    const d = new Date();
+    d.setUTCHours(0, 0, 0, 0);
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d;
+  };
+  const FREE_TIPS = [
+    {
+      tipDate: utcMidnight(0),
+      sport: 'Football',
+      league: 'Premier League',
+      match: 'Arsenal vs Chelsea',
+      market: '1X2',
+      selection: 'Arsenal to win',
+      odds: 1.95,
+      analysis: 'Home side in strong form; opponent missing two key defenders.',
+      sortOrder: 0,
+    },
+    {
+      tipDate: utcMidnight(0),
+      sport: 'Football',
+      league: 'La Liga',
+      match: 'Sevilla vs Valencia',
+      market: 'Over/Under 2.5',
+      selection: 'Under 2.5 goals',
+      odds: 1.8,
+      analysis: 'Both teams low-scoring at home this season.',
+      sortOrder: 1,
+    },
+    {
+      tipDate: utcMidnight(1),
+      sport: 'Basketball',
+      league: 'NBA',
+      match: 'Celtics vs Heat',
+      market: 'Moneyline',
+      selection: 'Celtics',
+      odds: 1.55,
+      analysis: 'Rest advantage and a dominant home record.',
+      sortOrder: 0,
+    },
+  ];
+  const freeTipDates = [...new Set(FREE_TIPS.map((t) => t.tipDate.getTime()))].map(
+    (t) => new Date(t),
+  );
+  await prisma.freeTip.deleteMany({ where: { tipDate: { in: freeTipDates } } });
+  await prisma.freeTip.createMany({ data: FREE_TIPS });
+  console.log(`Free tips: ${FREE_TIPS.length}`);
+
   for (const e of EVENTS) {
     await prisma.event.upsert({
       where: { vendorEventId: e.vendorEventId },

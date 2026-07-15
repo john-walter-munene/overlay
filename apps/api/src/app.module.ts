@@ -14,6 +14,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ArticlesModule } from './modules/articles/articles.module';
+import { FreeTipsModule } from './modules/free-tips/free-tips.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { UsersModule } from './modules/users/users.module';
@@ -40,6 +41,7 @@ import { SettlementModule } from './workers/settlement.module';
     PayoutsModule,
     NotificationsModule,
     ArticlesModule,
+    FreeTipsModule,
     AdminModule,
     PrivacyModule,
     UsersModule,
