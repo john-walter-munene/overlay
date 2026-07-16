@@ -25,24 +25,40 @@ export async function generateMetadata({
   const description = article.seoDescription ?? article.excerpt;
   const url = `${SITE_URL}/blog/${article.slug}`;
 
-  return {
+ return {
     title: `${title} — Overlay Bets`,
     description,
-    alternates: { canonical: article.canonicalUrl ?? url },
+    keywords: article.tags,
+    alternates: { canonical: article.canonicalUrl ?? url, },
     openGraph: {
       type: 'article',
       title,
       description,
       url,
-      images: article.coverImage ? [article.coverImage] : undefined,
+      siteName: 'Overlay Bets',
+      images: article.coverImage
+        ? [
+            {
+              url: article.coverImage,
+              alt: article.title,
+            },
+          ]
+        : [
+            {
+              url: '/overlay.png',
+              alt: 'Overlay Bets',
+            },
+          ],
+
       publishedTime: article.publishedAt ?? undefined,
       modifiedTime: article.updatedAt,
+      authors: ['Overlay Bets'],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: article.coverImage ? [article.coverImage] : undefined,
+      images: article.coverImage ? [article.coverImage] : ['/overlay.png'],
     },
   };
 }
@@ -69,6 +85,11 @@ export default async function ArticlePage({
     dateModified: article.updatedAt,
     mainEntityOfPage: url,
     publisher: {
+      '@type': 'Organization',
+      name: 'Overlay Bets',
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}/overlay.png`, },
+    },
+    author: {
       '@type': 'Organization',
       name: 'Overlay Bets',
     },

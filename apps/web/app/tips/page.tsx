@@ -18,19 +18,47 @@ function selectedDate(raw?: string): string {
   return parseIsoDate(raw) ?? todayIsoDate();
 }
 
-export function generateMetadata({
-  searchParams,
-}: {
-  searchParams: { date?: string };
-}): Metadata {
+export function generateMetadata({ searchParams, }: { searchParams: { date?: string }; }): Metadata {
   const date = selectedDate(searchParams?.date);
   const human = formatLongDate(date);
-  const canonical =
-    date === todayIsoDate() ? '/tips' : `/tips?date=${date}`;
+  const canonical = date === todayIsoDate() ? '/tips' : `/tips?date=${date}`;
+
   return {
-    title: `Free Daily Betting Tips — ${human} | Overlay Bets`,
-    description: `Free curated betting tips (bets of the day) for ${human}. Browse next and previous days. Information only — not betting advice.`,
-    alternates: { canonical },
+    title: `Free Daily Betting Tips — ${human}`,
+    description: `Browse free daily betting tips for ${human}. Discover today's football, basketball, tennis and other sports predictions curated by Overlay Bets.`,
+
+    keywords: [
+      'free betting tips',
+      'daily betting tips',
+      'football predictions',
+      'sports picks',
+      'free sports tips',
+      'bet of the day',
+      'betting predictions',
+      'Overlay Bets',
+    ],
+
+    alternates: { canonical, },
+
+    openGraph: {
+      title: `Free Daily Betting Tips — ${human}`,
+      description: 'Browse free daily betting tips and sports predictions curated by Overlay Bets.',
+      url: canonical,
+      type: 'website',
+      images: [
+        {
+          url: '/overlay.png',
+          alt: 'Overlay Bets Free Daily Tips',
+        },
+      ],
+    },
+
+    twitter: {
+      card: 'summary_large_image',
+      title: `Free Daily Betting Tips — ${human}`,
+      description: 'Free daily betting tips and sports predictions from Overlay Bets.',
+      images: ['/overlay.png'],
+    },
   };
 }
 

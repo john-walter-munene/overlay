@@ -7,11 +7,51 @@ import {
   type MarketplaceSort,
 } from '../../lib/api';
 
+// SEO metadata for the Marketplace page.
+// This overrides the defaults from the root layout and helps search engines
+// understand this specific page.
 export const metadata: Metadata = {
-  title: 'Tipster Marketplace — Verified edge, ranked · Overlay Bets',
-  description:
-    'Browse verified sports tipsters. Filter by sport, price and settled sample; sort by yield, closing line value or win rate. Every record is cryptographically locked before kickoff.',
-  alternates: { canonical: `${SITE_URL}/marketplace` },
+  title: 'Verified Tipster Marketplace',
+  description: 'Browse verified sports tipsters ranked by ROI, Closing Line Value (CLV), win rate and settled picks. Filter by sport, subscription price and performance to find your betting edge.',
+
+  keywords: [
+    'verified tipsters',
+    'sports betting marketplace',
+    'football tipsters',
+    'basketball tipsters',
+    'tennis tipsters',
+    'sports picks',
+    'ROI',
+    'CLV',
+    'closing line value',
+    'betting analytics',
+  ],
+
+  alternates: {
+    canonical: `${SITE_URL}/marketplace`,
+  },
+
+  openGraph: {
+    title: 'Verified Tipster Marketplace | Overlay Bets',
+    description:
+      'Browse verified sports tipsters ranked by transparent ROI, Closing Line Value (CLV) and settled performance.',
+    url: `${SITE_URL}/marketplace`,
+    type: 'website',
+    images: [
+      {
+        url: '/overlay.png',
+        alt: 'Overlay Bets Marketplace',
+      },
+    ],
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Verified Tipster Marketplace | Overlay Bets',
+    description:
+      'Compare verified sports tipsters by ROI, CLV and settled betting performance.',
+    images: ['/overlay.png'],
+  },
 };
 
 export const revalidate = 60;
@@ -81,7 +121,7 @@ export default async function MarketplacePage({
       </p>
 
       <form
-        method="get"
+        method="get" aria-label="Filter verified tipsters"
         style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -167,7 +207,8 @@ export default async function MarketplacePage({
             {data.total} verified tipster{data.total === 1 ? '' : 's'} · page{' '}
             {data.page} of {data.totalPages}
           </p>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table aria-label="Verified tipster marketplace results"
+            style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
                 <th style={{ padding: '0.5rem 0' }}>Tipster</th>
@@ -208,7 +249,7 @@ export default async function MarketplacePage({
           </table>
 
           {data.totalPages > 1 ? (
-            <nav
+            <nav aria-label="Marketplace pagination"
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',

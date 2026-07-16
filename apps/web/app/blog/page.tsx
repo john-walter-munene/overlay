@@ -2,11 +2,52 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { listArticles } from '../../lib/api';
 
+// SEO metadata for the Strategy Blog.
+// Provides richer metadata for search engines and social sharing.
 export const metadata: Metadata = {
-  title: 'Betting Strategy Blog — Overlay Bets',
+  title: 'Sports Betting Strategy Blog',
+
   description:
-    'Guides on closing line value, expected value, bankroll management and finding the overlay. Learn to bet like the sharps.',
-  alternates: { canonical: '/blog' },
+    'Learn sports betting strategy with guides on Closing Line Value (CLV), Expected Value (EV), bankroll management, betting psychology and finding profitable betting opportunities.',
+
+  keywords: [
+    'sports betting blog',
+    'betting strategy',
+    'closing line value',
+    'CLV',
+    'expected value',
+    'EV betting',
+    'bankroll management',
+    'sports betting guides',
+    'betting education',
+    'Overlay Bets',
+  ],
+
+  alternates: {
+    canonical: '/blog',
+  },
+
+  openGraph: {
+    title: 'Sports Betting Strategy Blog | Overlay Bets',
+    description:
+      'Guides on Closing Line Value (CLV), Expected Value (EV), bankroll management and profitable sports betting.',
+    url: '/blog',
+    type: 'website',
+    images: [
+      {
+        url: '/overlay.png',
+        alt: 'Overlay Bets Strategy Blog',
+      },
+    ],
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Sports Betting Strategy Blog | Overlay Bets',
+    description:
+      'Sports betting strategy guides covering CLV, EV, bankroll management and profitable betting.',
+    images: ['/overlay.png'],
+  },
 };
 
 export const revalidate = 300;

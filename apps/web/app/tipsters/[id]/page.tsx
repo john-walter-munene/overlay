@@ -18,11 +18,49 @@ export async function generateMetadata({
   const name = t.displayName ?? t.tipsterId;
   const y = t.stats ? `${t.stats.yield.toFixed(1)}% yield` : 'verified picks';
   return {
-    title: `${name} — ${y} · Overlay Bets`,
+    title: `${name} | Verified Tipster`,
     description:
       t.bio ??
-      `Verified betting record for ${name}: ROI, closing line value and settled picks — all cryptographically locked before kickoff.`,
-    alternates: { canonical: `${SITE_URL}/tipsters/${t.tipsterId}` },
+      `View ${name}'s verified betting performance, including ROI, Closing Line Value (CLV), win rate and immutable pre-match picks on Overlay Bets.`,
+
+    keywords: [
+      'verified tipster',
+      name,
+      'sports betting',
+      'betting statistics',
+      'ROI',
+      'CLV',
+      'closing line value',
+      'sports picks',
+      'tipster profile',
+    ],
+
+    alternates: {
+      canonical: `${SITE_URL}/tipsters/${t.tipsterId}`,
+    },
+
+    openGraph: {
+      title: `${name} | Verified Tipster | Overlay Bets`,
+      description:
+        t.bio ??
+        `Verified betting performance, ROI, Closing Line Value (CLV), settled picks and transparent statistics.`,
+      url: `${SITE_URL}/tipsters/${t.tipsterId}`,
+      type: 'profile',
+      images: [
+        {
+          url: '/overlay.png',
+          alt: `${name} on Overlay Bets`,
+        },
+      ],
+    },
+
+    twitter: {
+      card: 'summary_large_image',
+      title: `${name} | Verified Tipster`,
+      description:
+        'Verified betting performance with transparent ROI and Closing Line Value (CLV).',
+      images: ['/overlay.png'],
+    },
   };
 }
 

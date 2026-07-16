@@ -3,11 +3,47 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import OddsCalculator from './OddsCalculator';
 
+// SEO metadata for the Odds Calculator page.
+// Utility pages are valuable for search traffic, so this page includes
+// richer metadata than the site defaults.
 export const metadata: Metadata = {
-  title: 'Odds Converter & Bet Returns Calculator — Overlay Bets',
-  description:
-    'Free odds calculator: convert decimal, fractional, American and implied-probability odds, and work out potential returns and profit from your stake in any currency.',
-  alternates: { canonical: '/tools/odds-calculator' },
+  title: 'Odds Calculator & Odds Converter',
+  description: 'Free sports betting odds calculator. Convert decimal, fractional, American and implied probability odds, then calculate stake, potential returns, profit and implied probability instantly.',
+
+  keywords: [
+    'odds calculator',
+    'bet calculator',
+    'odds converter',
+    'decimal odds',
+    'fractional odds',
+    'american odds',
+    'implied probability',
+    'sports betting calculator',
+    'betting odds',
+    'Overlay Bets',
+  ],
+  alternates: { canonical: '/tools/odds-calculator', },
+  openGraph: {
+    title: 'Free Odds Calculator | Overlay Bets',
+    description:
+      'Convert betting odds and calculate potential returns, profit and implied probability instantly.',
+    url: '/tools/odds-calculator',
+    type: 'website',
+    images: [
+      {
+        url: '/overlay.png',
+        alt: 'Overlay Bets Odds Calculator',
+      },
+    ],
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Free Odds Calculator | Overlay Bets',
+    description:
+      'Convert betting odds and calculate returns instantly.',
+    images: ['/overlay.png'],
+  },
 };
 
 export default function OddsCalculatorPage() {
