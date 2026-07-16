@@ -50,6 +50,12 @@ export default function SiteHeader() {
           <Link href="/blog" onClick={closeMenu}>
             Blog
           </Link>
+          <Link href="/tools/odds-calculator" onClick={closeMenu}>
+            Odds calculator
+          </Link>
+          <Link href="/about" onClick={closeMenu}>
+            About
+          </Link>
           {role === 'user' ? (
             <Link href="/feed" onClick={closeMenu}>
               My feed
@@ -76,30 +82,13 @@ export default function SiteHeader() {
           <ThemeToggle />
           {ready ? (
             role ? (
-              <Link
-                href="/account"
-                className="btn btn--secondary btn--sm"
-                onClick={closeMenu}
-              >
+              <Link href="/account" onClick={closeMenu}>
                 Account
               </Link>
             ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="btn btn--ghost btn--sm"
-                  onClick={closeMenu}
-                >
-                  Sign in
-                </Link>
-                <Link
-                  href="/signup"
-                  className="btn btn--primary btn--sm"
-                  onClick={closeMenu}
-                >
-                  Get started
-                </Link>
-              </>
+              <Link href="/login" onClick={closeMenu}>
+                Sign in
+              </Link>
             )
           ) : null}
         </div>

@@ -6,7 +6,7 @@ import { getFullProfile } from '../lib/auth';
 
 // Pages that must remain reachable without a username (auth + the setup step).
 const EXEMPT = [
-  '/welcome',
+  '/choose-username',
   '/login',
   '/signup',
   '/auth',
@@ -16,8 +16,8 @@ const EXEMPT = [
 
 /**
  * Enforces the mandatory username. Any authenticated account without a username
- * is redirected to /welcome to choose one before using the rest of the app.
- * Unauthenticated visitors are untouched. Renders nothing.
+ * is redirected to /choose-username to set one before using the rest of the
+ * app. Unauthenticated visitors are untouched. Renders nothing.
  */
 export default function UsernameGate() {
   const pathname = usePathname();
@@ -31,7 +31,7 @@ export default function UsernameGate() {
     let active = true;
     getFullProfile().then((p) => {
       if (active && p && !p.username) {
-        router.replace(`/welcome?next=${encodeURIComponent(pathname)}`);
+        router.replace(`/choose-username?next=${encodeURIComponent(pathname)}`);
       }
     });
     return () => {

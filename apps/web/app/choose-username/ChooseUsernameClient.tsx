@@ -13,7 +13,7 @@ const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
  * handle didn't persist (e.g. after email confirmation). Prefills from the
  * Supabase metadata captured at signup when available.
  */
-export default function WelcomeClient() {
+export default function ChooseUsernameClient() {
   const router = useRouter();
   const params = useSearchParams();
   const [username, setUsername] = useState('');
@@ -27,7 +27,7 @@ export default function WelcomeClient() {
     (async () => {
       const p = await getFullProfile();
       if (!p) {
-        router.replace('/login?next=/welcome');
+        router.replace('/login?next=/choose-username');
         return;
       }
       if (p.username) {
