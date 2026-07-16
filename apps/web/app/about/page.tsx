@@ -140,8 +140,8 @@ export default function AboutPage() {
         </div>
         <p>
           Want to see it in action? Browse the{' '}
-          <Link href="/marketplace" style={{ color: 'var(--accent)' }}>
-            marketplace
+          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
+            tipsters
           </Link>{' '}
           or open any tipster profile to inspect their settled picks and CLV
           history yourself.

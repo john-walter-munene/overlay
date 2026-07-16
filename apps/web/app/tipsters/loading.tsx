@@ -1,9 +1,7 @@
-export default function MarketplaceLoading() {
+export default function TipstersLoading() {
   return (
-    <main style={{ maxWidth: 980, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1 style={{ fontSize: '2.2rem', marginBottom: '0.25rem' }}>
-        Tipster Marketplace
-      </h1>
+    <main style={{ maxWidth: 1080, margin: '0 auto', padding: '3rem 1.5rem' }}>
+      <h1 style={{ fontSize: '2.2rem', marginBottom: '0.25rem' }}>Tipsters</h1>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
         Loading verified tipsters…
       </p>

@@ -89,7 +89,7 @@ export default function FeedPage() {
       ) : picks.length === 0 ? (
         <p style={{ color: '#9aa4b2' }}>
           No picks yet.{' '}
-          <Link href="/marketplace" style={{ color: '#6ea8fe' }}>
+          <Link href="/tipsters" style={{ color: '#6ea8fe' }}>
             Find a tipster to subscribe to
           </Link>{' '}
           and their live picks will show up here.

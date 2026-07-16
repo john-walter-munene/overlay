@@ -60,20 +60,23 @@ export async function signIn(email: string, password: string): Promise<void> {
 }
 
 /**
- * Sign up with Supabase. The chosen role is stored in user_metadata so the API
- * provisions the right local role on first authenticated request. Returns
- * needsConfirmation=true when email confirmation is required (no session yet).
+ * Sign up with Supabase. The chosen role and username are stored in
+ * user_metadata so the API provisions the right local role on first
+ * authenticated request and the username survives the email-confirmation flow.
+ * Returns needsConfirmation=true when email confirmation is required (no
+ * session yet).
  */
 export async function signUp(
   email: string,
   password: string,
   role: 'user' | 'tipster',
+  username?: string,
 ): Promise<{ needsConfirmation: boolean }> {
   const { data, error } = await supabase().auth.signUp({
     email,
     password,
     options: {
-      data: { role },
+      data: username ? { role, username } : { role },
       // Email-confirmation link returns here to establish the session.
       emailRedirectTo:
         typeof window !== 'undefined'

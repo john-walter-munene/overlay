@@ -169,13 +169,18 @@ export default function AccountPage() {
 
   return (
     <main style={{ maxWidth: 640, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1>Your account</h1>
+      <h1 style={{ marginBottom: '0.25rem' }}>
+        Welcome, {profile.username ?? 'there'}
+      </h1>
+      <p style={{ color: 'var(--muted)', marginTop: 0 }}>Your account</p>
 
-      <p>
-        <Link href="/feed" style={{ color: '#6ea8fe' }}>
-          → My feed (live picks)
-        </Link>
-      </p>
+      {profile.role === 'user' ? (
+        <p>
+          <Link href="/feed" style={{ color: 'var(--accent)' }}>
+            → My feed (live picks)
+          </Link>
+        </p>
+      ) : null}
 
       {/* --- Profile summary --- */}
       <div style={cardStyle}>
@@ -380,8 +385,8 @@ export default function AccountPage() {
       ) : subs.length === 0 ? (
         <p style={{ color: 'var(--muted)' }}>
           No active subscriptions.{' '}
-          <Link href="/" style={{ color: 'var(--accent)' }}>
-            Browse the leaderboard
+          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
+            Browse tipsters
           </Link>{' '}
           to find a tipster.
         </p>

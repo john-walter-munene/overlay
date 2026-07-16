@@ -2,6 +2,7 @@ import './globals.css';
 import SiteHeader from './SiteHeader';
 import SiteFooter from './SiteFooter';
 import CookieConsent from './CookieConsent';
+import UsernameGate from './UsernameGate';
 
 export const metadata = {
   metadataBase: new URL(
@@ -35,6 +36,7 @@ export default function RootLayout({
         </div>
         <SiteFooter />
         <CookieConsent />
+        <UsernameGate />
       </body>
     </html>
   );

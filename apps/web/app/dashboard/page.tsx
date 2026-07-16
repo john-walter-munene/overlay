@@ -297,47 +297,53 @@ export default function DashboardPage() {
 
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1>Tipster dashboard</h1>
-      <p style={{ color: 'var(--muted)' }}>
+      <h1 style={{ marginBottom: '0.25rem' }}>Tipster dashboard</h1>
+      <p style={{ color: 'var(--muted)', marginTop: 0 }}>
         Picks are hash-locked and timestamped the moment you submit — before
         kickoff. That’s what makes your record verifiable.
       </p>
 
       <div
         style={{
-          display: 'inline-flex',
-          flexDirection: 'column',
-          gap: '0.15rem',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: '0.9rem 1.4rem',
-          background: 'var(--surface)',
-          margin: '0.5rem 0 1rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          margin: '1rem 0 1.75rem',
         }}
       >
-        <span style={{ fontSize: '1.9rem', fontWeight: 700, lineHeight: 1 }}>
-          {subscriberCount ?? '—'}
-        </span>
-        <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-          Active subscriber{subscriberCount === 1 ? '' : 's'}
-        </span>
-      </div>
+        <div
+          style={{
+            display: 'inline-flex',
+            flexDirection: 'column',
+            gap: '0.15rem',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '0.9rem 1.4rem',
+            background: 'var(--surface)',
+          }}
+        >
+          <span style={{ fontSize: '1.9rem', fontWeight: 700, lineHeight: 1 }}>
+            {subscriberCount ?? '—'}
+          </span>
+          <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+            Active subscriber{subscriberCount === 1 ? '' : 's'}
+          </span>
+        </div>
 
-      <p style={{ margin: '0 0 0.5rem' }}>
-        <Link href="/earnings" style={{ color: 'var(--accent)' }}>
-          → Earnings &amp; payouts
-        </Link>
-      </p>
-      <p style={{ margin: '0 0 0.5rem' }}>
-        <Link href="/dashboard/profile" style={{ color: 'var(--accent)' }}>
-          → Edit public profile
-        </Link>
-      </p>
-      <p style={{ margin: '0 0 0.5rem' }}>
-        <Link href="/admin/blog" style={{ color: 'var(--accent)' }}>
-          → Write an article
-        </Link>
-      </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+          <Link href="/earnings" className="btn btn--secondary btn--sm">
+            Earnings &amp; payouts
+          </Link>
+          <Link href="/dashboard/profile" className="btn btn--secondary btn--sm">
+            Edit public profile
+          </Link>
+          <Link href="/admin/blog" className="btn btn--secondary btn--sm">
+            Write an article
+          </Link>
+        </div>
+      </div>
 
       <h2 style={{ marginTop: '2rem' }}>Submit a pick</h2>
       {onboarding && !onboarding.canPublish ? (
@@ -514,7 +520,7 @@ export default function DashboardPage() {
           onChange={(e) => setForm({ ...form, note: e.target.value })}
         />
         {msg ? <p style={{ color: 'var(--accent)', margin: 0 }}>{msg}</p> : null}
-        <button style={formStyles.button} disabled={submitting}>
+        <button className="btn btn--primary" disabled={submitting}>
           {submitting ? 'Locking…' : 'Lock pick'}
         </button>
       </form>

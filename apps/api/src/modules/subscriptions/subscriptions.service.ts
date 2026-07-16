@@ -86,6 +86,25 @@ export class SubscriptionsService {
     country?: string,
     currency?: string,
   ) {
+    // A tipster can't subscribe to their own account.
+    if (userId === tipsterId) {
+      throw new BadRequestException(
+        'You cannot subscribe to your own tipster account.',
+      );
+    }
+
+    // Only bettor (user) accounts can subscribe. A tipster (or admin) account
+    // must use a separate user account to subscribe to other tipsters.
+    const subscriber = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, role: true },
+    });
+    if (subscriber?.role === 'tipster') {
+      throw new ForbiddenException(
+        'Tipster accounts cannot subscribe to tipsters. Sign up for a bettor (user) account to subscribe.',
+      );
+    }
+
     const tipster = await this.prisma.tipster.findUnique({
       where: { userId: tipsterId },
     });
@@ -101,12 +120,6 @@ export class SubscriptionsService {
       throw new BadRequestException(`Unsupported payment method: ${method}`);
     }
 
-    // Some providers (e.g. Flutterwave) require the subscriber's email.
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-
     // Quote the price in the subscriber's chosen/local currency when known.
     const targetCurrency =
       currency?.toUpperCase() ?? currencyForCountry(country) ?? undefined;
@@ -120,7 +133,7 @@ export class SubscriptionsService {
       tipsterId,
       priceCents: tipster.subscriptionPriceCents,
       method,
-      customerEmail: user?.email,
+      customerEmail: subscriber?.email,
       chargeCurrency: quote.converted ? quote.currency : undefined,
       chargeAmountMinor: quote.converted ? quote.amountMinor : undefined,
     });

@@ -9,13 +9,15 @@ export default function SiteFooter() {
         <div>
           <strong>Overlay Bets</strong>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>
-            Verified tipster marketplace.
+            Verified tipsters, ranked by real edge.
           </p>
         </div>
         <nav aria-label="Footer">
-          <Link href="/about">About</Link>
-          <Link href="/marketplace">Marketplace</Link>
+          <Link href="/tipsters">Tipsters</Link>
+          <Link href="/tips">Free tips</Link>
           <Link href="/blog">Blog</Link>
+          <Link href="/tools/odds-calculator">Odds calculator</Link>
+          <Link href="/about">About</Link>
           <Link href="/legal/terms">Terms of Service</Link>
           <Link href="/legal/privacy">Privacy Policy</Link>
           <Link href="/legal/responsible-gambling">Responsible Gambling</Link>

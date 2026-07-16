@@ -4,6 +4,8 @@ import {
   subscriptionStatusFromEvent,
   subscriptionStatusLabel,
   isSubscriptionEntitled,
+  isSubscriptionExpiringSoon,
+  hoursUntilPeriodEnd,
   formatBillingDate,
   periodEndLabel,
   toSubscriptionView,
@@ -34,6 +36,34 @@ test('isSubscriptionEntitled handles active, grace and cancel-at-period-end', ()
   // Bad/none period end means no grace.
   assert.equal(isSubscriptionEntitled('past_due', 'not-a-date', now), false);
   assert.equal(isSubscriptionEntitled('past_due', future.toISOString(), now), true);
+});
+
+test('isSubscriptionExpiringSoon flags entitled subs ending within the window', () => {
+  const now = new Date('2026-07-16T00:00:00.000Z');
+  const in12h = new Date('2026-07-16T12:00:00.000Z');
+  const in36h = new Date('2026-07-17T12:00:00.000Z');
+  const in48h = new Date('2026-07-18T00:00:00.000Z');
+  const past = new Date('2026-07-15T00:00:00.000Z');
+  // Active + ends within 36h → notice.
+  assert.equal(isSubscriptionExpiringSoon('active', in12h, now), true);
+  assert.equal(isSubscriptionExpiringSoon('active', in36h, now), true);
+  // Beyond the window → no notice.
+  assert.equal(isSubscriptionExpiringSoon('active', in48h, now), false);
+  // cancel-at-period-end still within window → notice.
+  assert.equal(isSubscriptionExpiringSoon('canceled', in12h, now), true);
+  // Already expired / no access → no notice.
+  assert.equal(isSubscriptionExpiringSoon('canceled', past, now), false);
+  assert.equal(isSubscriptionExpiringSoon('active', null, now), false);
+  // Custom window.
+  assert.equal(isSubscriptionExpiringSoon('active', in48h, now, 72), true);
+});
+
+test('hoursUntilPeriodEnd computes remaining whole hours or null', () => {
+  const now = new Date('2026-07-16T00:00:00.000Z');
+  assert.equal(hoursUntilPeriodEnd('2026-07-16T12:00:00.000Z', now), 12);
+  assert.equal(hoursUntilPeriodEnd('2026-07-15T00:00:00.000Z', now), -24);
+  assert.equal(hoursUntilPeriodEnd(null, now), null);
+  assert.equal(hoursUntilPeriodEnd('not-a-date', now), null);
 });
 
 test('subscriptionStatusLabel returns human-readable labels', () => {

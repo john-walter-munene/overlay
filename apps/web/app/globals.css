@@ -54,6 +54,11 @@ body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background: var(--bg);
   color: var(--fg);
+  /* Sticky footer: column layout so #main-content grows and the footer is
+     pushed to the bottom even on short pages. */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
@@ -87,6 +92,11 @@ a {
 
 .skip-link:focus {
   top: 0.75rem;
+}
+
+/* Main content grows to fill the viewport so the footer stays at the bottom. */
+#main-content {
+  flex: 1 0 auto;
 }
 
 #main-content:focus {
@@ -160,6 +170,113 @@ a {
   cursor: pointer;
 }
 
+/* Buttons -------------------------------------------------------------- */
+/* One consistent, professional button system. Use on <button> and <a> so
+   call-to-actions never read as plain hyperlinks. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.05s ease;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--fg);
+  border-color: var(--border);
+}
+
+.btn--secondary:hover {
+  border-color: var(--accent);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--fg);
+  border-color: transparent;
+}
+
+.btn--ghost:hover {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.btn--sm {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+.btn--lg {
+  padding: 0.8rem 1.5rem;
+  font-size: 1.05rem;
+}
+
+/* Tipsters page: browse (main) + leaderboard (aside, top-right) ---------- */
+.tipsters-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .tipsters-layout {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
+.tipsters-aside {
+  position: sticky;
+  top: 1rem;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  background: var(--surface);
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+}
+
 /* Theme toggle button -------------------------------------------------- */
 .theme-toggle {
   display: inline-flex;
@@ -193,6 +310,7 @@ a {
   background: var(--surface);
   color: var(--muted);
   margin-top: 3rem;
+  flex-shrink: 0;
 }
 
 .site-footer__inner {

@@ -95,6 +95,40 @@ export function isSubscriptionEntitled(
 }
 
 /**
+ * Whole hours remaining until `currentPeriodEnd` (negative if already past),
+ * or null when there's no known period end. Pure so the portal expiry notice
+ * and its tests share one calculation.
+ */
+export function hoursUntilPeriodEnd(
+  currentPeriodEnd: Date | string | null | undefined,
+  now: Date = new Date(),
+): number | null {
+  if (!currentPeriodEnd) return null;
+  const end =
+    currentPeriodEnd instanceof Date
+      ? currentPeriodEnd
+      : new Date(currentPeriodEnd);
+  if (Number.isNaN(end.getTime())) return null;
+  return Math.floor((end.getTime() - now.getTime()) / 3_600_000);
+}
+
+/**
+ * Whether an in-app "expiring soon" notice should show for a subscription:
+ * it still grants access now but its current period ends within `withinHours`
+ * (default 36h). Covers pay-per-period rails and cancel-at-period-end. Pure.
+ */
+export function isSubscriptionExpiringSoon(
+  status: SubscriptionStatus,
+  currentPeriodEnd: Date | string | null | undefined,
+  now: Date = new Date(),
+  withinHours = 36,
+): boolean {
+  if (!isSubscriptionEntitled(status, currentPeriodEnd, now)) return false;
+  const hrs = hoursUntilPeriodEnd(currentPeriodEnd, now);
+  return hrs != null && hrs >= 0 && hrs <= withinHours;
+}
+
+/**
  * Format an ISO date string as a locale date (e.g. "Jan 1, 2026"). Returns null
  * when the input is missing or not a valid date, so callers can hide the field.
  */

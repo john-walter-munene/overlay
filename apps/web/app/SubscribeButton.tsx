@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CURRENCY_CODES } from '@overlay/shared/currencies';
-import { authFetch, getAccessToken } from '../lib/auth';
+import { authFetch, getAccessToken, getProfile, type Profile } from '../lib/auth';
 import {
   PAYMENT_METHOD_LABELS,
   detectCountry,
@@ -36,11 +36,13 @@ export default function SubscribeButton({
   const [method, setMethod] = useState<PaymentMethodId | ''>('');
   const [currency, setCurrency] = useState('USD');
   const [quote, setQuote] = useState<SubscriptionQuote | null>(null);
+  const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
 
   const period = billingInterval === 'weekly' ? 'wk' : 'mo';
   const baseDisplay = `$${(priceCents / 100).toFixed(2)}`;
 
   useEffect(() => {
+    getProfile().then(setProfile);
     listPaymentMethods().then((m) => {
       setMethods(m);
       if (m.length > 0) setMethod(m[0]);
@@ -68,6 +70,25 @@ export default function SubscribeButton({
     );
   }
 
+  // A tipster viewing their own profile can't subscribe to themselves.
+  if (profile && profile.tipsterId === tipsterId) {
+    return (
+      <p style={{ color: 'var(--muted)' }}>
+        This is your tipster profile — you can’t subscribe to your own account.
+      </p>
+    );
+  }
+
+  // Tipster accounts can't subscribe at all; they need a bettor account.
+  if (profile && profile.role === 'tipster') {
+    return (
+      <p style={{ color: 'var(--muted)' }}>
+        Tipster accounts can’t subscribe. Sign up for a separate bettor account
+        to follow and subscribe to other tipsters.
+      </p>
+    );
+  }
+
   async function subscribe() {
     setError(null);
     const token = await getAccessToken();
@@ -89,7 +110,16 @@ export default function SubscribeButton({
         method: 'POST',
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Checkout failed (${res.status})`);
+      if (!res.ok) {
+        // Surface the API's message (e.g. tipster-can't-subscribe guard).
+        const body = (await res.json().catch(() => null)) as {
+          message?: string | string[];
+        } | null;
+        const msg = Array.isArray(body?.message)
+          ? body?.message.join(', ')
+          : body?.message;
+        throw new Error(msg || `Checkout failed (${res.status})`);
+      }
       const data = (await res.json()) as { url?: string };
       if (data.url) {
         window.location.href = data.url;
@@ -157,16 +187,7 @@ export default function SubscribeButton({
       <button
         onClick={subscribe}
         disabled={loading}
-        style={{
-          background: 'var(--accent)',
-          color: 'var(--on-accent)',
-          border: 'none',
-          borderRadius: 8,
-          padding: '0.7rem 1.4rem',
-          fontSize: '1rem',
-          fontWeight: 600,
-          cursor: loading ? 'default' : 'pointer',
-        }}
+        className="btn btn--primary btn--lg"
       >
         {loading ? 'Redirecting…' : `Subscribe · ${baseDisplay}/${period}`}
       </button>
