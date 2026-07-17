@@ -3,16 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signUp, updateUsername, checkUsername } from '../../lib/auth';
+import { signUp } from '../../lib/auth';
 import { formStyles } from '../formStyles';
-
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [role, setRole] = useState<'user' | 'tipster'>('user');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -23,30 +20,9 @@ export default function SignupPage() {
     setError(null);
     setInfo(null);
 
-    const handle = username.trim().toLowerCase();
-    if (!USERNAME_RE.test(handle)) {
-      setError(
-        'Username must be 3–20 characters: lowercase letters, numbers or underscores.',
-      );
-      return;
-    }
-
     setLoading(true);
     try {
-      // Best-effort pre-check so a taken handle fails before we create the auth
-      // user (the API still enforces uniqueness when the username is saved).
-      const { available, valid } = await checkUsername(handle);
-      if (!valid || !available) {
-        setError('That username is taken or invalid. Try another.');
-        return;
-      }
-
-      const { needsConfirmation } = await signUp(
-        email,
-        password,
-        role,
-        handle,
-      );
+      const { needsConfirmation } = await signUp(email, password, role);
       if (needsConfirmation) {
         setInfo(
           'Check your email to confirm your account, then sign in to finish setting up.',
@@ -54,18 +30,15 @@ export default function SignupPage() {
         return;
       }
 
-      // Session is live — persist the username to our profile immediately.
-      try {
-        await updateUsername(handle);
-      } catch {
-        /* the username gate will prompt again if this didn't stick */
-      }
-
+      // Session is live — send the user to pick their handle, then on to their
+      // destination. The UsernameGate also enforces this for any account
+      // without a username.
       const next =
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('next')
           : null;
-      router.push(role === 'tipster' ? '/onboarding' : next || '/account');
+      const dest = role === 'tipster' ? '/onboarding' : next || '/account';
+      router.push(`/choose-username?next=${encodeURIComponent(dest)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -83,15 +56,6 @@ export default function SignupPage() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          style={formStyles.input}
-          type="text"
-          placeholder="Username (3–20: a–z, 0–9, _)"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
           required
         />
         <input
