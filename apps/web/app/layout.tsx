@@ -4,6 +4,8 @@ import SiteHeader from './SiteHeader';
 import SiteFooter from './SiteFooter';
 import CookieConsent from './CookieConsent';
 import UsernameGate from './UsernameGate';
+import WhatsAppFloat from './WhatsAppFloat';
+import FollowProvider from './FollowProvider';
 
 export const metadata = {
   metadataBase: new URL(
@@ -33,11 +35,12 @@ export default function RootLayout({
         </a>
         <SiteHeader />
         <div id="main-content" tabIndex={-1}>
-          {children}
+          <FollowProvider>{children}</FollowProvider>
         </div>
         <SiteFooter />
         <CookieConsent />
         <UsernameGate />
+        <WhatsAppFloat />
       </body>
     </html>
   );

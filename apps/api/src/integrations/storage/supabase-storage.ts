@@ -38,6 +38,11 @@ function bucket(): string {
   return process.env.SUPABASE_STORAGE_BUCKET ?? DEFAULT_BUCKET;
 }
 
+/** Public bucket for avatars (world-readable objects, served via public URL). */
+function publicBucket(): string {
+  return process.env.SUPABASE_AVATAR_BUCKET ?? 'avatars';
+}
+
 function authHeaders(): Record<string, string> {
   const key = serviceKey();
   return { authorization: `Bearer ${key}`, apikey: key };
@@ -100,3 +105,37 @@ export async function createSignedUrl(
   // The API returns a path relative to /storage/v1 (e.g. /object/sign/...).
   return `${baseUrl()}/storage/v1${data.signedURL}`;
 }
+
+/**
+ * Upload (upsert) an object into the PUBLIC bucket (avatars). The bucket must be
+ * marked public in Supabase so objects are world-readable via {@link publicUrl}.
+ */
+export async function uploadPublicObject(
+  objectPath: string,
+  body: Buffer,
+  contentType: string,
+): Promise<void> {
+  const res = await fetch(
+    `${baseUrl()}/storage/v1/object/${publicBucket()}/${encodeObjectPath(objectPath)}`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeaders(),
+        'content-type': contentType,
+        'cache-control': '3600',
+        'x-upsert': 'true',
+      },
+      body,
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Supabase Storage upload failed (${res.status}): ${detail}`);
+  }
+}
+
+/** Stable public URL for an object in the public bucket. */
+export function publicUrl(objectPath: string): string {
+  return `${baseUrl()}/storage/v1/object/public/${publicBucket()}/${encodeObjectPath(objectPath)}`;
+}
+

@@ -173,6 +173,7 @@ export interface TipsterProfile {
   tipsterId: string;
   displayName: string | null;
   username: string | null;
+  avatarUrl: string | null;
   country: string | null;
   bio: string | null;
   sports: string[];
@@ -186,6 +187,7 @@ export interface TipsterProfile {
   };
   stats: TipsterStats | null;
   subscriberCount: number;
+  followerCount: number;
   articlesPublished: number;
   recentPicks: {
     id: string;
@@ -261,6 +263,7 @@ export interface MarketplaceTipster {
   bio: string | null;
   country: string | null;
   name: string | null;
+  avatarUrl: string | null;
 }
 
 export interface MarketplacePage {

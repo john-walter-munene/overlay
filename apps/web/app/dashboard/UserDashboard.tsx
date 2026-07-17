@@ -2,8 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { authFetch, getFullProfile } from '../../lib/auth';
+import {
+  authFetch,
+  getFullProfile,
+  listFollowing,
+  type FollowedTipster,
+} from '../../lib/auth';
 import type { FeedPick } from '../../lib/api';
+import Flag from '../Flag';
+import Avatar from '../Avatar';
+import FollowButton from '../FollowButton';
+import { useFollow } from '../FollowProvider';
 
 interface Sub {
   id: string;
@@ -26,11 +35,17 @@ function statusLabel(status: string): string {
  */
 export default function UserDashboard() {
   const [username, setUsername] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [subs, setSubs] = useState<Sub[] | null>(null);
   const [picks, setPicks] = useState<FeedPick[] | null>(null);
+  const [following, setFollowing] = useState<FollowedTipster[] | null>(null);
+  const { ready: followReady, isFollowing } = useFollow();
 
   useEffect(() => {
-    getFullProfile().then((p) => setUsername(p?.username ?? null));
+    getFullProfile().then((p) => {
+      setUsername(p?.username ?? null);
+      setAvatarUrl(p?.avatarUrl ?? null);
+    });
     authFetch('/api/subscriptions/me')
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setSubs(d as Sub[]))
@@ -39,10 +54,21 @@ export default function UserDashboard() {
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => setPicks(d as FeedPick[]))
       .catch(() => setPicks([]));
+    listFollowing()
+      .then(setFollowing)
+      .catch(() => setFollowing([]));
   }, []);
 
   const activeCount = (subs ?? []).filter((s) => s.status === 'active').length;
   const recent = (picks ?? []).slice(0, 3);
+  // Reflect live unfollows: once the provider has loaded, only show tipsters
+  // still followed, so unfollowing here removes the row immediately.
+  const shownFollowing =
+    following === null
+      ? null
+      : followReady
+        ? following.filter((f) => isFollowing(f.tipsterId))
+        : following;
 
   const cardStyle: React.CSSProperties = {
     border: '1px solid var(--border)',
@@ -53,12 +79,17 @@ export default function UserDashboard() {
 
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1 style={{ marginBottom: '0.25rem' }}>
-        Welcome{username ? `, ${username}` : ''}
-      </h1>
-      <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        Your subscriptions and live picks, all in one place.
-      </p>
+      <div style={{ display: 'flex', gap: '0.9rem', alignItems: 'center' }}>
+        <Avatar src={avatarUrl} seed={username ?? 'me'} size={56} />
+        <div>
+          <h1 style={{ margin: '0 0 0.15rem' }}>
+            Welcome{username ? `, ${username}` : ''}
+          </h1>
+          <p style={{ color: 'var(--muted)', margin: 0 }}>
+            Your subscriptions and live picks, all in one place.
+          </p>
+        </div>
+      </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', margin: '1.25rem 0' }}>
         <Link href="/feed" className="btn btn--primary btn--sm">
@@ -98,6 +129,14 @@ export default function UserDashboard() {
             {picks === null
               ? '—'
               : picks.filter((p) => p.status === 'pending').length}
+          </div>
+        </div>
+        <div style={cardStyle}>
+          <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>
+            Following
+          </div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700, marginTop: '0.2rem' }}>
+            {shownFollowing === null ? '—' : shownFollowing.length}
           </div>
         </div>
       </div>
@@ -144,6 +183,76 @@ export default function UserDashboard() {
               View all in My feed →
             </Link>
           </li>
+        </ul>
+      )}
+
+      <h2 style={{ marginTop: '2.5rem', fontSize: '1.2rem' }}>Following</h2>
+      <p style={{ color: 'var(--muted)', marginTop: 0, fontSize: '0.9rem' }}>
+        Tipsters you track for free. Subscribe to unlock their live picks.
+      </p>
+      {following === null ? (
+        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+      ) : shownFollowing && shownFollowing.length === 0 ? (
+        <p style={{ color: 'var(--muted)' }}>
+          You're not following anyone yet.{' '}
+          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
+            Browse tipsters
+          </Link>{' '}
+          and follow a few to track their record.
+        </p>
+      ) : (
+        <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0' }}>
+          {(shownFollowing ?? []).map((f) => (
+            <li
+              key={f.tipsterId}
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '0.85rem 1rem',
+                marginBottom: '0.6rem',
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ minWidth: 0, display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                <Avatar src={f.avatarUrl} seed={f.name ?? f.tipsterId} size={40} />
+                <div style={{ minWidth: 0 }}>
+                  <Link
+                    href={`/tipsters/${f.tipsterId}`}
+                    style={{ color: 'var(--accent)', fontWeight: 600 }}
+                  >
+                    {f.name ?? f.tipsterId}
+                  </Link>
+                  {f.country ? (
+                    <Flag code={f.country} style={{ marginLeft: '0.4rem', verticalAlign: 'middle' }} />
+                  ) : null}
+                  <div style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                    {f.stats
+                      ? `${f.stats.yield.toFixed(1)}% yield · ${(f.stats.clvAvg * 100).toFixed(1)}% CLV · ${f.stats.sampleSize} picks`
+                      : 'No settled picks yet'}
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                {f.isSubscribed ? (
+                  <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>
+                    ✓ Subscribed
+                  </span>
+                ) : (
+                  <Link
+                    href={`/tipsters/${f.tipsterId}`}
+                    className="btn btn--primary btn--sm"
+                  >
+                    Subscribe
+                  </Link>
+                )}
+                <FollowButton tipsterId={f.tipsterId} size="sm" />
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </main>

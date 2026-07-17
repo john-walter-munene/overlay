@@ -106,6 +106,7 @@ export interface FullProfile {
   userId: string;
   email: string;
   username: string | null;
+  avatarUrl: string | null;
   role: 'user' | 'tipster' | 'admin';
   createdAt: string;
   tipsterId: string | null;
@@ -428,3 +429,95 @@ export async function adminRejectPayout(id: string): Promise<void> {
   );
   if (!res.ok) throw new Error(`Failed to reject payout (${res.status})`);
 }
+
+// --- Follow (free tracking) -------------------------------------------------
+
+/** A tipster the signed-in user follows, with public performance stats. */
+export interface FollowedTipster {
+  tipsterId: string;
+  name: string | null;
+  avatarUrl: string | null;
+  country: string | null;
+  subscriptionPriceCents: number;
+  billingInterval: 'weekly' | 'monthly';
+  isSubscribed: boolean;
+  followedAt: string;
+  stats: {
+    yield: number;
+    clvAvg: number;
+    winRate: number;
+    sampleSize: number;
+  } | null;
+}
+
+/** The set of tipster ids the signed-in user follows (empty when signed out). */
+export async function listFollowingIds(): Promise<string[]> {
+  const token = await getAccessToken();
+  if (!token) return [];
+  const res = await authFetch('/api/follows/me/ids');
+  if (!res.ok) return [];
+  return (await res.json()) as string[];
+}
+
+/** The signed-in user's followed tipsters with stats, for the Following list. */
+export async function listFollowing(): Promise<FollowedTipster[]> {
+  const token = await getAccessToken();
+  if (!token) return [];
+  const res = await authFetch('/api/follows/me');
+  if (!res.ok) return [];
+  return (await res.json()) as FollowedTipster[];
+}
+
+export async function followTipster(
+  tipsterId: string,
+): Promise<{ following: boolean; followerCount: number }> {
+  const res = await authFetch(`/api/follows/${encodeURIComponent(tipsterId)}`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Failed to follow (${res.status})`);
+  return (await res.json()) as { following: boolean; followerCount: number };
+}
+
+export async function unfollowTipster(
+  tipsterId: string,
+): Promise<{ following: boolean; followerCount: number }> {
+  const res = await authFetch(`/api/follows/${encodeURIComponent(tipsterId)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error(`Failed to unfollow (${res.status})`);
+  return (await res.json()) as { following: boolean; followerCount: number };
+}
+
+// --- Avatar (optional profile picture) --------------------------------------
+
+/** Upload/replace the signed-in user's avatar. Returns the new avatar URL. */
+export async function uploadAvatar(
+  file: File,
+): Promise<{ avatarUrl: string | null }> {
+  const token = await getAccessToken();
+  const form = new FormData();
+  form.append('file', file);
+  // No content-type header: the browser sets the multipart boundary itself.
+  const res = await fetch(`${API_URL}/api/users/me/avatar`, {
+    method: 'POST',
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+    body: form,
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const msg = Array.isArray(body?.message) ? body?.message[0] : body?.message;
+    throw new Error(msg || `Could not upload avatar (${res.status})`);
+  }
+  return (await res.json()) as { avatarUrl: string | null };
+}
+
+/** Remove the signed-in user's avatar (revert to the generated fallback). */
+export async function removeAvatar(): Promise<{ avatarUrl: string | null }> {
+  const res = await authFetch('/api/users/me/avatar', { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Could not remove avatar (${res.status})`);
+  return (await res.json()) as { avatarUrl: string | null };
+}
+
+

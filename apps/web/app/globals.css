@@ -466,6 +466,63 @@ a {
   }
 }
 
+/* Floating WhatsApp launcher ------------------------------------------- */
+.whatsapp-float {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem;
+  border-radius: 999px;
+  background: #25d366;
+  color: #ffffff;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    padding 0.15s ease;
+}
+
+.whatsapp-float:hover,
+.whatsapp-float:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.34);
+  color: #ffffff;
+}
+
+.whatsapp-float__label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  /* Collapsed by default; the icon-only bubble expands to show the label. */
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  transition:
+    max-width 0.2s ease,
+    opacity 0.2s ease,
+    margin 0.2s ease;
+}
+
+.whatsapp-float:hover .whatsapp-float__label,
+.whatsapp-float:focus-visible .whatsapp-float__label {
+  max-width: 10rem;
+  opacity: 1;
+  margin-right: 0.35rem;
+}
+
+/* On touch screens there's no hover, so keep the launcher a compact bubble. */
+@media (hover: none) {
+  .whatsapp-float__label {
+    display: none;
+  }
+}
+
+
 /* Mobile safeguards ----------------------------------------------------- */
 /* Never let a stray fixed-width element push the page wider than the phone.
    `clip` (not `hidden`) avoids creating a scroll container, so it doesn't

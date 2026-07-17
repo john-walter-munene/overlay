@@ -47,11 +47,11 @@ export default function SiteHeader() {
           <Link href="/tips" onClick={closeMenu}>
             Free tips
           </Link>
-          <Link href="/blog" onClick={closeMenu}>
-            Blog
-          </Link>
           <Link href="/tools/odds-calculator" onClick={closeMenu}>
             Betting Calculator
+          </Link>
+          <Link href="/blog" onClick={closeMenu}>
+            Blog
           </Link>
           <div className="nav-dropdown">
             <button

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import Flag from './Flag';
+import Avatar from './Avatar';
 import { API_URL } from '../lib/api';
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ interface LeaderboardRow {
   sampleSize: number;
   country: string | null;
   name: string | null;
+  avatarUrl: string | null;
 }
 
 async function getLeaderboard(): Promise<LeaderboardRow[]> {
@@ -106,6 +108,7 @@ export default async function Home() {
                 >
                   {i + 1}
                 </span>
+                <Avatar src={r.avatarUrl} seed={r.name ?? r.tipsterId} size={32} />
                 <Link
                   href={`/tipsters/${r.tipsterId}`}
                   style={{ color: 'var(--fg)', textDecoration: 'none', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}
