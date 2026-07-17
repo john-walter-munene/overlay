@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { flagEmoji } from '@overlay/shared/countries';
+import Flag from '../Flag';
 import {
   listMarketplace,
   SITE_URL,
@@ -202,10 +202,8 @@ export default async function TipstersPage({
                         >
                           {r.name ?? r.tipsterId}
                         </Link>
-                        {flagEmoji(r.country) ? (
-                          <span aria-hidden style={{ marginLeft: '0.4rem' }}>
-                            {flagEmoji(r.country)}
-                          </span>
+                        {r.country ? (
+                          <Flag code={r.country} style={{ marginLeft: '0.4rem', verticalAlign: 'middle' }} />
                         ) : null}
                       </td>
                       <td style={{ color: 'var(--muted)' }}>
@@ -295,8 +293,8 @@ export default async function TipstersPage({
                     >
                       {r.name ?? r.tipsterId}
                     </Link>
-                    {flagEmoji(r.country) ? (
-                      <span aria-hidden>{flagEmoji(r.country)}</span>
+                    {r.country ? (
+                      <Flag code={r.country} style={{ verticalAlign: 'middle' }} />
                     ) : null}
                     <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>
                       {r.yield.toFixed(1)}%

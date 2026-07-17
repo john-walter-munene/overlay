@@ -1,4 +1,5 @@
 import './globals.css';
+import 'flag-icons/css/flag-icons.min.css';
 import SiteHeader from './SiteHeader';
 import SiteFooter from './SiteFooter';
 import CookieConsent from './CookieConsent';

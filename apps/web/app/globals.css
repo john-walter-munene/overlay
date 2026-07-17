@@ -465,3 +465,39 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+/* Mobile safeguards ----------------------------------------------------- */
+/* Never let a stray fixed-width element push the page wider than the phone.
+   `clip` (not `hidden`) avoids creating a scroll container, so it doesn't
+   break `position: sticky` elements like the leaderboard aside. */
+html,
+body {
+  overflow-x: clip;
+}
+
+@media (max-width: 640px) {
+  /* Wide data tables: scroll horizontally inside their own box instead of
+     forcing the whole page wider or squashing columns into unreadable wraps.
+     Setting the table itself to a scroll block keeps the internal table
+     layout intact while giving it a swipeable overflow. */
+  #main-content table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Trim generous desktop padding so content isn't crammed on small screens. */
+  #main-content > main {
+    padding-left: 1.1rem !important;
+    padding-right: 1.1rem !important;
+  }
+
+  /* Large display headings: cap so they don't overflow / dominate the screen. */
+  #main-content h1 {
+    font-size: clamp(1.6rem, 7vw, 2.1rem) !important;
+  }
+}
+

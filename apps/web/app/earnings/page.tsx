@@ -108,7 +108,7 @@ export default function EarningsPage() {
           <section
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               gap: '1rem',
               margin: '1.5rem 0',
             }}

@@ -184,7 +184,7 @@ export default function AdminTipsPage() {
         onSubmit={save}
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '0.75rem',
           border: '1px solid var(--border)',
           borderRadius: 10,
