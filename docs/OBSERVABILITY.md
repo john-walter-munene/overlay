@@ -21,6 +21,26 @@ instrumented at the points below.
 | `overlay_queue_depth` | gauge | `queue` | `startSettlementQueue` (BullMQ) |
 | `overlay_http_errors_total` | counter | `status` | `AllExceptionsFilter` |
 
+## Health & readiness probes
+
+Liveness/readiness endpoints (OB-092) let the host/orchestrator route traffic
+and restart unhealthy instances. They live in
+[`apps/api/src/modules/health/health.controller.ts`](../apps/api/src/modules/health/health.controller.ts)
+and are excluded from rate limiting.
+
+| Endpoint | Purpose | Checks | Codes |
+| --- | --- | --- | --- |
+| `GET /api/health` | Liveness — always fast, touches no dependency | — | `200` |
+| `GET /api/health/ready` | Readiness — safe to receive traffic | database (`SELECT 1`) + Redis (`PING`) | `200` ready, `503` degraded |
+
+`/api/health/ready` runs both probes concurrently with a short timeout; a slow
+or unreachable dependency reads as `down`. It returns `503` with
+`{ status: "degraded", checks: { database, redis } }` when either is down so the
+orchestrator stops routing to the instance. Render's health check points at
+`/api/health` (liveness) — see [`render.yaml`](../render.yaml). The verdict
+logic is decorator-free in
+[`apps/api/src/modules/health/health.checks.ts`](../apps/api/src/modules/health/health.checks.ts).
+
 ## SLOs
 
 | SLO | Objective | SLI (PromQL) | Alert |
@@ -62,3 +82,9 @@ npm run build -w @overlay/api && npm run start -w @overlay/api
 histogram rendering) and the settlement-cycle integration case required by
 OB-093: `recordSettlementCycle` — the exact call `runOnce()` makes — emits the
 settlement metrics into the exposition. Run with `npm run test:unit`.
+
+`apps/api/src/modules/health/health.checks.test.ts` covers the readiness verdict
+and the timeout/failure probe branches (OB-092); the "readiness fails when DB is
+down" acceptance case runs against a real Prisma client in
+`apps/api/src/modules/health/health.readiness.itest.ts` via
+`npm run test:integration`.
