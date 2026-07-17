@@ -25,6 +25,7 @@ interface ManagedArticle {
   excerpt: string;
   coverImage: string | null;
   tags: string[];
+  category: 'content' | 'news';
   status: Status;
   seoTitle: string | null;
   seoDescription: string | null;
@@ -39,6 +40,7 @@ interface Draft {
   slug: string;
   tags: string;
   coverImage: string;
+  category: 'content' | 'news';
   status: Status;
   body: string;
   seoTitle: string;
@@ -52,6 +54,7 @@ const EMPTY_DRAFT: Draft = {
   slug: '',
   tags: '',
   coverImage: '',
+  category: 'content',
   status: 'draft',
   body: '',
   seoTitle: '',
@@ -68,6 +71,7 @@ function toDraft(a: ManagedArticle): Draft {
     slug: a.slug,
     tags: a.tags.join(', '),
     coverImage: a.coverImage ?? '',
+    category: a.category,
     status: a.status,
     body: a.body,
     seoTitle: a.seoTitle ?? '',
@@ -144,6 +148,7 @@ export default function BlogAuthoringPage() {
         body: draft.body,
         coverImage: draft.coverImage || undefined,
         tags,
+        category: draft.category,
         status: draft.status,
         seoTitle: draft.seoTitle || undefined,
         seoDescription: draft.seoDescription || undefined,
@@ -276,6 +281,19 @@ export default function BlogAuthoringPage() {
                   value={draft.tags}
                   onChange={(e) => update('tags', e.target.value)}
                 />
+              </label>
+              <label>
+                Section
+                <select
+                  style={formStyles.input}
+                  value={draft.category}
+                  onChange={(e) =>
+                    update('category', e.target.value as 'content' | 'news')
+                  }
+                >
+                  <option value="content">Content (guides)</option>
+                  <option value="news">News</option>
+                </select>
               </label>
               <label>
                 Status

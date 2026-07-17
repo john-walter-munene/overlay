@@ -24,13 +24,21 @@ import {
 export class ArticlesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Public list: only published articles, newest first, optional tag filter. */
-  async listPublished(opts: { tag?: string; take?: number; skip?: number } = {}) {
+  /** Public list: only published articles, newest first, optional tag/category filter. */
+  async listPublished(
+    opts: {
+      tag?: string;
+      category?: 'content' | 'news';
+      take?: number;
+      skip?: number;
+    } = {},
+  ) {
     const take = Math.min(opts.take ?? 20, 50);
     return this.prisma.article.findMany({
       where: {
         status: 'published',
         ...(opts.tag ? { tags: { has: opts.tag } } : {}),
+        ...(opts.category ? { category: opts.category } : {}),
       },
       orderBy: { publishedAt: 'desc' },
       take,
@@ -41,6 +49,7 @@ export class ArticlesService {
         excerpt: true,
         coverImage: true,
         tags: true,
+        category: true,
         readingMinutes: true,
         publishedAt: true,
       },
@@ -130,6 +139,7 @@ export class ArticlesService {
         excerpt: dto.excerpt?.trim() || makeExcerpt(dto.body),
         coverImage: dto.coverImage,
         tags: dto.tags ?? [],
+        category: dto.category ?? 'content',
         status,
         readingMinutes: readingTimeMinutes(dto.body),
         seoTitle: dto.seoTitle,
@@ -163,6 +173,7 @@ export class ArticlesService {
           dto.excerpt ?? (dto.body ? makeExcerpt(dto.body) : existing.excerpt),
         coverImage: dto.coverImage ?? existing.coverImage,
         tags: dto.tags ?? existing.tags,
+        category: dto.category ?? existing.category,
         status: nextStatus,
         readingMinutes: dto.body
           ? readingTimeMinutes(dto.body)

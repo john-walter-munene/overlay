@@ -306,6 +306,33 @@ where \`b\` = odds - 1, \`p\` = true win probability, \`q\` = 1 - p.
 Because your probability estimates are noisy, most pros bet **quarter- or
 half-Kelly** to cut variance. Smaller, steadier, still growing.`,
   },
+  {
+    slug: 'how-overlay-verifies-tipster-records',
+    category: 'news',
+    title: 'How Overlay Locks Every Pick Before Kickoff',
+    tags: ['news', 'product', 'transparency'],
+    excerpt:
+      'A quick look at how Overlay hashes and timestamps every tip before the event starts — so a verified record can never be edited after the fact.',
+    body: `## Why this matters
+
+Screenshots lie. A tipster can post ten bets, delete the losers, and show you a
+"90% strike rate." Overlay makes that impossible.
+
+## What happens when a tip is posted
+
+1. **Post** — the tipster submits a selection and the odds they took.
+2. **Lock** — we hash the pick and timestamp it *before* kickoff. The hash is
+   immutable; the wager can never be edited.
+3. **Settle** — after the event, the result is graded automatically from the
+   official outcome.
+4. **Rank** — verified yield and closing line value move the tipster up the
+   board.
+
+## The takeaway
+
+Every number you see on a tipster's profile is backed by a locked, timestamped
+record. No edits. No deleted losers. That's the whole point.`,
+  },
 ];
 
 async function main() {
@@ -328,6 +355,7 @@ async function main() {
         excerpt: a.excerpt,
         body: a.body,
         tags: a.tags,
+        category: a.category ?? 'content',
         readingMinutes: readingMinutes(a.body),
         status: 'published',
       },
@@ -337,6 +365,7 @@ async function main() {
         excerpt: a.excerpt,
         body: a.body,
         tags: a.tags,
+        category: a.category ?? 'content',
         readingMinutes: readingMinutes(a.body),
         status: 'published',
         publishedAt: new Date(),

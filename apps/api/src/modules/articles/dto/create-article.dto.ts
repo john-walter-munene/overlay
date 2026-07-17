@@ -20,6 +20,10 @@ export class CreateArticleDto {
   @IsOptional() @IsArray() @IsString({ each: true }) tags?: string[];
 
   @IsOptional()
+  @IsIn(['content', 'news'])
+  category?: 'content' | 'news';
+
+  @IsOptional()
   @IsIn(['draft', 'pending', 'published', 'archived'])
   status?: 'draft' | 'pending' | 'published' | 'archived';
 

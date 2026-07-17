@@ -61,6 +61,14 @@ enum ArticleStatus {
   archived
 }
 
+/// Editorial section an article belongs to (OB): `content` is evergreen guides
+/// and how-tos (CLV, bankroll, bookies); `news` is timely happenings in sport
+/// and betting.
+enum ArticleCategory {
+  content
+  news
+}
+
 /// Delivery cadence for a user's notifications (OB-033).
 /// `instant` fans out per pick; `daily` batches picks into one digest email.
 enum NotificationFrequency {
@@ -347,6 +355,7 @@ model Article {
   coverImage      String?
   tags            String[]
   status          ArticleStatus @default(draft)
+  category        ArticleCategory @default(content)
   readingMinutes  Int           @default(1)
 
   // SEO overrides (fall back to title/excerpt when null)
@@ -362,6 +371,7 @@ model Article {
   updatedAt       DateTime      @updatedAt
 
   @@index([status, publishedAt])
+  @@index([category, status, publishedAt])
   @@index([tags])
 }
 

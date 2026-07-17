@@ -26,11 +26,13 @@ export class ArticlesController {
   @Get()
   list(
     @Query('tag') tag?: string,
+    @Query('category') category?: string,
     @Query('take') take?: string,
     @Query('skip') skip?: string,
   ) {
     return this.articles.listPublished({
       tag,
+      category: category === 'news' ? 'news' : category === 'content' ? 'content' : undefined,
       take: take ? Number(take) : undefined,
       skip: skip ? Number(skip) : undefined,
     });

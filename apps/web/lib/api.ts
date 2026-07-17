@@ -86,6 +86,7 @@ export interface ArticleCard {
   excerpt: string;
   coverImage: string | null;
   tags: string[];
+  category: 'content' | 'news';
   readingMinutes: number;
   publishedAt: string | null;
 }
@@ -109,9 +110,15 @@ async function getJson<T>(path: string, revalidate = 300): Promise<T | null> {
   }
 }
 
-export async function listArticles(tag?: string): Promise<ArticleCard[]> {
-  const qs = tag ? `?tag=${encodeURIComponent(tag)}` : '';
-  return (await getJson<ArticleCard[]>(`/api/articles${qs}`)) ?? [];
+export async function listArticles(params?: {
+  tag?: string;
+  category?: 'content' | 'news';
+}): Promise<ArticleCard[]> {
+  const qs = new URLSearchParams();
+  if (params?.tag) qs.set('tag', params.tag);
+  if (params?.category) qs.set('category', params.category);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return (await getJson<ArticleCard[]>(`/api/articles${suffix}`)) ?? [];
 }
 
 export async function getArticle(slug: string): Promise<Article | null> {

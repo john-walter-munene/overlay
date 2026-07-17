@@ -50,9 +50,23 @@ export default function SiteHeader() {
           <Link href="/tools/odds-calculator" onClick={closeMenu}>
             Betting Calculator
           </Link>
-          <Link href="/blog" onClick={closeMenu}>
-            Blog
-          </Link>
+          <div className="nav-dropdown">
+            <button
+              type="button"
+              className="nav-dropdown__trigger"
+              aria-haspopup="true"
+            >
+              Content &amp; News <span aria-hidden="true">▾</span>
+            </button>
+            <div className="nav-dropdown__menu" role="menu">
+              <Link href="/content" onClick={closeMenu} role="menuitem">
+                Content
+              </Link>
+              <Link href="/news" onClick={closeMenu} role="menuitem">
+                News
+              </Link>
+            </div>
+          </div>
           <div className="nav-dropdown">
             <button
               type="button"
