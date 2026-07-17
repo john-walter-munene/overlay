@@ -53,9 +53,26 @@ export default function SiteHeader() {
           <Link href="/tools/odds-calculator" onClick={closeMenu}>
             Odds calculator
           </Link>
-          <Link href="/about" onClick={closeMenu}>
-            About
-          </Link>
+          <div className="nav-dropdown">
+            <button
+              type="button"
+              className="nav-dropdown__trigger"
+              aria-haspopup="true"
+            >
+              About <span aria-hidden="true">▾</span>
+            </button>
+            <div className="nav-dropdown__menu" role="menu">
+              <Link href="/how-it-works" onClick={closeMenu} role="menuitem">
+                How it works
+              </Link>
+              <Link href="/support" onClick={closeMenu} role="menuitem">
+                Support Center
+              </Link>
+              <Link href="/about" onClick={closeMenu} role="menuitem">
+                About Us
+              </Link>
+            </div>
+          </div>
           {role === 'user' ? (
             <>
               <Link href="/dashboard" onClick={closeMenu}>
@@ -79,7 +96,6 @@ export default function SiteHeader() {
         </nav>
 
         <div className="site-header__actions">
-          <ThemeToggle />
           {ready ? (
             role ? (
               <Link href="/account" onClick={closeMenu}>
@@ -91,6 +107,7 @@ export default function SiteHeader() {
               </Link>
             )
           ) : null}
+          <ThemeToggle />
         </div>
       </div>
     </header>

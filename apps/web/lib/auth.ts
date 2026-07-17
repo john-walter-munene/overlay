@@ -315,6 +315,73 @@ export async function adminReviewReport(
   if (!res.ok) throw new Error(`Failed to update report (${res.status})`);
 }
 
+/** Support-center feedback categories. */
+export type FeedbackCategory =
+  | 'question'
+  | 'fees'
+  | 'complaint'
+  | 'suggestion'
+  | 'bug'
+  | 'other';
+
+export const FEEDBACK_CATEGORY_LABELS: Record<FeedbackCategory, string> = {
+  question: 'General question',
+  fees: 'Fees & payouts',
+  complaint: 'Complaint',
+  suggestion: 'Product suggestion',
+  bug: 'Report a bug',
+  other: 'Something else',
+};
+
+/** Send a support-center message (works signed in or not). */
+export async function submitFeedback(
+  category: FeedbackCategory,
+  message: string,
+  email?: string,
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/feedback`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ category, message, email }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const msg = Array.isArray(body?.message) ? body?.message[0] : body?.message;
+    throw new Error(msg || `Could not send your message (${res.status})`);
+  }
+}
+
+/** A support-center feedback row for admin review. */
+export interface AdminFeedback {
+  id: string;
+  category: string;
+  message: string;
+  email: string | null;
+  userId: string | null;
+  status: 'new' | 'reviewed' | 'archived';
+  createdAt: string;
+}
+
+export async function adminListFeedback(status?: string): Promise<AdminFeedback[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  const res = await authFetch(`/api/admin/feedback${qs}`);
+  if (!res.ok) return [];
+  return (await res.json()) as AdminFeedback[];
+}
+
+export async function adminUpdateFeedback(
+  id: string,
+  status: string,
+): Promise<void> {
+  const res = await authFetch(`/api/admin/feedback/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(`Failed to update feedback (${res.status})`);
+}
+
 /** Tipster requests an off-schedule payout (created awaiting admin approval). */
 export async function requestPayout(): Promise<{ amountCents: number }> {
   const res = await authFetch('/api/payouts/request', { method: 'POST' });

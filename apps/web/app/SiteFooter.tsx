@@ -13,6 +13,8 @@ export default function SiteFooter() {
           </p>
         </div>
         <nav aria-label="Footer">
+          <Link href="/support">Support Center</Link>
+          <Link href="/how-it-works">How it works</Link>
           <Link href="/about">About</Link>
           <Link href="/legal/terms">Terms of Service</Link>
           <Link href="/legal/privacy">Privacy Policy</Link>

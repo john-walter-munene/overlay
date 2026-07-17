@@ -12,6 +12,7 @@ import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validato
 import { AdminService } from './admin.service';
 import { ReportsService } from '../reports/reports.service';
 import { PayoutsService } from '../payouts/payouts.service';
+import { FeedbackService } from '../feedback/feedback.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
@@ -54,6 +55,11 @@ class ReviewReportDto {
   note?: string;
 }
 
+class FeedbackStatusDto {
+  @IsIn(['new', 'reviewed', 'archived'])
+  status!: 'new' | 'reviewed' | 'archived';
+}
+
 /** All admin routes require an authenticated admin principal. */
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -63,6 +69,7 @@ export class AdminController {
     private readonly admin: AdminService,
     private readonly reports: ReportsService,
     private readonly payouts: PayoutsService,
+    private readonly feedback: FeedbackService,
   ) {}
 
   @Get('dashboard')
@@ -172,5 +179,16 @@ export class AdminController {
   @Post('payouts/:id/reject')
   rejectPayout(@Param('id') id: string) {
     return this.payouts.reject(id);
+  }
+
+  /** Support-center feedback (OB-162). */
+  @Get('feedback')
+  feedbackList(@Query('status') status?: string) {
+    return this.feedback.listForAdmin(status);
+  }
+
+  @Patch('feedback/:id')
+  reviewFeedback(@Param('id') id: string, @Body() dto: FeedbackStatusDto) {
+    return this.feedback.updateStatus(id, dto.status);
   }
 }
