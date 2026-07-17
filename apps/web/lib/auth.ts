@@ -17,6 +17,8 @@ let client: SupabaseClient | null = null;
 
 export function supabase(): SupabaseClient {
   if (!client) {
+    console.log('SUPABASE_URL:', SUPABASE_URL);
+console.log('SUPABASE_ANON_KEY exists:', !!SUPABASE_ANON_KEY);
     client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
