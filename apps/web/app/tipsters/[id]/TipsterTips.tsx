@@ -279,6 +279,31 @@ export default function TipsterTips({
                       {p.note}
                     </div>
                   ) : null}
+                  {p.lockedAt ? (
+                    <div
+                      title="Time-stamped and locked before kickoff — this record can’t be edited afterwards."
+                      style={{
+                        color: MUTED,
+                        fontSize: '0.75rem',
+                        marginTop: '0.25rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                      }}
+                    >
+                      <span aria-hidden>🔒</span>
+                      Locked{' '}
+                      {new Date(p.lockedAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                      {p.event && p.lockedAt < p.event.startTime
+                        ? ' · before kickoff'
+                        : ''}
+                    </div>
+                  ) : null}
                 </td>
                 <td>{p.market}</td>
                 <td>{p.oddsAtPick.toFixed(2)}</td>
