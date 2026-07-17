@@ -383,6 +383,23 @@ export async function adminUpdateFeedback(
   if (!res.ok) throw new Error(`Failed to update feedback (${res.status})`);
 }
 
+/** A newsletter subscriber row for admin review. */
+export interface AdminNewsletterSubscriber {
+  id: string;
+  email: string;
+  status: string;
+  createdAt: string;
+}
+
+export async function adminListNewsletter(
+  status?: string,
+): Promise<AdminNewsletterSubscriber[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  const res = await authFetch(`/api/admin/newsletter${qs}`);
+  if (!res.ok) return [];
+  return (await res.json()) as AdminNewsletterSubscriber[];
+}
+
 /** Tipster requests an off-schedule payout (created awaiting admin approval). */
 export async function requestPayout(): Promise<{ amountCents: number }> {
   const res = await authFetch('/api/payouts/request', { method: 'POST' });
