@@ -130,9 +130,18 @@ export default function SiteHeader() {
                 My Account
               </Link>
             ) : (
-              <Link href="/login" onClick={closeMenu}>
-                Sign in
-              </Link>
+              <>
+                <Link href="/login" onClick={closeMenu}>
+                  Sign in
+                </Link>
+                <Link
+                  href="/signup"
+                  className="btn btn--primary"
+                  onClick={closeMenu}
+                >
+                  Get started
+                </Link>
+              </>
             )
           ) : null}
           <ThemeToggle />

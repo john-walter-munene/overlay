@@ -13,6 +13,7 @@ import { AdminService } from './admin.service';
 import { ReportsService } from '../reports/reports.service';
 import { PayoutsService } from '../payouts/payouts.service';
 import { FeedbackService } from '../feedback/feedback.service';
+import { NewsletterService } from '../newsletter/newsletter.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
@@ -70,6 +71,7 @@ export class AdminController {
     private readonly reports: ReportsService,
     private readonly payouts: PayoutsService,
     private readonly feedback: FeedbackService,
+    private readonly newsletter: NewsletterService,
   ) {}
 
   @Get('dashboard')
@@ -185,6 +187,12 @@ export class AdminController {
   @Get('feedback')
   feedbackList(@Query('status') status?: string) {
     return this.feedback.listForAdmin(status);
+  }
+
+  /** Newsletter subscribers (OB-072). */
+  @Get('newsletter')
+  newsletterList(@Query('status') status?: string) {
+    return this.newsletter.listForAdmin(status);
   }
 
   @Patch('feedback/:id')

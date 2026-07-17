@@ -164,6 +164,7 @@ export default function AdminPage() {
           { href: '/admin/settlements', label: 'Settlements' },
           { href: '/admin/reports', label: 'Tipster feedback' },
           { href: '/admin/feedback', label: 'Support & feedback' },
+          { href: '/admin/newsletter', label: 'Newsletter subscribers' },
           { href: '/admin/payouts', label: 'Payout approvals' },
           { href: '/admin/audit-log', label: 'Audit log' },
           { href: '/admin/blog', label: 'Blog authoring' },
