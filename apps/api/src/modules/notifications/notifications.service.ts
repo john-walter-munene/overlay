@@ -41,6 +41,15 @@ export class NotificationsService {
     @Inject(NOTIFIER) private readonly notifier: Notifier,
   ) {}
 
+  /**
+   * Send a one-off transactional email (e.g. newsletter confirmation) through
+   * the active notifier. Thin passthrough so other modules don't depend on the
+   * NOTIFIER token directly.
+   */
+  async sendEmail(to: string, subject: string, body: string): Promise<void> {
+    await this.notifier.sendEmail({ to, subject, body });
+  }
+
   /** Public origin of the API, used to build one-click unsubscribe links. */
   private baseUrl(): string {
     return (

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
+import { downloadExport, type ExportFormat } from '../../lib/export';
 
 interface DashboardMetrics {
   users: number;
@@ -164,6 +165,7 @@ export default function AdminPage() {
           { href: '/admin/settlements', label: 'Settlements' },
           { href: '/admin/reports', label: 'Tipster feedback' },
           { href: '/admin/feedback', label: 'Support & feedback' },
+          { href: '/admin/newsletter', label: 'Newsletter subscribers' },
           { href: '/admin/payouts', label: 'Payout approvals' },
           { href: '/admin/audit-log', label: 'Audit log' },
           { href: '/admin/blog', label: 'Blog authoring' },
@@ -322,6 +324,58 @@ export default function AdminPage() {
         {opMsg ? (
           <p style={{ marginTop: '1rem', color: 'var(--muted)' }}>{opMsg}</p>
         ) : null}
+      </section>
+
+      <section
+        style={{
+          marginTop: '2.5rem',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '1.5rem',
+        }}
+      >
+        <h2 style={{ marginTop: 0, fontSize: '1.2rem' }}>Data exports</h2>
+        <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+          Generate platform reports in XLSX, CSV or PDF format.
+        </p>
+        {[
+          { title: 'Users', path: '/api/exports/admin/users' },
+          { title: 'Audit log', path: '/api/exports/admin/audit-log' },
+          { title: 'Settlements', path: '/api/exports/admin/settlements' },
+          { title: 'Reports', path: '/api/exports/admin/reports' },
+          { title: 'Payouts', path: '/api/exports/admin/payouts' },
+        ].map((item) => (
+          <div
+            key={item.path}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '1rem',
+              padding: '0.75rem 0',
+              borderTop: '1px solid var(--border)',
+            }}
+          >
+            <strong>{item.title}</strong>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {(['xlsx', 'csv', 'pdf'] as ExportFormat[]).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={() =>
+                    downloadExport(item.path, fmt).catch((e) =>
+                      alert(e instanceof Error ? e.message : 'Export failed'),
+                    )
+                  }
+                >
+                  {fmt.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
     </main>
   );

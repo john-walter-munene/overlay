@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile, requestPayout } from '../../lib/auth';
 import { API_URL } from '../../lib/api';
+import { downloadExport } from '../../lib/export';
 import { SUPPORTED_MARKETS } from '@overlay/shared/grading';
 import type {
   FeedPick,
@@ -393,6 +394,36 @@ export default function DashboardPage() {
           <Link href="/admin/blog" className="btn btn--secondary btn--sm">
             Write an article
           </Link>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={() =>
+              downloadExport(
+                '/api/exports/tipsters/picks',
+                'xlsx',
+                'my-picks.xlsx',
+              ).catch((e) =>
+                alert(e instanceof Error ? e.message : 'Export failed'),
+              )
+            }
+          >
+            Export picks
+          </button>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={() =>
+              downloadExport(
+                '/api/exports/tipsters/earnings',
+                'xlsx',
+                'my-earnings.xlsx',
+              ).catch((e) =>
+                alert(e instanceof Error ? e.message : 'Export failed'),
+              )
+            }
+          >
+            Export earnings
+          </button>
         </div>
       </div>
 

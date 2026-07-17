@@ -344,6 +344,17 @@ model Feedback {
   @@index([status])
 }
 
+/// Marketing newsletter opt-ins from the public /newsletter page (OB-072).
+/// Email is unique so re-subscribing is idempotent. Status: subscribed | unsubscribed.
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  status    String   @default("subscribed")
+  createdAt DateTime @default(now())
+
+  @@index([status])
+}
+
 /// SEO content surface (blog / strategy guides). Drives organic traffic.
 /// Slug is immutable-by-convention once published so external links don't rot.
 model Article {

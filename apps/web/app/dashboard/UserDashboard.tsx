@@ -9,6 +9,7 @@ import {
   type FollowedTipster,
 } from '../../lib/auth';
 import type { FeedPick } from '../../lib/api';
+import { downloadExport } from '../../lib/export';
 import Flag from '../Flag';
 import Avatar from '../Avatar';
 import FollowButton from '../FollowButton';
@@ -104,6 +105,32 @@ export default function UserDashboard() {
         <Link href="/account" className="btn btn--secondary btn--sm">
           My account
         </Link>
+        <button
+          type="button"
+          className="btn btn--secondary btn--sm"
+          onClick={() =>
+            downloadExport(
+              '/api/exports/users/subscriptions',
+              'xlsx',
+              'my-subscriptions.xlsx',
+            ).catch((e) =>
+              alert(e instanceof Error ? e.message : 'Export failed'),
+            )
+          }
+        >
+          Export subscriptions
+        </button>
+        <button
+          type="button"
+          className="btn btn--secondary btn--sm"
+          onClick={() =>
+            downloadExport('/api/exports/users/feed', 'xlsx', 'my-feed.xlsx').catch(
+              (e) => alert(e instanceof Error ? e.message : 'Export failed'),
+            )
+          }
+        >
+          Export feed
+        </button>
       </div>
 
       <div

@@ -64,6 +64,25 @@ export default function HowItWorksPage() {
       </ol>
 
       <section style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+        <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>
+          Judged on more than a win rate
+        </h2>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+          A high strike rate is easy to cherry-pick over a short run. Overlay
+          Bets judges tipsters on the numbers that survive variance — verified
+          ROI and yield, closing line value, sample size and drawdowns —
+          calculated only from settled, locked picks, never from screenshots or
+          self-reported results.
+        </p>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: '1rem 0 0' }}>
+          Because every pick is recorded before kickoff and can’t be edited,
+          removed or selectively hidden afterwards, losing runs stay visible
+          too. The record you see is the complete one — which is exactly what
+          makes it worth trusting.
+        </p>
+      </section>
+
+      <section style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
         <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>
           Want the detail on verification, fees and payouts? See the{' '}
           <Link href="/support" style={{ color: 'var(--accent)' }}>
