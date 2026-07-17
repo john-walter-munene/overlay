@@ -106,6 +106,19 @@ export class TipstersService {
           where: { tipsterId, status: { not: 'pending' } },
           orderBy: { settledAt: 'desc' },
           take: 20,
+          // Public profile: expose only display fields — never the internal
+          // integrity fields (hash/nonce). The lock timestamp is the only
+          // integrity signal we surface, in plain language.
+          select: {
+            id: true,
+            market: true,
+            selection: true,
+            oddsAtPick: true,
+            status: true,
+            clv: true,
+            note: true,
+            settledAt: true,
+          },
         }),
         // Published articles authored by this tipster count toward the public
         // profile — a signal of the analysis/content they contribute.

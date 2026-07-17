@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile, requestPayout } from '../../lib/auth';
@@ -72,6 +72,7 @@ export default function DashboardPage() {
   const [tipsterId, setTipsterId] = useState<string | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);
   const [myTips, setMyTips] = useState<FeedPick[]>([]);
+  const [detailPick, setDetailPick] = useState<FeedPick | null>(null);
   const [tipsFilter, setTipsFilter] = useState<TipsFilter>('all');
   const [settledOutcome, setSettledOutcome] = useState<SettledOutcome>('all');
   const [performance, setPerformance] = useState<PerformanceDashboard | null>(
@@ -777,7 +778,19 @@ export default function DashboardPage() {
                   {rows.map((p) => (
                     <tr
                       key={p.id}
-                      style={{ borderTop: '1px solid var(--border)' }}
+                      onClick={() => setDetailPick(p)}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setDetailPick(p);
+                        }
+                      }}
+                      title="View tip details"
+                      style={{
+                        borderTop: '1px solid var(--border)',
+                        cursor: 'pointer',
+                      }}
                     >
                       <td style={{ padding: '0.5rem 0', color: 'var(--muted)' }}>
                         {p.event ? `${p.event.home} v ${p.event.away}` : '—'}
@@ -797,6 +810,12 @@ export default function DashboardPage() {
           </>
         );
       })()}
+      {detailPick ? (
+        <TipDetailModal
+          pick={detailPick}
+          onClose={() => setDetailPick(null)}
+        />
+      ) : null}
     </main>
   );
 }
@@ -828,4 +847,143 @@ function formatTipStatus(status: string): string {
   if (status === 'half_won') return '½ won';
   if (status === 'half_lost') return '½ lost';
   return status;
+}
+
+/**
+ * Detail view for a single tip, opened by clicking a row in "My tips". Shows the
+ * full context (event, stake, CLV, result, note) plus the plain-language lock
+ * timestamp. Closes on backdrop click, the close button, or Escape.
+ */
+function TipDetailModal({
+  pick,
+  onClose,
+}: {
+  pick: FeedPick;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const fmt = (ms: number | null) =>
+    ms
+      ? new Date(ms).toLocaleString(undefined, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        })
+      : '—';
+  const beforeKickoff = pick.event ? pick.lockedAt < pick.event.startTime : true;
+
+  const details: [string, string][] = [
+    ['Match', pick.event ? `${pick.event.home} v ${pick.event.away}` : '—'],
+    ['Sport', pick.event?.sport ?? '—'],
+    ['Kickoff', pick.event ? fmt(pick.event.startTime) : '—'],
+    ['Selection', pick.selection],
+    ['Market', pick.market],
+    ['Odds', pick.oddsAtPick.toFixed(2)],
+    ['Stake', `${pick.stakeUnits} unit${pick.stakeUnits === 1 ? '' : 's'}`],
+    ['Status', formatTipStatus(pick.status)],
+    ['CLV', pick.clv != null ? `${(pick.clv * 100).toFixed(1)}%` : '—'],
+    ['Result', pick.result ?? '—'],
+    [
+      'Locked',
+      `${fmt(pick.lockedAt)}${beforeKickoff ? ' · before kickoff' : ''}`,
+    ],
+    ['Settled', fmt(pick.settledAt)],
+  ];
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Tip details"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
+        zIndex: 80,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          width: '100%',
+          maxWidth: 460,
+          maxHeight: '85vh',
+          overflowY: 'auto',
+          padding: '1.25rem 1.4rem',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: '1rem',
+          }}
+        >
+          <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Tip details</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="btn btn--ghost btn--sm"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          style={{
+            marginTop: '1rem',
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr',
+            gap: '0.5rem 1rem',
+          }}
+        >
+          {details.map(([label, value]) => (
+            <Fragment key={label}>
+              <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
+                {label}
+              </span>
+              <span style={{ textAlign: 'right', wordBreak: 'break-word' }}>
+                {value}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+        {pick.note ? (
+          <div
+            style={{
+              marginTop: '1rem',
+              borderTop: '1px solid var(--border)',
+              paddingTop: '0.75rem',
+            }}
+          >
+            <div
+              style={{
+                color: 'var(--muted)',
+                fontSize: '0.85rem',
+                marginBottom: '0.25rem',
+              }}
+            >
+              Note
+            </div>
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{pick.note}</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
