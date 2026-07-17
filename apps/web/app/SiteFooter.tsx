@@ -19,11 +19,8 @@ export default function SiteFooter() {
           <Link href="/legal/responsible-gambling">Responsible Gambling</Link>
         </nav>
         <p className="site-footer__legal">
-          Information only — Overlay Bets is a sports-information and analytics
-          service. We take no bets, hold no stakes and are not a bookmaker. Picks
-          and stats are for informational purposes only and are not betting or
-          financial advice. 18+. Please gamble responsibly. © {year} Overlay
-          Bets.
+          © {year} Overlay Bets · Information only · 18+ · Please gamble
+          responsibly.
         </p>
       </div>
     </footer>

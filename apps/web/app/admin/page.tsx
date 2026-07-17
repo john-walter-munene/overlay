@@ -162,7 +162,7 @@ export default function AdminPage() {
         {[
           { href: '/admin/users', label: 'Users & roles' },
           { href: '/admin/settlements', label: 'Settlements' },
-          { href: '/admin/reports', label: 'Tipster reports' },
+          { href: '/admin/reports', label: 'Tipster feedback' },
           { href: '/admin/payouts', label: 'Payout approvals' },
           { href: '/admin/audit-log', label: 'Audit log' },
           { href: '/admin/blog', label: 'Blog authoring' },

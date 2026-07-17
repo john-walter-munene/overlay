@@ -10,7 +10,14 @@ import {
   hoursUntilPeriodEnd,
   type SubscriptionRecord,
 } from '@overlay/shared/subscriptions';
-import { authFetch, getProfile, reportTipster, REPORT_REASON_LABELS, type ReportReason } from '../../../lib/auth';
+import {
+  authFetch,
+  getProfile,
+  submitTipsterFeedback,
+  POSITIVE_REASON_LABELS,
+  NEGATIVE_REASON_LABELS,
+  type FeedbackSentiment,
+} from '../../../lib/auth';
 
 const MUTED = 'var(--muted)';
 
@@ -24,13 +31,15 @@ export default function SubscriptionsClient() {
   const [subs, setSubs] = useState<SubscriptionRecord[] | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
-  // Report-a-tipster flow (only for tipsters the user is subscribed to).
-  const [reportFor, setReportFor] = useState<string | null>(null);
-  const [reason, setReason] = useState<ReportReason>('fake_record');
+  // Give-feedback flow — bettors only, on tipsters they subscribe to.
+  const [feedbackFor, setFeedbackFor] = useState<string | null>(null);
+  const [sentiment, setSentiment] = useState<FeedbackSentiment>('positive');
+  const [reason, setReason] = useState<string>('accurate');
   const [details, setDetails] = useState('');
-  const [reportMsg, setReportMsg] = useState<string | null>(null);
-  const [reportBusy, setReportBusy] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -39,6 +48,7 @@ export default function SubscriptionsClient() {
         router.replace('/login?next=/account/subscriptions');
         return;
       }
+      setRole(profile.role);
       try {
         const res = await authFetch('/api/subscriptions/me');
         const data = res.ok ? ((await res.json()) as SubscriptionRecord[]) : [];
@@ -75,24 +85,42 @@ export default function SubscriptionsClient() {
     ? sortSubscriptions(subs).map((s) => toSubscriptionView(s))
     : [];
 
-  function openReport(tipsterId: string) {
-    setReportFor(tipsterId);
-    setReason('fake_record');
+  function openFeedback(tipsterId: string) {
+    setFeedbackFor(tipsterId);
+    setSentiment('positive');
+    setReason('accurate');
     setDetails('');
-    setReportMsg(null);
+    setFeedbackMsg(null);
   }
 
-  async function submitReport(tipsterId: string) {
-    setReportBusy(true);
-    setReportMsg(null);
+  function changeSentiment(next: FeedbackSentiment) {
+    setSentiment(next);
+    // Reset the reason to the first valid one for the chosen sentiment.
+    setReason(next === 'positive' ? 'accurate' : 'fake_record');
+  }
+
+  async function submitFeedback(tipsterId: string) {
+    setFeedbackBusy(true);
+    setFeedbackMsg(null);
     try {
-      await reportTipster(tipsterId, reason, details.trim() || undefined);
-      setReportFor(null);
-      setReportMsg('Report submitted — our team will review it. Thank you.');
+      await submitTipsterFeedback(
+        tipsterId,
+        sentiment,
+        reason,
+        details.trim() || undefined,
+      );
+      setFeedbackFor(null);
+      setFeedbackMsg(
+        sentiment === 'positive'
+          ? 'Thanks for the kind words — shared with our team.'
+          : 'Feedback submitted — our team will review it. Thank you.',
+      );
     } catch (e) {
-      setReportMsg(e instanceof Error ? e.message : 'Could not submit report.');
+      setFeedbackMsg(
+        e instanceof Error ? e.message : 'Could not submit feedback.',
+      );
     } finally {
-      setReportBusy(false);
+      setFeedbackBusy(false);
     }
   }
 
@@ -203,95 +231,121 @@ export default function SubscriptionsClient() {
                 </span>
               </div>
 
-              {reportFor === v.tipsterId ? (
-                <div
-                  className="panel"
-                  style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}
-                >
-                  <strong style={{ fontSize: '0.95rem' }}>
-                    Report this tipster
-                  </strong>
-                  <label style={{ color: MUTED, fontSize: '0.85rem' }}>
-                    Reason
-                    <select
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value as ReportReason)}
+              {role === 'user' ? (
+                feedbackFor === v.tipsterId ? (
+                  <div
+                    className="panel"
+                    style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}
+                  >
+                    <strong style={{ fontSize: '0.95rem' }}>
+                      Feedback on this tipster
+                    </strong>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      {(['positive', 'negative'] as FeedbackSentiment[]).map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => changeSentiment(s)}
+                          style={{
+                            padding: '0.35rem 0.7rem',
+                            borderRadius: 999,
+                            border: '1px solid var(--border)',
+                            background: sentiment === s ? 'var(--accent)' : 'transparent',
+                            color: sentiment === s ? 'var(--on-accent)' : 'var(--muted)',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {s === 'positive' ? '👍 Positive' : '👎 Report an issue'}
+                        </button>
+                      ))}
+                    </div>
+                    <label style={{ color: MUTED, fontSize: '0.85rem' }}>
+                      {sentiment === 'positive' ? 'What went well' : 'Reason'}
+                      <select
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        style={{
+                          display: 'block',
+                          marginTop: '0.3rem',
+                          padding: '0.5rem 0.6rem',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--surface)',
+                          color: 'var(--fg)',
+                          minWidth: 240,
+                        }}
+                      >
+                        {Object.entries(
+                          sentiment === 'positive'
+                            ? POSITIVE_REASON_LABELS
+                            : NEGATIVE_REASON_LABELS,
+                        ).map(([k, label]) => (
+                          <option key={k} value={k}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <textarea
+                      placeholder={
+                        sentiment === 'positive'
+                          ? 'Share what you liked (optional)'
+                          : 'Add any details that will help us review (optional)'
+                      }
+                      value={details}
+                      maxLength={1000}
+                      onChange={(e) => setDetails(e.target.value)}
                       style={{
-                        display: 'block',
-                        marginTop: '0.3rem',
-                        padding: '0.5rem 0.6rem',
+                        minHeight: 80,
+                        resize: 'vertical',
+                        padding: '0.6rem 0.7rem',
                         borderRadius: 8,
                         border: '1px solid var(--border)',
                         background: 'var(--surface)',
                         color: 'var(--fg)',
-                        minWidth: 240,
+                        fontFamily: 'inherit',
+                        fontSize: '0.9rem',
                       }}
-                    >
-                      {(Object.keys(REPORT_REASON_LABELS) as ReportReason[]).map(
-                        (r) => (
-                          <option key={r} value={r}>
-                            {REPORT_REASON_LABELS[r]}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                  </label>
-                  <textarea
-                    placeholder="Add any details that will help us review (optional)"
-                    value={details}
-                    maxLength={1000}
-                    onChange={(e) => setDetails(e.target.value)}
-                    style={{
-                      minHeight: 80,
-                      resize: 'vertical',
-                      padding: '0.6rem 0.7rem',
-                      borderRadius: 8,
-                      border: '1px solid var(--border)',
-                      background: 'var(--surface)',
-                      color: 'var(--fg)',
-                      fontFamily: 'inherit',
-                      fontSize: '0.9rem',
-                    }}
-                  />
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      type="button"
-                      className="btn btn--primary btn--sm"
-                      disabled={reportBusy}
-                      onClick={() => submitReport(v.tipsterId)}
-                    >
-                      {reportBusy ? 'Submitting…' : 'Submit report'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn--ghost btn--sm"
-                      onClick={() => setReportFor(null)}
-                    >
-                      Cancel
-                    </button>
+                    />
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        className="btn btn--primary btn--sm"
+                        disabled={feedbackBusy}
+                        onClick={() => submitFeedback(v.tipsterId)}
+                      >
+                        {feedbackBusy ? 'Submitting…' : 'Submit feedback'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => setFeedbackFor(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--sm"
-                  style={{ marginTop: '0.5rem', color: 'var(--muted)' }}
-                  onClick={() => openReport(v.tipsterId)}
-                >
-                  Report tipster
-                </button>
-              )}
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    style={{ marginTop: '0.5rem', color: 'var(--muted)' }}
+                    onClick={() => openFeedback(v.tipsterId)}
+                  >
+                    Give feedback
+                  </button>
+                )
+              ) : null}
             </li>
           ))}
         </ul>
       )}
 
-      {reportMsg ? (
-        <p
-          role="status"
-          style={{ color: 'var(--accent)', marginTop: '1rem' }}
-        >
-          {reportMsg}
+      {feedbackMsg ? (
+        <p role="status" style={{ color: 'var(--accent)', marginTop: '1rem' }}>
+          {feedbackMsg}
         </p>
       ) : null}
 

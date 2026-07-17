@@ -11,7 +11,23 @@ class CreateReportDto {
   @IsString()
   tipsterId!: string;
 
-  @IsIn(['fake_record', 'scam', 'impersonation', 'spam', 'other'])
+  @IsIn(['positive', 'negative'])
+  sentiment!: string;
+
+  @IsIn([
+    // negative
+    'fake_record',
+    'scam',
+    'impersonation',
+    'spam',
+    // positive
+    'accurate',
+    'communication',
+    'value',
+    'recommend',
+    // shared
+    'other',
+  ])
   reason!: string;
 
   @IsOptional()
@@ -20,7 +36,7 @@ class CreateReportDto {
   details?: string;
 }
 
-/** User-facing reporting: raise an issue about a subscribed tipster. */
+/** User-facing: leave feedback (praise or a complaint) about a subscribed tipster. */
 @Controller('reports')
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
@@ -32,6 +48,7 @@ export class ReportsController {
     return this.reports.create(
       user.userId,
       dto.tipsterId,
+      dto.sentiment,
       dto.reason,
       dto.details,
     );

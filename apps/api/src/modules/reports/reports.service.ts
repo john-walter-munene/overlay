@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 
-const REASONS = ['fake_record', 'scam', 'impersonation', 'spam', 'other'] as const;
+const NEGATIVE_REASONS = ['fake_record', 'scam', 'impersonation', 'spam', 'other'] as const;
+const POSITIVE_REASONS = ['accurate', 'communication', 'value', 'recommend', 'other'] as const;
 const STATUSES = ['open', 'reviewing', 'resolved', 'dismissed'] as const;
 type ReportStatus = (typeof STATUSES)[number];
 
@@ -15,21 +16,27 @@ export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * A subscriber raises a report about a tipster. Requires an existing
-   * subscription to that tipster (you can only report someone you subscribed
-   * to) and blocks piling up duplicate open reports.
+   * A subscriber leaves feedback about a tipster — praise (`positive`) or a
+   * complaint (`negative`). Requires an existing subscription to that tipster
+   * and blocks piling up duplicate open complaints.
    */
   async create(
     reporterId: string,
     tipsterId: string,
+    sentiment: string,
     reason: string,
     details?: string,
   ) {
     if (reporterId === tipsterId) {
-      throw new BadRequestException('You cannot report your own account.');
+      throw new BadRequestException('You cannot leave feedback on your own account.');
     }
-    if (!REASONS.includes(reason as (typeof REASONS)[number])) {
-      throw new BadRequestException('Invalid report reason.');
+    if (sentiment !== 'positive' && sentiment !== 'negative') {
+      throw new BadRequestException('Invalid feedback type.');
+    }
+    const allowed =
+      sentiment === 'positive' ? POSITIVE_REASONS : NEGATIVE_REASONS;
+    if (!(allowed as readonly string[]).includes(reason)) {
+      throw new BadRequestException('Invalid feedback reason.');
     }
     const tipster = await this.prisma.tipster.findUnique({
       where: { userId: tipsterId },
@@ -42,21 +49,35 @@ export class ReportsService {
     });
     if (!sub) {
       throw new ForbiddenException(
-        'You can only report a tipster you have subscribed to.',
+        'You can only leave feedback on a tipster you have subscribed to.',
       );
     }
 
-    const openAlready = await this.prisma.tipsterReport.findFirst({
-      where: { reporterId, tipsterId, status: { in: ['open', 'reviewing'] } },
-    });
-    if (openAlready) {
-      throw new BadRequestException(
-        'You already have an open report for this tipster.',
-      );
+    // Only guard against duplicate open *complaints*; praise can repeat.
+    if (sentiment === 'negative') {
+      const openAlready = await this.prisma.tipsterReport.findFirst({
+        where: {
+          reporterId,
+          tipsterId,
+          sentiment: 'negative',
+          status: { in: ['open', 'reviewing'] },
+        },
+      });
+      if (openAlready) {
+        throw new BadRequestException(
+          'You already have an open complaint for this tipster.',
+        );
+      }
     }
 
     const report = await this.prisma.tipsterReport.create({
-      data: { reporterId, tipsterId, reason, details: details?.trim() || null },
+      data: {
+        reporterId,
+        tipsterId,
+        sentiment,
+        reason,
+        details: details?.trim() || null,
+      },
     });
     return {
       id: report.id,
@@ -65,7 +86,7 @@ export class ReportsService {
     };
   }
 
-  /** Admin: list reports, optionally filtered by status. */
+  /** Admin: list feedback, optionally filtered by status. */
   async listForAdmin(status?: string) {
     const where = STATUSES.includes(status as ReportStatus)
       ? { status: status as ReportStatus }
@@ -81,6 +102,7 @@ export class ReportsService {
     });
     return reports.map((r) => ({
       id: r.id,
+      sentiment: r.sentiment,
       reason: r.reason,
       details: r.details,
       status: r.status,

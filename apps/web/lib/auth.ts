@@ -226,15 +226,26 @@ export async function deleteMyAccount(): Promise<void> {
   await signOut();
 }
 
-/** Reasons a subscriber can report a tipster (mirrors the API). */
-export type ReportReason =
+/** Feedback sentiment about a tipster. */
+export type FeedbackSentiment = 'positive' | 'negative';
+
+/** Reasons for a complaint (negative feedback). */
+export type NegativeReason =
   | 'fake_record'
   | 'scam'
   | 'impersonation'
   | 'spam'
   | 'other';
 
-export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+/** Reasons for praise (positive feedback). */
+export type PositiveReason =
+  | 'accurate'
+  | 'communication'
+  | 'value'
+  | 'recommend'
+  | 'other';
+
+export const NEGATIVE_REASON_LABELS: Record<NegativeReason, string> = {
   fake_record: 'Faked or misleading track record',
   scam: 'Scam / fraud',
   impersonation: 'Impersonation',
@@ -242,28 +253,38 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   other: 'Something else',
 };
 
-/** Raise a report about a tipster you subscribe to. */
-export async function reportTipster(
+export const POSITIVE_REASON_LABELS: Record<PositiveReason, string> = {
+  accurate: 'Accurate, reliable tips',
+  communication: 'Great communication',
+  value: 'Worth the price',
+  recommend: 'Would recommend',
+  other: 'Something else',
+};
+
+/** Leave feedback (praise or a complaint) about a tipster you subscribe to. */
+export async function submitTipsterFeedback(
   tipsterId: string,
-  reason: ReportReason,
+  sentiment: FeedbackSentiment,
+  reason: string,
   details?: string,
 ): Promise<void> {
   const res = await authFetch('/api/reports', {
     method: 'POST',
-    body: JSON.stringify({ tipsterId, reason, details }),
+    body: JSON.stringify({ tipsterId, sentiment, reason, details }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as {
       message?: string | string[];
     } | null;
     const msg = Array.isArray(body?.message) ? body?.message[0] : body?.message;
-    throw new Error(msg || `Failed to submit report (${res.status})`);
+    throw new Error(msg || `Failed to submit feedback (${res.status})`);
   }
 }
 
-/** A report row for the admin review dashboard. */
+/** A feedback row for the admin review dashboard. */
 export interface AdminReport {
   id: string;
+  sentiment: 'positive' | 'negative';
   reason: string;
   details: string | null;
   status: 'open' | 'reviewing' | 'resolved' | 'dismissed';

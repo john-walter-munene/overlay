@@ -47,6 +47,13 @@ enum ReportStatus {
   dismissed
 }
 
+/// Lifecycle of a support / feedback submission (OB-162).
+enum FeedbackStatus {
+  new
+  reviewed
+  archived
+}
+
 enum ArticleStatus {
   draft
   pending
@@ -268,16 +275,19 @@ model AuditLog {
   @@index([entity, entityId])
 }
 
-/// A report a subscriber raises about a tipster they subscribe to (OB-161):
-/// e.g. a faked record, scam, or impersonation. Surfaced on the admin dashboard
-/// for review. A report requires an existing subscription to that tipster.
+/// Feedback a subscriber leaves about a tipster they subscribe to (OB-161):
+/// either praise (positive) or a complaint/report (negative, e.g. a faked
+/// record or scam). Surfaced on the admin dashboard. Requires a subscription.
 model TipsterReport {
   id         String       @id @default(cuid())
   reporterId String
   reporter   User         @relation("ReportsMade", fields: [reporterId], references: [id])
   tipsterId  String
   tipster    Tipster      @relation(fields: [tipsterId], references: [userId])
-  /// One of: fake_record | scam | impersonation | spam | other.
+  /// 'positive' (praise) or 'negative' (complaint/report).
+  sentiment  String       @default("negative")
+  /// Positive: accurate | communication | value | recommend | other.
+  /// Negative: fake_record | scam | impersonation | spam | other.
   reason     String
   details    String?
   status     ReportStatus @default(open)
@@ -288,6 +298,22 @@ model TipsterReport {
   @@index([status])
   @@index([tipsterId])
   @@index([reporterId])
+}
+
+/// Support-center feedback: questions, product suggestions, bug reports, fee
+/// queries etc. (OB-162). May be submitted by a signed-in user or anonymously;
+/// reviewed on the admin dashboard. `email` is optional so we can follow up.
+model Feedback {
+  id        String         @id @default(cuid())
+  userId    String?
+  email     String?
+  /// One of: suggestion | bug | question | fees | complaint | other.
+  category  String
+  message   String
+  status    FeedbackStatus @default(new)
+  createdAt DateTime       @default(now())
+
+  @@index([status])
 }
 
 /// SEO content surface (blog / strategy guides). Drives organic traffic.

@@ -7,9 +7,9 @@ import {
   getProfile,
   adminListReports,
   adminReviewReport,
-  REPORT_REASON_LABELS,
+  POSITIVE_REASON_LABELS,
+  NEGATIVE_REASON_LABELS,
   type AdminReport,
-  type ReportReason,
 } from '../../../lib/auth';
 
 type StatusFilter = '' | 'open' | 'reviewing' | 'resolved' | 'dismissed';
@@ -91,9 +91,10 @@ export default function AdminReportsPage() {
           ← Admin
         </Link>
       </p>
-      <h1>Tipster reports</h1>
+      <h1>Tipster feedback</h1>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        Issues raised by subscribers about tipsters. Review and update each one.
+        Feedback from subscribers about tipsters — praise and complaints. Review
+        and update each one.
       </p>
 
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', margin: '1.25rem 0' }}>
@@ -141,14 +142,21 @@ export default function AdminReportsPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                 <div>
                   <strong>
-                    {REPORT_REASON_LABELS[r.reason as ReportReason] ?? r.reason}
+                    <span aria-hidden style={{ marginRight: '0.4rem' }}>
+                      {r.sentiment === 'positive' ? '👍' : '👎'}
+                    </span>
+                    {(
+                      (r.sentiment === 'positive'
+                        ? POSITIVE_REASON_LABELS
+                        : NEGATIVE_REASON_LABELS) as Record<string, string>
+                    )[r.reason] ?? r.reason}
                   </strong>
                   <div style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
                     Tipster:{' '}
                     <Link href={`/tipsters/${r.tipsterId}`} style={{ color: 'var(--accent)' }}>
                       {r.tipsterName || r.tipsterId}
                     </Link>{' '}
-                    · Reporter: {r.reporter.username || r.reporter.email} ·{' '}
+                    · From: {r.reporter.username || r.reporter.email} ·{' '}
                     {new Date(r.createdAt).toLocaleDateString()}
                   </div>
                 </div>
