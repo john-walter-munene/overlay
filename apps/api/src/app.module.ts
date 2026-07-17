@@ -18,6 +18,7 @@ import { FreeTipsModule } from './modules/free-tips/free-tips.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { FollowModule } from './modules/follows/follow.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { UsersModule } from './modules/users/users.module';
 import { SettlementModule } from './workers/settlement.module';
@@ -47,6 +48,7 @@ import { SettlementModule } from './workers/settlement.module';
     AdminModule,
     ReportsModule,
     FeedbackModule,
+    FollowModule,
     PrivacyModule,
     UsersModule,
     SettlementModule,

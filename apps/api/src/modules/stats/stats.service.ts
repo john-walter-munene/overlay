@@ -52,7 +52,7 @@ export class StatsService {
           select: {
             country: true,
             displayName: true,
-            user: { select: { username: true } },
+            user: { select: { username: true, avatarUrl: true } },
           },
         },
       },
@@ -62,6 +62,7 @@ export class StatsService {
       country: tipster?.country ?? null,
       // Public display label — never the raw id (that's for internal logic).
       name: tipster?.displayName ?? tipster?.user?.username ?? null,
+      avatarUrl: tipster?.user?.avatarUrl ?? null,
     }));
   }
 }

@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { loadDotenv } from './common/load-env';
 import { AppModule } from './app.module';
@@ -15,10 +16,19 @@ async function bootstrap() {
 
   // rawBody: true preserves the exact request bytes on req.rawBody so payment
   // webhook signatures (Stripe) can be verified against the untouched payload.
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
 
   app.setGlobalPrefix('api');
   app.use(helmet());
+
+  // Serve locally-stored avatars (dev fallback when Supabase Storage isn't
+  // configured). In production avatars live in a public Supabase bucket, so
+  // this directory is typically empty. Not affected by the global 'api' prefix.
+  const { join } = await import('node:path');
+  const uploadsDir = process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads');
+  app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
 
   // CORS: allow the configured origins (comma-separated, trailing-slash and
   // whitespace tolerant) plus — unless disabled — any *.vercel.app origin so

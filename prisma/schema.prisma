@@ -83,6 +83,9 @@ model User {
   // Supabase owns authentication; passwordHash is legacy/optional.
   passwordHash   String?
   supabaseUserId String?        @unique
+  // Optional profile picture (full public URL). Null falls back to a generated
+  // avatar derived from the username in the UI.
+  avatarUrl      String?
   createdAt      DateTime       @default(now())
 
   tipster       Tipster?
@@ -90,6 +93,7 @@ model User {
   articles      Article[]
   notificationPreference NotificationPreference?
   reportsMade   TipsterReport[] @relation("ReportsMade")
+  follows       Follow[]
 }
 
 model Tipster {
@@ -140,6 +144,7 @@ model Tipster {
   stats         TipsterStats?
   payouts       Payout[]
   reports       TipsterReport[]
+  followers     Follow[]
 }
 
 model Event {
@@ -204,6 +209,21 @@ model Subscription {
   currentPeriodEnd     DateTime?
 
   @@unique([userId, tipsterId])
+}
+
+/// A free "follow": a user tracks a tipster's public performance without
+/// subscribing. Distinct from Subscription (which is paid and unlocks gated
+/// picks) — following never grants access to live/pre-event selections.
+model Follow {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tipsterId String
+  tipster   Tipster  @relation(fields: [tipsterId], references: [userId])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tipsterId])
+  @@index([tipsterId])
 }
 
 /// Materialized stats, recomputed by the stats worker after each settlement batch.

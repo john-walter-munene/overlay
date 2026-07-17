@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import Flag from '../Flag';
+import Avatar from '../Avatar';
+import FollowButton from '../FollowButton';
 import {
   listMarketplace,
   SITE_URL,
@@ -34,6 +36,7 @@ interface LeaderboardRow {
   sampleSize: number;
   country: string | null;
   name: string | null;
+  avatarUrl: string | null;
 }
 
 async function getLeaderboard(): Promise<LeaderboardRow[]> {
@@ -190,21 +193,25 @@ export default async function TipstersPage({
                     <th>Win %</th>
                     <th>Picks</th>
                     <th>Price/mo</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.items.map((r) => (
                     <tr key={r.tipsterId} style={{ borderTop: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.6rem 0' }}>
-                        <Link
-                          href={`/tipsters/${r.tipsterId}`}
-                          style={{ color: 'var(--accent)' }}
-                        >
-                          {r.name ?? r.tipsterId}
-                        </Link>
-                        {r.country ? (
-                          <Flag code={r.country} style={{ marginLeft: '0.4rem', verticalAlign: 'middle' }} />
-                        ) : null}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <Avatar src={r.avatarUrl} seed={r.name ?? r.tipsterId} size={28} />
+                          <Link
+                            href={`/tipsters/${r.tipsterId}`}
+                            style={{ color: 'var(--accent)' }}
+                          >
+                            {r.name ?? r.tipsterId}
+                          </Link>
+                          {r.country ? (
+                            <Flag code={r.country} style={{ verticalAlign: 'middle' }} />
+                          ) : null}
+                        </span>
                       </td>
                       <td style={{ color: 'var(--muted)' }}>
                         {r.sports.length ? r.sports.join(', ') : '—'}
@@ -217,6 +224,9 @@ export default async function TipstersPage({
                         {r.subscriptionPriceCents > 0
                           ? `$${(r.subscriptionPriceCents / 100).toFixed(2)}`
                           : 'Free'}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <FollowButton tipsterId={r.tipsterId} size="sm" />
                       </td>
                     </tr>
                   ))}
@@ -287,6 +297,7 @@ export default async function TipstersPage({
                     >
                       {i + 1}
                     </span>
+                    <Avatar src={r.avatarUrl} seed={r.name ?? r.tipsterId} size={26} />
                     <Link
                       href={`/tipsters/${r.tipsterId}`}
                       style={{ color: 'var(--fg)', textDecoration: 'none', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}

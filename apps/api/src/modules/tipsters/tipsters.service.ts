@@ -66,7 +66,7 @@ export class TipstersService {
             subscriptionPriceCents: true,
             country: true,
             displayName: true,
-            user: { select: { username: true } },
+            user: { select: { username: true, avatarUrl: true } },
           },
         },
       },
@@ -83,6 +83,7 @@ export class TipstersService {
       bio: s.tipster.bio,
       country: s.tipster.country,
       name: s.tipster.displayName ?? s.tipster.user?.username ?? null,
+      avatarUrl: s.tipster.user?.avatarUrl ?? null,
     }));
 
     return filterAndRankTipsters(rows, query);
@@ -92,30 +93,36 @@ export class TipstersService {
   async getProfile(tipsterId: string) {
     const tipster = await this.prisma.tipster.findUnique({
       where: { userId: tipsterId },
-      include: { stats: true, user: { select: { username: true } } },
+      include: {
+        stats: true,
+        user: { select: { username: true, avatarUrl: true } },
+      },
     });
     if (!tipster) throw new NotFoundException('Tipster not found');
 
-    const [recentPicks, articlesPublished, subscriberCount] = await Promise.all([
-      this.prisma.pick.findMany({
-        where: { tipsterId, status: { not: 'pending' } },
-        orderBy: { settledAt: 'desc' },
-        take: 20,
-      }),
-      // Published articles authored by this tipster count toward the public
-      // profile — a signal of the analysis/content they contribute.
-      this.prisma.article.count({
-        where: { authorId: tipsterId, status: 'published' },
-      }),
-      this.prisma.subscription.count({
-        where: { tipsterId, status: 'active' },
-      }),
-    ]);
+    const [recentPicks, articlesPublished, subscriberCount, followerCount] =
+      await Promise.all([
+        this.prisma.pick.findMany({
+          where: { tipsterId, status: { not: 'pending' } },
+          orderBy: { settledAt: 'desc' },
+          take: 20,
+        }),
+        // Published articles authored by this tipster count toward the public
+        // profile — a signal of the analysis/content they contribute.
+        this.prisma.article.count({
+          where: { authorId: tipsterId, status: 'published' },
+        }),
+        this.prisma.subscription.count({
+          where: { tipsterId, status: 'active' },
+        }),
+        this.prisma.follow.count({ where: { tipsterId } }),
+      ]);
 
     return {
       tipsterId,
       displayName: tipster.displayName,
       username: tipster.user?.username ?? null,
+      avatarUrl: tipster.user?.avatarUrl ?? null,
       country: tipster.country,
       bio: tipster.bio,
       sports: tipster.sports,
@@ -129,6 +136,7 @@ export class TipstersService {
       },
       stats: tipster.stats,
       subscriberCount,
+      followerCount,
       articlesPublished,
       recentPicks,
     };

@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { buildClvChart } from '@overlay/shared/tipster-profile';
 import { countryLabel } from '@overlay/shared/countries';
 import Flag from '../../Flag';
+import FollowButton from '../../FollowButton';
+import Avatar from '../../Avatar';
 import { getTipster, SITE_URL } from '../../../lib/api';
 import TipsterTips from './TipsterTips';
 
@@ -153,30 +155,40 @@ export default async function TipsterPage({
           ← Leaderboard
         </Link>
       </p>
-      <h1 style={{ fontSize: '2.1rem', marginBottom: '0.25rem' }}>
-        {t.displayName ?? t.username ?? t.tipsterId}
-        {t.country ? (
-          <Flag code={t.country} style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }} />
-        ) : null}
-        {t.verified ? (
-          <span
-            title="Verified identity"
-            style={{
-              marginLeft: '0.6rem',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              color: 'var(--accent)',
-              verticalAlign: 'middle',
-            }}
-          >
-            ✓ Verified
-          </span>
-        ) : null}
-      </h1>
-      <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-        {t.country ? `${countryLabel(t.country)} · ` : ''}
-        {t.subscriberCount} subscriber{t.subscriberCount === 1 ? '' : 's'}
-      </p>
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+        <Avatar src={t.avatarUrl} seed={t.username ?? t.tipsterId} size={80} />
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: '2.1rem', margin: '0 0 0.25rem' }}>
+            {t.displayName ?? t.username ?? t.tipsterId}
+            {t.country ? (
+              <Flag code={t.country} style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }} />
+            ) : null}
+            {t.verified ? (
+              <span
+                title="Verified identity"
+                style={{
+                  marginLeft: '0.6rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: 'var(--accent)',
+                  verticalAlign: 'middle',
+                }}
+              >
+                ✓ Verified
+              </span>
+            ) : null}
+          </h1>
+          <p style={{ color: 'var(--muted)', margin: 0 }}>
+            {t.country ? `${countryLabel(t.country)} · ` : ''}
+            {t.subscriberCount} subscriber{t.subscriberCount === 1 ? '' : 's'}
+            {' · '}
+            {t.followerCount} following
+          </p>
+        </div>
+      </div>
+      <div style={{ margin: '0.75rem 0 0.25rem' }}>
+        <FollowButton tipsterId={t.tipsterId} />
+      </div>
       {t.bio ? <p style={{ color: 'var(--fg)' }}>{t.bio}</p> : null}
       {t.sports.length ? (
         <p style={{ color: 'var(--muted)', marginTop: 0 }}>{t.sports.join(' · ')}</p>

@@ -12,12 +12,13 @@ import {
   changeEmail,
   getNotificationPreferences,
   updateNotificationPreferences,
-  exportMyData,
-  deleteMyAccount,
+  uploadAvatar,
+  removeAvatar,
   type FullProfile,
   type NotificationPreferences,
 } from '../../lib/auth';
 import { formStyles } from '../formStyles';
+import Avatar from '../Avatar';
 
 interface Subscription {
   id: string;
@@ -56,8 +57,9 @@ export default function AccountPage() {
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [prefsMsg, setPrefsMsg] = useState<string | null>(null);
 
-  const [privacyMsg, setPrivacyMsg] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarMsg, setAvatarMsg] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -68,6 +70,7 @@ export default function AccountPage() {
       }
       setProfile(p);
       setUsername(p.username ?? '');
+      setAvatarUrl(p.avatarUrl);
       authFetch('/api/subscriptions/me')
         .then((r) => (r.ok ? r.json() : []))
         .then((data) => setSubs(data as Subscription[]))
@@ -75,6 +78,37 @@ export default function AccountPage() {
       getNotificationPreferences().then(setPrefs);
     })();
   }, [router]);
+
+  async function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setAvatarMsg(null);
+    setAvatarBusy(true);
+    try {
+      const { avatarUrl: url } = await uploadAvatar(file);
+      setAvatarUrl(url);
+      setAvatarMsg('Avatar updated \u2713');
+    } catch (err) {
+      setAvatarMsg(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function onAvatarRemove() {
+    setAvatarMsg(null);
+    setAvatarBusy(true);
+    try {
+      await removeAvatar();
+      setAvatarUrl(null);
+      setAvatarMsg('Avatar removed \u2713');
+    } catch (err) {
+      setAvatarMsg(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
 
   async function saveUsername(e: React.FormEvent) {
     e.preventDefault();
@@ -131,35 +165,6 @@ export default function AccountPage() {
     } catch (err) {
       setPrefs(previous);
       setPrefsMsg(err instanceof Error ? err.message : 'Failed');
-    }
-  }
-
-  async function downloadData() {
-    setPrivacyMsg(null);
-    try {
-      await exportMyData();
-      setPrivacyMsg('Export downloaded \u2713');
-    } catch (err) {
-      setPrivacyMsg(err instanceof Error ? err.message : 'Failed');
-    }
-  }
-
-  async function deleteAccount() {
-    if (
-      !window.confirm(
-        'Delete your account? This anonymizes your personal data and cannot be undone.',
-      )
-    ) {
-      return;
-    }
-    setPrivacyMsg(null);
-    setDeleting(true);
-    try {
-      await deleteMyAccount();
-      router.push('/');
-    } catch (err) {
-      setPrivacyMsg(err instanceof Error ? err.message : 'Failed');
-      setDeleting(false);
     }
   }
 
@@ -224,6 +229,45 @@ export default function AccountPage() {
 
       {/* --- Profile summary --- */}
       <div style={{ ...cardStyle, marginTop: '1.25rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '1.1rem',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            marginBottom: '1rem',
+          }}
+        >
+          <Avatar src={avatarUrl} seed={profile.username ?? profile.userId} size={72} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <label className="btn btn--secondary btn--sm" style={{ cursor: avatarBusy ? 'default' : 'pointer' }}>
+                {avatarBusy ? 'Saving…' : avatarUrl ? 'Change photo' : 'Upload photo'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={onAvatarChange}
+                  disabled={avatarBusy}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {avatarUrl ? (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={onAvatarRemove}
+                  disabled={avatarBusy}
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+            <span style={labelStyle}>
+              {avatarMsg ??
+                'Optional — we’ll use a generated avatar if you don’t add one. JPG/PNG/WEBP, up to 2 MB.'}
+            </span>
+          </div>
+        </div>
         <div
           style={{
             display: 'grid',
@@ -375,47 +419,6 @@ export default function AccountPage() {
             </div>
           )}
         </section>
-
-        {/* --- Privacy & data --- */}
-        <section style={cardStyle}>
-          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Privacy &amp; data</h2>
-          <p style={labelStyle}>
-            Download everything we hold about you, or permanently delete your
-            account.
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={downloadData}
-              style={{
-                ...formStyles.button,
-                width: 'auto',
-                background: 'transparent',
-                color: 'var(--accent)',
-                border: '1px solid var(--border)',
-              }}
-            >
-              Download my data
-            </button>
-            <button
-              type="button"
-              onClick={deleteAccount}
-              disabled={deleting}
-              style={{
-                ...formStyles.button,
-                width: 'auto',
-                background: 'transparent',
-                color: 'var(--danger)',
-                border: '1px solid var(--danger)',
-              }}
-            >
-              {deleting ? 'Deleting…' : 'Delete account'}
-            </button>
-          </div>
-          {privacyMsg ? (
-            <p style={{ ...labelStyle, marginTop: '0.75rem' }}>{privacyMsg}</p>
-          ) : null}
-        </section>
       </div>
 
       {/* --- Subscriptions --- */}
@@ -427,7 +430,9 @@ export default function AccountPage() {
         </p>
       ) : null}
 
-      <h2 style={{ marginTop: '2rem' }}>Your subscriptions</h2>
+      {profile.role !== 'tipster' ? (
+        <>
+          <h2 style={{ marginTop: '2rem' }}>Your subscriptions</h2>
       <p>
         <Link href="/account/subscriptions" style={{ color: 'var(--accent)' }}>
           → Manage subscriptions
@@ -466,6 +471,8 @@ export default function AccountPage() {
           ))}
         </ul>
       )}
+        </>
+      ) : null}
 
       <button
         onClick={logout}
