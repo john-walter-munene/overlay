@@ -292,6 +292,19 @@
 **Tests:**
 - [ ] Unit/integration: pick at cutoff boundary; event without start time.
 
+### OB-039 — Live / in-play picks (design spike + model)
+**Category:** Integrity · **Priority:** P1 · **Depends on:** OB-038
+**Description:** Support picks placed *during* an ongoing game (in-play). This deliberately conflicts with the pre-match integrity model: `createLockedPick` rejects anything after `startTime` (see `picks.service.ts`), and CLV is defined against the **pre-match closing line**, which does not exist for an in-play selection. Rather than weaken the OB-038 cutoff, model live picks as a distinct type. **Do a design spike first**, then implement. Proposed shape: add a `pickType` discriminator (`pre_match` | `live`) to `Pick`; live picks bypass the kickoff cutoff but keep their own integrity guarantee (hash + authoritative server timestamp at submission, graded on final result); live picks are **excluded from CLV** (or carry an in-play line reference instead) and are surfaced/aggregated separately so live and pre-match yield are never blended into one misleading number.
+**Acceptance criteria:**
+- [ ] Design note documenting the live-pick model, integrity guarantee, and CLV/stats treatment (in `docs/`) reviewed before build.
+- [ ] `Pick` carries a `pickType`; live picks are accepted after kickoff while pre-match picks still honour the OB-038 cutoff.
+- [ ] Live picks are hashed + server-timestamped and remain append-only; they are excluded from CLV and shown/aggregated distinctly from pre-match picks.
+- [ ] Public track record and tipster stats do not blend live and pre-match yield.
+**Tests:**
+- [ ] Unit: cutoff gate rejects a late `pre_match` pick but allows a `live` pick.
+- [ ] Unit: stats/CLV aggregation excludes live picks from CLV and keeps yields separated.
+- [ ] Integration: a live pick is hashed, timestamped, graded on result, and cannot be mutated.
+
 ---
 
 ## 6. Events, Settlement & Sports Data
@@ -484,6 +497,18 @@
 - [x] Preferences respected; one-click unsubscribe; digest batching.
 **Tests:**
 - [x] Integration: opted-out user receives nothing; digest batches correctly.
+
+### OB-034 — Tip-drop schedule announcements & subscriber alerts
+**Category:** Notifications · **Priority:** P1 · **Depends on:** OB-031, OB-032
+**Description:** Let a tipster tell subscribers **when** their tips will drop, and make sure subscribers are alerted **when** a tip actually lands. Instant "new pick" fan-out already exists (`notifyNewPick` in `picks.service.ts`, email + digests) and real-time delivery is covered by OB-031 (Web Push) / OB-032 (queue fan-out) — the **new** capability here is a tipster-authored **schedule announcement**: a lightweight entity (e.g. "Daily tips at 18:00 EAT", one-off or recurring, with timezone) that a tipster publishes and that notifies their active subscribers ahead of the drop, respecting existing notification preferences and unsubscribe tokens.
+**Acceptance criteria:**
+- [ ] A tipster can create/edit/cancel a tip-drop announcement (one-off or recurring) with an explicit timezone; stored with an audit entry.
+- [ ] Publishing (and an optional pre-drop reminder) fans out to active subscribers via email + push, honouring per-user preferences and one-click unsubscribe.
+- [ ] Subscribers see upcoming scheduled drops for tipsters they follow/subscribe to; announcements never leak gated pick content.
+- [ ] Reuses the OB-032 queue fan-out; no blocking of the request path.
+**Tests:**
+- [ ] Unit: schedule model (recurrence + timezone) resolves the correct next drop time.
+- [ ] Integration: announcement fan-out reaches active subscribers, skips opted-out users, and is idempotent.
 
 ---
 
