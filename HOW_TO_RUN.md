@@ -208,7 +208,11 @@ git push -u origin main
   (see `docs/VENDOR-SPIKE.md`).
 - **Email / Web Push** — `RESEND_API_KEY`, `VAPID_*`. For email, set
   `NOTIFIER_PROVIDER=resend`, `RESEND_API_KEY`, and `EMAIL_FROM`; leave
-  `NOTIFIER_PROVIDER=mock` (default) to log instead of sending.
+  `NOTIFIER_PROVIDER=mock` (default) to log instead of sending. For browser web
+  push (new-pick alerts), generate a key pair with
+  `npx web-push generate-vapid-keys` and set `VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`); with the keys unset the
+  push channel is a no-op.
 
 See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` (Phase 4) for the hardening
 checklist before going live.
