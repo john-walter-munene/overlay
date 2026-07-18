@@ -69,7 +69,14 @@ export class SettlementService {
       if (markets.length === 0) continue;
 
       const pending = await this.prisma.pick.findMany({
-        where: { eventId: event.id, status: 'pending', closingOdds: null },
+        where: {
+          eventId: event.id,
+          status: 'pending',
+          closingOdds: null,
+          // Live/in-play picks have no pre-match closing line and carry no CLV
+          // (OB-039), so they're skipped by the closing-odds snapshot.
+          pickType: 'pre_match',
+        },
       });
       for (const pick of pending) {
         const market = markets.find((m) => m.market === pick.market);
@@ -146,6 +153,8 @@ export class SettlementService {
         status: { not: 'pending' },
         closingOdds: { not: null },
         clv: null,
+        // Live/in-play picks are excluded from CLV (OB-039).
+        pickType: 'pre_match',
       },
     });
     for (const pick of picks) {
@@ -153,6 +162,7 @@ export class SettlementService {
         oddsAtPick: pick.oddsAtPick,
         stakeUnits: pick.stakeUnits,
         status: pick.status,
+        pickType: pick.pickType,
         closingOdds: pick.closingOdds,
       };
       const clv = pickClv(input);

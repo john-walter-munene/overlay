@@ -9,11 +9,20 @@ export type PickStatus =
   | 'half_won'
   | 'half_lost';
 
+/**
+ * Whether a pick was placed before kickoff (`pre_match`, the default and the
+ * only CLV-bearing type) or during the game (`live`, in-play). Live picks are
+ * excluded from CLV and aggregated separately from pre-match yield (OB-039).
+ */
+export type PickType = 'pre_match' | 'live';
+
 /** Minimal shape needed to compute a tipster's stats. */
 export interface SettledPick {
   oddsAtPick: number;
   stakeUnits: number;
   status: PickStatus;
+  /** Pre-match (default) vs live/in-play. Live picks carry no CLV. */
+  pickType?: PickType;
   /** Closing decimal odds for the same market, when captured. */
   closingOdds?: number | null;
   /** Ordering key for drawdown/streak (ms epoch). */

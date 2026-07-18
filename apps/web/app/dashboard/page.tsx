@@ -90,6 +90,7 @@ export default function DashboardPage() {
     selection: '',
     oddsAtPick: '2.00',
     stakeUnits: '1',
+    pickType: 'pre_match' as 'pre_match' | 'live',
     note: '',
   });
   const [msg, setMsg] = useState<string | null>(null);
@@ -305,6 +306,7 @@ export default function DashboardPage() {
           selection: form.selection,
           oddsAtPick: Number(form.oddsAtPick),
           stakeUnits: Number(form.stakeUnits),
+          pickType: form.pickType,
           note: form.note.trim() || undefined,
         }),
       });
@@ -594,6 +596,50 @@ export default function DashboardPage() {
           onChange={(e) => setForm({ ...form, stakeUnits: e.target.value })}
           required
         />
+        <fieldset
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            padding: '0.5rem 0.75rem',
+            margin: 0,
+            display: 'flex',
+            gap: '1rem',
+            alignItems: 'center',
+          }}
+        >
+          <legend style={{ padding: '0 0.35rem', color: 'var(--muted)', fontSize: '0.85rem' }}>
+            Pick type
+          </legend>
+          {(
+            [
+              { key: 'pre_match', label: 'Pre-match', hint: 'before kickoff' },
+              { key: 'live', label: 'Live / in-play', hint: 'during the game' },
+            ] as const
+          ).map((opt) => (
+            <label
+              key={opt.key}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}
+            >
+              <input
+                type="radio"
+                name="pickType"
+                value={opt.key}
+                checked={form.pickType === opt.key}
+                onChange={() => setForm({ ...form, pickType: opt.key })}
+              />
+              <span>
+                {opt.label}
+                <span style={{ color: 'var(--muted)', fontSize: '0.8rem' }}> · {opt.hint}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        {form.pickType === 'live' ? (
+          <p style={{ color: 'var(--muted)', fontSize: '0.8rem', margin: 0 }}>
+            Live picks are locked mid-game and excluded from CLV — they’re shown
+            and scored separately from your pre-match record.
+          </p>
+        ) : null}
         <textarea
           style={{ ...formStyles.input, minHeight: 72, resize: 'vertical' }}
           placeholder="Optional context / reasoning (shown to subscribers)"

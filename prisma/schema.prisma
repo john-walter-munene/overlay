@@ -25,6 +25,15 @@ enum PickStatus {
   half_lost
 }
 
+/// Whether a pick was placed before kickoff (`pre_match`, the default and the
+/// only CLV-bearing type) or during the game (`live`, in-play). Live picks
+/// bypass the OB-038 kickoff cutoff but are excluded from CLV and aggregated
+/// separately so live and pre-match yield are never blended (OB-039).
+enum PickType {
+  pre_match
+  live
+}
+
 enum SubscriptionStatus {
   active
   past_due
@@ -184,6 +193,9 @@ model Pick {
   selection  String
   oddsAtPick Float
   stakeUnits Float   @default(1)
+  // Pre-match (before kickoff, CLV-bearing) vs live/in-play (after kickoff,
+  // excluded from CLV, aggregated separately). Set at lock time; immutable.
+  pickType   PickType @default(pre_match)
   // Optional tipster-authored context / reasoning, captured at lock time.
   // Not part of the integrity hash — it's commentary, not the wager itself.
   note       String?
@@ -235,6 +247,10 @@ model Follow {
 }
 
 /// Materialized stats, recomputed by the stats worker after each settlement batch.
+/// Headline fields (roi/yield/clvAvg/winRate/sampleSize/…) cover PRE-MATCH picks
+/// only, so the CLV-ranked yield is never diluted by in-play results. The `live*`
+/// fields carry the separate in-play book so live and pre-match yield are shown
+/// distinctly, never blended (OB-039).
 model TipsterStats {
   tipsterId     String   @id
   tipster       Tipster  @relation(fields: [tipsterId], references: [userId])
@@ -245,6 +261,10 @@ model TipsterStats {
   sampleSize    Int      @default(0)
   maxDrawdown   Float    @default(0)
   currentStreak Int      @default(0)
+  // Live / in-play book, kept separate from the pre-match headline above.
+  liveYield      Float   @default(0)
+  liveWinRate    Float   @default(0)
+  liveSampleSize Int     @default(0)
   updatedAt     DateTime @updatedAt
 }
 

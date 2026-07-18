@@ -9,6 +9,7 @@ import {
   hashPick,
   buildPerformanceDashboard,
   type PickPayload,
+  type PickType,
   type SettledPick,
 } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
@@ -16,6 +17,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { canPublishPicks } from '../tipsters/onboarding';
 import { CreatePickDto } from './dto/create-pick.dto';
+import { evaluatePickTiming } from './cutoff';
 import { buildSubscriberFeed, entitledTipsterIds, toPickRow, type FeedPick } from './feed';
 
 @Injectable()
@@ -52,8 +54,13 @@ export class PicksService {
       where: { id: dto.eventId },
     });
     if (!event) throw new NotFoundException('Event not found');
-    if (event.startTime.getTime() <= Date.now()) {
-      throw new BadRequestException('Event has already started; pick rejected');
+
+    // Pre-match picks honour the OB-038 kickoff cutoff; live/in-play picks
+    // (OB-039) bypass it but are still rejected once the event has finished.
+    const pickType: PickType = dto.pickType ?? 'pre_match';
+    const timing = evaluatePickTiming(pickType, event, Date.now());
+    if (!timing.ok) {
+      throw new BadRequestException(timing.reason);
     }
 
     const payload: PickPayload = {
@@ -76,6 +83,7 @@ export class PicksService {
           selection: dto.selection,
           oddsAtPick: dto.oddsAtPick,
           stakeUnits: dto.stakeUnits,
+          pickType,
           note: dto.note?.trim() || null,
           hash,
           nonce,
@@ -88,7 +96,7 @@ export class PicksService {
           action: 'pick.locked',
           entity: 'Pick',
           entityId: created.id,
-          payload: { hash, market: dto.market, selection: dto.selection },
+          payload: { hash, pickType, market: dto.market, selection: dto.selection },
         },
       });
       return created;
@@ -213,18 +221,20 @@ export class PicksService {
   /**
    * Performance dashboard for a tipster's own account (OB-023): cumulative
    * ROI/yield/CLV/win-rate time-series, drawdown, streak and a pending-vs-settled
-   * breakdown. Built over ALL of the tipster's picks (pending included) with the
-   * shared, unit-tested performance engine.
+   * breakdown. Built over the tipster's PRE-MATCH picks (pending included) so the
+   * CLV-ranked yield is never blended with in-play results (OB-039); live picks
+   * are aggregated separately (see stats service `live*` figures).
    */
   async performanceForTipster(tipsterId: string) {
     const picks = await this.prisma.pick.findMany({
-      where: { tipsterId },
+      where: { tipsterId, pickType: 'pre_match' },
     });
 
     const input: SettledPick[] = picks.map((p) => ({
       oddsAtPick: p.oddsAtPick,
       stakeUnits: p.stakeUnits,
       status: p.status,
+      pickType: p.pickType,
       closingOdds: p.closingOdds,
       settledAt: p.settledAt ? p.settledAt.getTime() : null,
     }));

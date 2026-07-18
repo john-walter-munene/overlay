@@ -114,6 +114,7 @@ export class TipstersService {
             market: true,
             selection: true,
             oddsAtPick: true,
+            pickType: true,
             status: true,
             clv: true,
             note: true,

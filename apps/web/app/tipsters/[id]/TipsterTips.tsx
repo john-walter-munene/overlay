@@ -52,6 +52,33 @@ function statusColor(status: string): string {
   return 'var(--accent)'; // pending / open
 }
 
+/** Small pill flagging an in-play (live) pick so it's never mistaken for a
+ * pre-match selection — live picks carry no CLV and are scored separately. */
+function LiveBadge() {
+  return (
+    <span
+      title="Placed in-play (after kickoff). Excluded from CLV and scored separately from pre-match picks."
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        marginLeft: '0.4rem',
+        padding: '0.05rem 0.4rem',
+        borderRadius: 999,
+        fontSize: '0.68rem',
+        fontWeight: 700,
+        letterSpacing: '0.02em',
+        textTransform: 'uppercase',
+        color: 'var(--danger)',
+        border: '1px solid var(--danger)',
+        verticalAlign: 'middle',
+      }}
+    >
+      <span aria-hidden>●</span> Live
+    </span>
+  );
+}
+
 /**
  * Unified "Tips" browser on a tipster's public profile (OB-012): filter their
  * picks by Open (pre-event) / Settled / All. Settled picks are public; open
@@ -267,6 +294,7 @@ export default function TipsterTips({
                 </td>
                 <td>
                   {p.selection}
+                  {p.pickType === 'live' ? <LiveBadge /> : null}
                   {p.note ? (
                     <div
                       style={{
@@ -299,9 +327,11 @@ export default function TipsterTips({
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
-                      {p.event && p.lockedAt < p.event.startTime
-                        ? ' · before kickoff'
-                        : ''}
+                      {p.pickType === 'live'
+                        ? ' · in-play'
+                        : p.event && p.lockedAt < p.event.startTime
+                          ? ' · before kickoff'
+                          : ''}
                     </div>
                   ) : null}
                 </td>

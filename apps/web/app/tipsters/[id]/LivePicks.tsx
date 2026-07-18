@@ -111,7 +111,26 @@ function EntitledPicks({ picks }: { picks: LivePick[] }) {
       <tbody>
         {live.map((p) => (
           <tr key={p.id} style={{ borderTop: `1px solid ${BORDER}` }}>
-            <td style={{ padding: '0.5rem 0' }}>{p.selection}</td>
+            <td style={{ padding: '0.5rem 0' }}>
+              {p.selection}
+              {p.pickType === 'live' ? (
+                <span
+                  title="Placed in-play (after kickoff). Excluded from CLV and scored separately."
+                  style={{
+                    marginLeft: '0.4rem',
+                    padding: '0.05rem 0.4rem',
+                    borderRadius: 999,
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: 'var(--danger)',
+                    border: '1px solid var(--danger)',
+                  }}
+                >
+                  ● Live
+                </span>
+              ) : null}
+            </td>
             <td>{p.market}</td>
             <td>{p.oddsAtPick.toFixed(2)}</td>
             <td>{p.stakeUnits}u</td>

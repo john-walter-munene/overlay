@@ -248,6 +248,7 @@ export interface TipsterProfile {
     market: string;
     selection: string;
     oddsAtPick: number;
+    pickType: 'pre_match' | 'live';
     status: string;
     clv: number | null;
     note: string | null;
@@ -269,6 +270,7 @@ export interface LivePick {
   selection: string;
   oddsAtPick: number;
   stakeUnits: number;
+  pickType: 'pre_match' | 'live';
   status: string;
   hash: string;
   clv: number | null;
@@ -423,6 +425,7 @@ export interface FeedPick {
   selection: string;
   oddsAtPick: number;
   stakeUnits: number;
+  pickType: 'pre_match' | 'live';
   status: string;
   clv: number | null;
   result: string | null;

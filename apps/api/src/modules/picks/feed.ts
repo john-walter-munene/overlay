@@ -22,6 +22,8 @@ export interface FeedPick {
   selection: string;
   oddsAtPick: number;
   stakeUnits: number;
+  /** Pre-match or live/in-play (OB-039). Surfaced so the UI can flag live picks. */
+  pickType: 'pre_match' | 'live';
   /** Optional tipster-authored context, or null. */
   note: string | null;
   status: string;
@@ -47,6 +49,7 @@ export interface PickRecord {
   selection: string;
   oddsAtPick: number;
   stakeUnits: number;
+  pickType?: 'pre_match' | 'live';
   note: string | null;
   status: string;
   clv: number | null;
@@ -77,6 +80,7 @@ export function toPickRow(p: PickRecord): FeedPick {
     selection: p.selection,
     oddsAtPick: p.oddsAtPick,
     stakeUnits: p.stakeUnits,
+    pickType: p.pickType ?? 'pre_match',
     note: p.note,
     status: p.status,
     clv: p.clv,

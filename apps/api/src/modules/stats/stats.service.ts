@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { computeTipsterStats, type SettledPick } from '@overlay/shared';
+import { computeSegmentedStats, type SettledPick } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
 
 @Injectable()
@@ -10,6 +10,10 @@ export class StatsService {
    * Recompute a tipster's materialized stats from their settled picks using the
    * shared, unit-tested stats engine. Called by the stats worker after each
    * settlement batch (see docs/ARCHITECTURE.md §3.3).
+   *
+   * The headline figures cover PRE-MATCH picks only (the CLV-bearing book), so
+   * the leaderboard yield is never diluted by in-play results. Live/in-play
+   * picks are aggregated into the separate `live*` fields (OB-039).
    */
   async recomputeForTipster(tipsterId: string) {
     const picks = await this.prisma.pick.findMany({
@@ -20,16 +24,23 @@ export class StatsService {
       oddsAtPick: p.oddsAtPick,
       stakeUnits: p.stakeUnits,
       status: p.status,
+      pickType: p.pickType,
       closingOdds: p.closingOdds,
       settledAt: p.settledAt ? p.settledAt.getTime() : null,
     }));
 
-    const s = computeTipsterStats(input);
+    const { preMatch, live } = computeSegmentedStats(input);
+    const data = {
+      ...preMatch,
+      liveYield: live.yield,
+      liveWinRate: live.winRate,
+      liveSampleSize: live.sampleSize,
+    };
 
     return this.prisma.tipsterStats.upsert({
       where: { tipsterId },
-      create: { tipsterId, ...s },
-      update: s,
+      create: { tipsterId, ...data },
+      update: data,
     });
   }
 

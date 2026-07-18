@@ -244,6 +244,22 @@ export default function FeedPage() {
 
               <div style={{ margin: '0.4rem 0 0.2rem' }}>
                 <strong>{p.selection}</strong>{' '}
+                {p.pickType === 'live' ? (
+                  <span
+                    title="Placed in-play (after kickoff). Excluded from CLV and scored separately from pre-match picks."
+                    style={{
+                      padding: '0.05rem 0.4rem',
+                      borderRadius: 999,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      color: 'var(--danger)',
+                      border: '1px solid var(--danger)',
+                    }}
+                  >
+                    ● Live
+                  </span>
+                ) : null}{' '}
                 <span style={{ color: 'var(--muted)' }}>
                   ({p.market} @ {p.oddsAtPick.toFixed(2)} · {p.stakeUnits}u)
                 </span>
