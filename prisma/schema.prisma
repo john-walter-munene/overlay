@@ -115,6 +115,7 @@ model User {
   subscriptions          Subscription[]
   articles               Article[]
   notificationPreference NotificationPreference?
+  pushSubscriptions      PushSubscription[]
   reportsMade            TipsterReport[]         @relation("ReportsMade")
   follows                Follow[]
 }
@@ -413,6 +414,22 @@ model NotificationPreference {
   frequency        NotificationFrequency @default(instant)
   unsubscribeToken String                @unique
   updatedAt        DateTime              @updatedAt
+}
+
+/// A browser Web Push (VAPID) subscription (OB-031). One row per browser/device
+/// a user has opted in from; `endpoint` is the push service URL and the keys
+/// (`p256dh`, `auth`) encrypt the payload. Expired/unsubscribed endpoints are
+/// pruned when the push service reports them gone (404/410).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Free "Daily Tips" hub (OB-150): admin-curated "bets of the day" shown

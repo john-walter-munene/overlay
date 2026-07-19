@@ -15,6 +15,11 @@ import {
   type FullProfile,
   type NotificationPreferences,
 } from '../../lib/auth';
+import {
+  isPushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../../lib/push';
 import { formStyles } from '../formStyles';
 import AvatarPicker from '../AvatarPicker';
 
@@ -54,9 +59,14 @@ export default function AccountPage() {
 
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [prefsMsg, setPrefsMsg] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushSupported, setPushSupported] = useState(true);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  useEffect(() => {
+    setPushSupported(isPushSupported());
+  }, []);
   useEffect(() => {
     (async () => {
       const p = await getFullProfile();
@@ -130,6 +140,30 @@ export default function AccountPage() {
     } catch (err) {
       setPrefs(previous);
       setPrefsMsg(err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
+  /**
+   * Toggling push both saves the preference and (de)registers this browser with
+   * the Push API so alerts actually reach the device. If the browser opt-in
+   * fails (unsupported / permission denied) we surface the reason and leave the
+   * preference off.
+   */
+  async function togglePush(enabled: boolean) {
+    setPrefsMsg(null);
+    setPushBusy(true);
+    try {
+      if (enabled) {
+        await subscribeToPush();
+        await savePrefs({ pushEnabled: true });
+      } else {
+        await unsubscribeFromPush();
+        await savePrefs({ pushEnabled: false });
+      }
+    } catch (err) {
+      setPrefsMsg(err instanceof Error ? err.message : 'Failed to update push');
+    } finally {
+      setPushBusy(false);
     }
   }
 
@@ -329,10 +363,16 @@ export default function AccountPage() {
                 <input
                   type="checkbox"
                   checked={prefs.pushEnabled}
-                  onChange={(e) => savePrefs({ pushEnabled: e.target.checked })}
+                  disabled={pushBusy}
+                  onChange={(e) => togglePush(e.target.checked)}
                 />
                 Push notifications
               </label>
+              {!pushSupported ? (
+                <p style={labelStyle}>
+                  Push isn&apos;t supported in this browser.
+                </p>
+              ) : null}
               <label style={{ display: 'grid', gap: '0.3rem' }}>
                 <span style={labelStyle}>New-pick delivery</span>
                 <select
