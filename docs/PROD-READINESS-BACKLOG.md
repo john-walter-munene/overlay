@@ -259,14 +259,15 @@
 
 ## 5. Picks & Integrity
 
-### OB-035 — DB-level pick immutability (append-only enforcement)
+### OB-035 — DB-level pick immutability (append-only enforcement) — ✅ Done
 **Category:** Integrity · **Priority:** P0
 **Description:** ARCHITECTURE.md mandates DB-enforced immutability; today it's app-layer only. Add a Postgres trigger/rule preventing UPDATE of core pick fields post-lock (only settlement fields writable, and only once).
+**Status:** Shipped in migration `20260719130000_pick_immutability_trigger` — a `BEFORE UPDATE` trigger (`pick_enforce_immutability`) on `Pick`.
 **Acceptance criteria:**
-- [ ] Direct SQL UPDATE of core fields (market/selection/odds/hash/nonce/lockedAt) is rejected.
-- [ ] Settlement fields writable only on pending→terminal transition.
+- [x] Direct SQL UPDATE of core fields (market/selection/odds/hash/nonce/lockedAt) is rejected.
+- [x] Settlement fields writable only on pending→terminal transition (closing-line capture while pending and the one-time CLV write remain permitted; a settled pick can't be re-graded or un-settled).
 **Tests:**
-- [ ] Integration: attempt to mutate a locked pick's odds fails at DB layer.
+- [x] Integration: attempt to mutate a locked pick's odds fails at DB layer (`apps/api/src/modules/picks/immutability.itest.ts`).
 
 ### OB-036 — Pick hash verification endpoint & public proof
 **Category:** Integrity · **Priority:** P1

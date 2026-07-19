@@ -11,7 +11,7 @@
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Foundations (repo, auth, vendor spike) | ✅ Built (auth on Supabase; live vendor key pending — OB-045) |
-| 1 | Pick engine (lock, settlement, CLV) | ✅ Built (DB immutability trigger pending — OB-035) |
+| 1 | Pick engine (lock, settlement, CLV) | ✅ Built (DB immutability trigger shipped — OB-035) |
 | 2 | Stats & leaderboard | ✅ Built |
 | 3 | Monetization (subs, payouts, notifications) | ✅ Built (Stripe live; crypto/mobile-money added; web push pending) |
 | 3.5 | Global reach (multi-currency, free Daily Tips, GDPR) | ✅ Built (added post-v1) |
@@ -44,7 +44,7 @@ p0-vendor-spike ─▶ p0-foundations ─▶ p1-pick-engine ─▶ p2-stats-lead
 
 ## Phase 1 — Pick engine
 
-**Status:** ✅ Built. Pick lock, settlement worker, and CLV all run automatically. Immutability is app-layer today; the DB-level trigger is pending (OB-035).
+**Status:** ✅ Built. Pick lock, settlement worker, and CLV all run automatically. Immutability is enforced both app-side and at the DB layer via the `pick_enforce_immutability` trigger (OB-035).
 
 **Work**
 - Pick submission + lock: `SHA256(pick_payload + nonce)` + trusted timestamp + immutability guarantees.
@@ -98,7 +98,7 @@ p0-vendor-spike ─▶ p0-foundations ─▶ p1-pick-engine ─▶ p2-stats-lead
 
 ## Phase 4 — Hardening & launch
 
-**Status:** 🟡 In progress. The full, issue-ready checklist lives in `PROD-READINESS-BACKLOG.md` (`OB-###`) — highlights: DB-level pick immutability (OB-035), live sports vendor (OB-045), Stripe webhook/Connect completion (OB-060/040), web push (OB-031), Sentry (OB-090), integration/e2e tests (OB-110–112), deploy hardening (OB-100–105).
+**Status:** 🟡 In progress. The full, issue-ready checklist lives in `PROD-READINESS-BACKLOG.md` (`OB-###`) — highlights: live sports vendor (OB-045), Stripe webhook/Connect completion (OB-060/040), web push (OB-031), Sentry (OB-090), integration/e2e tests (OB-110–112), deploy hardening (OB-100–105).
 
 **Work**
 - Security review: hash integrity, access control, webhook signature verification.
