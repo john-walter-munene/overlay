@@ -242,6 +242,65 @@ export default async function TipsterPage({
         )}
       </section>
 
+      {s && s.liveSampleSize > 0 ? (
+        <section
+          aria-label="Live / in-play record"
+          style={{
+            margin: '1.5rem 0',
+            padding: '1.25rem',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <span
+              title="In-play (after kickoff) picks. Excluded from CLV and scored separately from the pre-match record above — never blended."
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '0.05rem 0.4rem',
+                borderRadius: 999,
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                color: 'var(--danger)',
+                border: '1px solid var(--danger)',
+              }}
+            >
+              <span aria-hidden>●</span> Live
+            </span>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>In-play record</h2>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+              gap: '1rem',
+            }}
+          >
+            <Stat label="Live yield" value={`${s.liveYield.toFixed(1)}%`} />
+            <Stat
+              label="Live win rate"
+              value={`${(s.liveWinRate * 100).toFixed(0)}%`}
+            />
+            <Stat label="Live picks" value={`${s.liveSampleSize}`} />
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '1rem 0 0' }}>
+            Placed after kickoff, so they carry no closing-line value and are kept
+            separate from the pre-match record above.
+          </p>
+        </section>
+      ) : null}
+
       {clv.sampleSize > 0 ? (
         <section style={{ marginTop: '2rem' }}>
           <div

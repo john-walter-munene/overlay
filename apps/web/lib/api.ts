@@ -221,6 +221,11 @@ export interface TipsterStats {
   roi: number;
   maxDrawdown: number;
   currentStreak: number;
+  // Live / in-play book (OB-039), materialized separately so it is never
+  // blended into the pre-match headline above.
+  liveYield: number;
+  liveWinRate: number;
+  liveSampleSize: number;
 }
 
 export interface TipsterProfile {
