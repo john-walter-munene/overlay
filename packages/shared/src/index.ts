@@ -11,4 +11,5 @@ export * from './countries.ts';
 export * from './currencies.ts';
 export * from './grading.ts';
 export * from './daily-tips.ts';
+export * from './announcement-schedule.ts';
 export * from './odds.ts';

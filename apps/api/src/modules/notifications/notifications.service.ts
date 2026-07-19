@@ -4,9 +4,9 @@ import { NOTIFIER, type Notifier } from './notifier.interface';
 import {
   dispatchNewPickWithPreferences,
   dispatchDailyDigests,
-  defaultPreference,
   generateUnsubscribeToken,
   groupDigestByRecipient,
+  loadSubscriberRecipients,
   type DigestFrequency,
   type NotificationPreference as PreferenceValues,
   type PreferenceRecipient,
@@ -136,36 +136,10 @@ export class NotificationsService {
    * rather than awaited inline; the interface stays the same.
    */
   async notifyNewPick(pick: NewPickNotification): Promise<void> {
-    const subs = await this.prisma.subscription.findMany({
-      where: { tipsterId: pick.tipsterId, status: 'active' },
-      include: { user: { include: { notificationPreference: true } } },
-    });
-
-    // Ensure every subscriber has a preference row so unsubscribe tokens exist.
-    const missing = subs.filter((s) => !s.user.notificationPreference);
-    const created = new Map<string, PreferenceValues>();
-    if (missing.length > 0) {
-      const rows = missing.map((s) => ({
-        userId: s.userId,
-        unsubscribeToken: generateUnsubscribeToken(),
-      }));
-      await this.prisma.notificationPreference.createMany({
-        data: rows,
-        skipDuplicates: true,
-      });
-      for (const r of rows) {
-        created.set(r.userId, defaultPreference(r.unsubscribeToken));
-      }
-    }
-
-    const recipients: PreferenceRecipient[] = subs.map((s) => ({
-      userId: s.userId,
-      email: s.user.email,
-      preference: s.user.notificationPreference
-        ? this.toValues(s.user.notificationPreference)
-        : created.get(s.userId) ?? defaultPreference(generateUnsubscribeToken()),
-    }));
-
+    const recipients = await loadSubscriberRecipients(
+      this.prisma,
+      pick.tipsterId,
+    );
     const template = newPickDigestEmail(pick);
     await dispatchNewPickWithPreferences(
       this.notifier,

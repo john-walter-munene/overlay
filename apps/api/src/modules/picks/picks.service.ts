@@ -17,6 +17,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { canPublishPicks } from '../tipsters/onboarding';
 import { CreatePickDto } from './dto/create-pick.dto';
 import { buildSubscriberFeed, entitledTipsterIds, toPickRow, type FeedPick } from './feed';
+import { evaluatePickCutoff, resolveCutoffConfig } from './cutoff';
 
 @Injectable()
 export class PicksService {
@@ -31,9 +32,10 @@ export class PicksService {
   }
 
   /**
-   * Submit and LOCK a pick. Rejects picks on events that have already started,
-   * stamps a tamper-evident hash + server timestamp, and writes an audit entry.
-   * The pick is append-only afterwards (see docs/ARCHITECTURE.md §4).
+   * Submit and LOCK a pick. Rejects picks on events past the configurable
+   * cutoff before kickoff (server-clock authoritative) or with missing/invalid
+   * start times, stamps a tamper-evident hash + server timestamp, and writes an
+   * audit entry. The pick is append-only afterwards (see docs/ARCHITECTURE.md §4).
    */
   async createLockedPick(tipsterId: string, dto: CreatePickDto) {
     // Gate publishing on completed onboarding (OB-020): a tipster can't lock
@@ -52,8 +54,13 @@ export class PicksService {
       where: { id: dto.eventId },
     });
     if (!event) throw new NotFoundException('Event not found');
-    if (event.startTime.getTime() <= Date.now()) {
-      throw new BadRequestException('Event has already started; pick rejected');
+    const timing = evaluatePickCutoff(
+      event.startTime,
+      Date.now(),
+      resolveCutoffConfig(),
+    );
+    if (!timing.ok) {
+      throw new BadRequestException(timing.reason);
     }
 
     const payload: PickPayload = {

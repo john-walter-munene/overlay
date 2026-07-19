@@ -36,6 +36,6 @@ import { PrismaService } from '../../prisma.service';
       },
     },
   ],
-  exports: [NotificationsService, PushService],
+  exports: [NotificationsService, PushService, NOTIFIER],
 })
 export class NotificationsModule {}

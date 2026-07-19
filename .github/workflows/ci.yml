@@ -92,6 +92,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # The announcements integration tests load code that imports the built
+      # `@overlay/shared` package (schedule/timezone maths), so build it first.
+      - run: npm run build -w @overlay/shared
       - run: npm run prisma:generate
       # Apply all migrations (incl. the funds-ledger table) to the service DB.
       - run: npm run db:deploy

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { stripHtml } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
 import {
   filterAndRankTipsters,
@@ -157,9 +158,14 @@ export class TipstersService {
 
   /** Update the caller's own tipster profile. */
   updateProfile(tipsterId: string, data: UpdateTipsterInput) {
+    // Defense-in-depth: the bio is free-form, user-generated content shown on
+    // the public profile. Strip any HTML so no markup/script can ever be stored
+    // and later rendered (guards against stored XSS regardless of the client).
+    const sanitized: UpdateTipsterInput =
+      data.bio === undefined ? data : { ...data, bio: stripHtml(data.bio) };
     return this.prisma.tipster.update({
       where: { userId: tipsterId },
-      data,
+      data: sanitized,
     });
   }
 

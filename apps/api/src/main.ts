@@ -23,6 +23,13 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(helmet());
 
+  // Cap request body sizes (OB-081) so oversized payloads are rejected early.
+  // useBodyParser preserves the rawBody capture enabled above (needed for
+  // Stripe webhook signature verification).
+  const bodyLimit = process.env.MAX_BODY_SIZE ?? '256kb';
+  app.useBodyParser('json', { limit: bodyLimit });
+  app.useBodyParser('urlencoded', { limit: bodyLimit, extended: true });
+
   // Serve locally-stored avatars (dev fallback when Supabase Storage isn't
   // configured). In production avatars live in a public Supabase bucket, so
   // this directory is typically empty. Not affected by the global 'api' prefix.
@@ -55,7 +62,17 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  // Global input validation (OB-081): strip unknown properties, reject payloads
+  // that carry properties outside the DTO allowlist, coerce/transform to the
+  // declared types. Combined with the body-parser size limits above, this
+  // rejects oversized/malformed payloads before they reach handlers.
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
   app.useGlobalFilters(new AllExceptionsFilter());
   app.enableShutdownHooks();
 

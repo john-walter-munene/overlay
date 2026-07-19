@@ -82,32 +82,49 @@ enum BillingInterval {
   monthly
 }
 
+/// How often a tip-drop schedule announcement fires (OB-034).
+/// `one_off` is a single dated drop; `daily`/`weekly` recur at a wall-clock
+/// time in the announcement's timezone.
+enum AnnouncementRecurrence {
+  one_off
+  daily
+  weekly
+}
+
+/// Lifecycle of a tip-drop schedule announcement (OB-034).
+enum AnnouncementStatus {
+  active
+  canceled
+}
+
 model User {
-  id             String         @id @default(cuid())
-  role           Role           @default(user)
-  email          String         @unique
+  id             String   @id @default(cuid())
+  role           Role     @default(user)
+  email          String   @unique
   // User-chosen public handle (unique, lowercased). Optional until set.
-  username       String?        @unique
+  username       String?  @unique
   // Supabase owns authentication; passwordHash is legacy/optional.
   passwordHash   String?
-  supabaseUserId String?        @unique
+  supabaseUserId String?  @unique
   // Optional profile picture (full public URL). Null falls back to a generated
   // avatar derived from the username in the UI.
   avatarUrl      String?
-  createdAt      DateTime       @default(now())
+  createdAt      DateTime @default(now())
 
-  tipster       Tipster?
-  subscriptions Subscription[]
-  articles      Article[]
+  tipster                Tipster?
+  subscriptions          Subscription[]
+  articles               Article[]
   notificationPreference NotificationPreference?
   pushSubscriptions PushSubscription[]
   reportsMade   TipsterReport[] @relation("ReportsMade")
   follows       Follow[]
+  reportsMade            TipsterReport[]         @relation("ReportsMade")
+  follows                Follow[]
 }
 
 model Tipster {
-  userId                 String   @id
-  user                   User     @relation(fields: [userId], references: [id])
+  userId                 String          @id
+  user                   User            @relation(fields: [userId], references: [id])
   // Public identity (OB-020): shown on the profile / marketplace card.
   displayName            String?
   country                String?
@@ -117,7 +134,7 @@ model Tipster {
   contactValue           String?
   bio                    String?
   sports                 String[]
-  subscriptionPriceCents Int      @default(0)
+  subscriptionPriceCents Int             @default(0)
   // Billing cadence the subscription price is charged on (OB-020).
   billingInterval        BillingInterval @default(monthly)
   stripeAccountId        String?
@@ -134,8 +151,8 @@ model Tipster {
   // verification progress. Publishing is gated until every required step
   // (profile, sports, bio, pricing, Stripe) is complete; verification is an
   // optional trust step that unlocks the "verified" badge.
-  stripeOnboarded        Boolean  @default(false)
-  identityVerified       Boolean  @default(false)
+  stripeOnboarded        Boolean         @default(false)
+  identityVerified       Boolean         @default(false)
   // Social / "digital identity" handles surfaced on the verified profile.
   socialX                String?
   socialInstagram        String?
@@ -145,8 +162,8 @@ model Tipster {
   identityDocPath        String?
   identityDocName        String?
   identityDocSubmittedAt DateTime?
-  status                 String   @default("active")
-  createdAt              DateTime @default(now())
+  status                 String          @default("active")
+  createdAt              DateTime        @default(now())
 
   picks         Pick[]
   subscriptions Subscription[]
@@ -154,6 +171,7 @@ model Tipster {
   payouts       Payout[]
   reports       TipsterReport[]
   followers     Follow[]
+  announcements TipDropAnnouncement[]
 }
 
 model Event {
@@ -175,11 +193,11 @@ model Event {
 /// Append-only. Core fields are immutable after `lockedAt`.
 /// Only the settlement worker writes settlement fields (status/result/closingOdds/clv/settledAt).
 model Pick {
-  id         String  @id @default(cuid())
-  tipsterId  String
-  tipster    Tipster @relation(fields: [tipsterId], references: [userId])
-  eventId    String
-  event      Event   @relation(fields: [eventId], references: [id])
+  id        String  @id @default(cuid())
+  tipsterId String
+  tipster   Tipster @relation(fields: [tipsterId], references: [userId])
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id])
 
   market     String
   selection  String
@@ -359,28 +377,28 @@ model NewsletterSubscriber {
 /// SEO content surface (blog / strategy guides). Drives organic traffic.
 /// Slug is immutable-by-convention once published so external links don't rot.
 model Article {
-  id              String        @id @default(cuid())
-  slug            String        @unique
-  title           String
-  excerpt         String
-  body            String // markdown
-  coverImage      String?
-  tags            String[]
-  status          ArticleStatus @default(draft)
-  category        ArticleCategory @default(content)
-  readingMinutes  Int           @default(1)
+  id             String          @id @default(cuid())
+  slug           String          @unique
+  title          String
+  excerpt        String
+  body           String // markdown
+  coverImage     String?
+  tags           String[]
+  status         ArticleStatus   @default(draft)
+  category       ArticleCategory @default(content)
+  readingMinutes Int             @default(1)
 
   // SEO overrides (fall back to title/excerpt when null)
-  seoTitle        String?
-  seoDescription  String?
-  canonicalUrl    String?
+  seoTitle       String?
+  seoDescription String?
+  canonicalUrl   String?
 
-  authorId        String
-  author          User          @relation(fields: [authorId], references: [id])
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
 
-  publishedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([status, publishedAt])
   @@index([category, status, publishedAt])
@@ -442,3 +460,43 @@ model FreeTip {
   @@index([tipDate])
 }
 
+/// Tipster-authored tip-drop schedule announcement (OB-034): a lightweight,
+/// pick-free heads-up telling subscribers *when* tips will drop (e.g. "Daily
+/// tips at 18:00 EAT"). One-off or recurring, always with an explicit IANA
+/// timezone so the wall-clock time resolves to the correct instant everywhere.
+/// Publishing fans out to active subscribers honouring notification
+/// preferences; announcements never carry gated pick content. `announcedAt`
+/// makes the publish fan-out idempotent; `reminderSentAt` guards the optional
+/// pre-drop reminder.
+model TipDropAnnouncement {
+  id              String                 @id @default(cuid())
+  tipsterId       String
+  tipster         Tipster                @relation(fields: [tipsterId], references: [userId])
+  /// Short headline, e.g. "Daily tips at 18:00 EAT".
+  title           String
+  /// Optional extra context shown under the title (never gated pick content).
+  message         String?
+  /// IANA timezone the wall-clock time is expressed in, e.g. "Africa/Nairobi".
+  timezone        String
+  recurrence      AnnouncementRecurrence @default(one_off)
+  /// Wall-clock time of day in `timezone`, as "HH:MM" (24h).
+  timeOfDay       String
+  /// For `one_off`: the calendar day of the drop (date-only, in `timezone`).
+  dropDate        DateTime?              @db.Date
+  /// For `weekly`: day of week (0 = Sunday … 6 = Saturday).
+  weekday         Int?
+  /// Optional pre-drop reminder lead time in minutes (null = no reminder).
+  reminderMinutes Int?
+  /// Resolved next drop instant (UTC); recomputed on every write.
+  nextDropAt      DateTime?
+  status          AnnouncementStatus     @default(active)
+  /// Set when the publish fan-out has been sent (idempotency guard).
+  announcedAt     DateTime?
+  /// Set when the pre-drop reminder fan-out has been sent (idempotency guard).
+  reminderSentAt  DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([tipsterId, status])
+  @@index([status, nextDropAt])
+}

@@ -13,6 +13,7 @@ import { EventsModule } from './modules/events/events.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { FreeTipsModule } from './modules/free-tips/free-tips.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -46,6 +47,7 @@ import { SettlementModule } from './workers/settlement.module';
     SubscriptionsModule,
     PayoutsModule,
     NotificationsModule,
+    AnnouncementsModule,
     ArticlesModule,
     FreeTipsModule,
     AdminModule,

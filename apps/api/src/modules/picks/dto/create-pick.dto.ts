@@ -10,6 +10,7 @@ import { SUPPORTED_MARKETS } from '@overlay/shared';
 
 export class CreatePickDto {
   @IsString()
+  @MaxLength(64)
   eventId!: string;
 
   @IsString()
@@ -17,6 +18,7 @@ export class CreatePickDto {
   market!: string;
 
   @IsString()
+  @MaxLength(160)
   selection!: string;
 
   @IsNumber()
