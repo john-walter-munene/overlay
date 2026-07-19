@@ -562,9 +562,9 @@
 **Category:** Security · **Priority:** P0
 **Description:** Remove `change-me` defaults for `JWT_SECRET`, `PICK_HASH_PEPPER`; require strong secrets from env; document rotation (esp. pepper implications).
 **Acceptance criteria:**
-- [ ] App refuses to boot in prod with default/weak secrets; rotation runbook exists.
+- [x] App refuses to boot in prod with default/weak secrets; rotation runbook exists (`docs/RUNBOOK-SECRETS.md`).
 **Tests:**
-- [ ] Unit: boot guard rejects default secrets when NODE_ENV=production.
+- [x] Unit: boot guard rejects default secrets when NODE_ENV=production (`apps/api/src/common/config.test.ts`).
 
 ### OB-083 — Security headers & CORS hardening
 **Category:** Security · **Priority:** P1
