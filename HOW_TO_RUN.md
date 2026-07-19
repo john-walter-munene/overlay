@@ -102,6 +102,13 @@ npm run db:seed             # admin user, 3 blog articles + 3 upcoming events
 The seed prints the admin credentials (defaults: `admin@overlay.local` /
 `change-me-now` — override with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
 
+### Backups & disaster recovery
+
+`npm run db:backup` writes a compressed `pg_dump` archive, and
+`npm run db:restore-drill` proves a backup restores cleanly into a throwaway
+scratch database. Scheduled backups and the full recovery procedure live in
+[docs/DR-RUNBOOK.md](docs/DR-RUNBOOK.md).
+
 ---
 
 ## 6. Run the apps

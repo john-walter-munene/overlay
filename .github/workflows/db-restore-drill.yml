@@ -1,0 +1,81 @@
+name: DB restore drill
+
+# OB-094: prove our backups are actually restorable. Spins up an ephemeral
+# Postgres, applies the real Prisma migrations + seed, then runs the full
+# backup → scratch-restore → verify loop (scripts/db-restore-drill.sh). A
+# broken backup/restore path fails this job. See docs/DR-RUNBOOK.md.
+
+on:
+  # Weekly automated drill so a regression in the backup/restore path is caught
+  # even when nobody touches these files.
+  schedule:
+    - cron: "17 4 * * 1" # Mondays 04:17 UTC
+  # Run on changes to the backup tooling itself.
+  push:
+    branches: [main]
+    paths:
+      - "scripts/db-backup.sh"
+      - "scripts/db-restore.sh"
+      - "scripts/db-restore-drill.sh"
+      - "prisma/**"
+      - ".github/workflows/db-restore-drill.yml"
+  pull_request:
+    paths:
+      - "scripts/db-backup.sh"
+      - "scripts/db-restore.sh"
+      - "scripts/db-restore-drill.sh"
+      - ".github/workflows/db-restore-drill.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: db-restore-drill-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    name: Backup → restore into scratch DB
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: overlay
+          POSTGRES_PASSWORD: overlay
+          POSTGRES_DB: overlay
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U overlay"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # ephemeral, non-secret local credentials for the throwaway service DB
+      DATABASE_URL: postgresql://overlay:overlay@localhost:5432/overlay?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # postgresql-client-16 gives us pg_dump/pg_restore/psql that match the
+      # server so dumps restore without a version mismatch.
+      - name: Install postgresql-client-16
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+      - run: npm ci
+      - run: npm run build -w @overlay/shared
+      - run: npm run prisma:generate
+      # Give the drill a realistic schema + rows to back up and restore.
+      - name: Seed database (migrations + seed)
+        run: |
+          npm run db:deploy
+          npm run db:seed
+      - name: Run restore drill
+        run: npm run db:restore-drill

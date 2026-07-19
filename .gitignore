@@ -32,6 +32,9 @@ Thumbs.db
 
 # Test
 coverage/
+
+# Database backups (local pg_dump archives / restore-drill output)
+backups/
 # Squad: ignore runtime state (logs, inbox, sessions)
 # Note: .squad/casting/* is identity and MUST be committed to main, not ignored
 .squad/orchestration-log/
