@@ -39,4 +39,14 @@ export interface SportsDataProvider {
 
   /** Final result for a finished event, or null if not yet settled. */
   getResult(vendorEventId: string): Promise<EventResult | null>;
+
+  /**
+   * Current in-play score for a live event, or null if unknown / not started
+   * (OB-039). Used to gate out live picks on markets the running game has
+   * already decided. Optional: providers that can't surface running scores omit
+   * it, and the timing gate simply skips the "already decided" check.
+   */
+  getLiveScore?(
+    vendorEventId: string,
+  ): Promise<{ home: number; away: number } | null>;
 }

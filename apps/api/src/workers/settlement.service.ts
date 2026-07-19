@@ -37,6 +37,7 @@ export class SettlementService {
     let settledPicks = 0;
     try {
       await this.captureClosingOdds();
+      await this.refreshLiveScores();
       const affected = await this.settlePicks();
       settledPicks = this.lastSettledCount;
       await this.computeClv();
@@ -91,6 +92,32 @@ export class SettlementService {
       await this.prisma.event.update({
         where: { id: event.id },
         data: { closingCapturedAt: new Date() },
+      });
+    }
+  }
+
+  /**
+   * Refresh the in-play score of live events that still have pending picks
+   * (OB-039). The timing gate uses this score to reject live picks on markets
+   * the running game has already decided, so it must reflect the latest state.
+   * No-op when the provider can't surface running scores.
+   */
+  async refreshLiveScores(): Promise<void> {
+    if (!this.provider.getLiveScore) return;
+
+    const events = await this.prisma.event.findMany({
+      where: {
+        startTime: { lte: new Date() },
+        status: { not: 'finished' },
+        picks: { some: { status: 'pending' } },
+      },
+    });
+    for (const event of events) {
+      const score = await this.provider.getLiveScore(event.vendorEventId);
+      if (!score) continue;
+      await this.prisma.event.update({
+        where: { id: event.id },
+        data: { liveHomeScore: score.home, liveAwayScore: score.away },
       });
     }
   }

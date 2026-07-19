@@ -40,9 +40,6 @@ const PEPPER = 'itest-pepper';
 /** Mirror of PicksService.createLockedPick's timing gate + hash-lock + insert. */
 async function lockPick(pickType: PickType, over: Partial<PickPayload> = {}) {
   const event = await prisma.event.findUniqueOrThrow({ where: { id: eventId } });
-  const timing = evaluatePickTiming(pickType, event);
-  if (!timing.ok) throw new Error(timing.reason);
-
   const payload: PickPayload = {
     tipsterId,
     eventId,
@@ -52,6 +49,12 @@ async function lockPick(pickType: PickType, over: Partial<PickPayload> = {}) {
     stakeUnits: 1,
     ...over,
   };
+  const timing = evaluatePickTiming(pickType, event, Date.now(), {
+    market: payload.market,
+    selection: payload.selection,
+  });
+  if (!timing.ok) throw new Error(timing.reason);
+
   const nonce = generateNonce();
   const hash = hashPick(payload, nonce, PEPPER);
 
@@ -176,4 +179,31 @@ test('a live pick is graded on the final result and its core fields stay immutab
       graded.hash,
     ),
   );
+});
+
+test('a live pick on a market the running score has already decided is rejected', async () => {
+  // In-play score 2-1 (3 goals): Over 2.5 and BTTS are already settled.
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { liveHomeScore: 2, liveAwayScore: 1 },
+  });
+
+  await assert.rejects(
+    () => lockPick('live', { market: 'totals', selection: 'over 2.5' }),
+    /already decided/,
+  );
+  await assert.rejects(
+    () => lockPick('live', { market: 'btts', selection: 'yes' }),
+    /already decided/,
+  );
+
+  // A market that can still flip (the winner) stays open and is accepted.
+  const open = await lockPick('live', { market: '1X2', selection: 'away' });
+  assert.equal(open.pickType, 'live');
+
+  // Clear the in-play score so it can't leak into other assertions.
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { liveHomeScore: null, liveAwayScore: null },
+  });
 });

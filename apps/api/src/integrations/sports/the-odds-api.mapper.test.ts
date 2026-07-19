@@ -4,6 +4,7 @@ import {
   gradeFromScores,
   mapEvents,
   mapOdds,
+  scoresOf,
   selectionForOutcome,
   type OddsApiEventOdds,
   type OddsApiScoreEvent,
@@ -181,4 +182,20 @@ test('gradeFromScores: not completed → void', () => {
 
 test('gradeFromScores: unsupported market → void', () => {
   assert.equal(gradeFromScores(score(2, 1), 'totals', 'over'), 'void');
+});
+
+test('scoresOf: extracts running in-play scores (even when not completed)', () => {
+  assert.deepEqual(scoresOf(score(2, 1, false)), { home: 2, away: 1 });
+  assert.deepEqual(scoresOf(score(0, 0)), { home: 0, away: 0 });
+});
+
+test('scoresOf: null when scores are missing or unparseable', () => {
+  assert.equal(scoresOf({ ...score(1, 0), scores: null }), null);
+  assert.equal(
+    scoresOf({
+      ...score(1, 0),
+      scores: [{ name: 'H', score: 'x' }],
+    }),
+    null,
+  );
 });

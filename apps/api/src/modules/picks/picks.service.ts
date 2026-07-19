@@ -19,7 +19,6 @@ import { canPublishPicks } from '../tipsters/onboarding';
 import { CreatePickDto } from './dto/create-pick.dto';
 import { evaluatePickTiming } from './cutoff';
 import { buildSubscriberFeed, entitledTipsterIds, toPickRow, type FeedPick } from './feed';
-import { evaluatePickCutoff, resolveCutoffConfig } from './cutoff';
 
 @Injectable()
 export class PicksService {
@@ -57,15 +56,14 @@ export class PicksService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    // Pre-match picks honour the OB-038 kickoff cutoff; live/in-play picks
-    // (OB-039) bypass it but are still rejected once the event has finished.
+    // Pre-match picks honour the OB-038 configurable kickoff cutoff; live/
+    // in-play picks (OB-039) bypass it but are rejected once the event has
+    // finished or the running score has already decided the picked market.
     const pickType: PickType = dto.pickType ?? 'pre_match';
-    const timing = evaluatePickTiming(pickType, event, Date.now());
-    const timing = evaluatePickCutoff(
-      event.startTime,
-      Date.now(),
-      resolveCutoffConfig(),
-    );
+    const timing = evaluatePickTiming(pickType, event, Date.now(), {
+      market: dto.market,
+      selection: dto.selection,
+    });
     if (!timing.ok) {
       throw new BadRequestException(timing.reason);
     }

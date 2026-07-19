@@ -191,6 +191,12 @@ model Event {
   status            String    @default("scheduled")
   closingCapturedAt DateTime?
 
+  // Latest known in-play score (OB-039). Populated from the provider score feed
+  // while the game is live; `null` until a score is observed. Used by the
+  // timing gate to reject live picks on markets the game has already decided.
+  liveHomeScore Int?
+  liveAwayScore Int?
+
   picks Pick[]
 
   @@index([startTime])

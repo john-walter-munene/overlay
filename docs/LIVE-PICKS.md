@@ -74,6 +74,32 @@ Live picks bypass the kickoff cutoff but are still rejected once the event is
 `finished` — you cannot place an in‑play wager on a game that is already over.
 The gate is a pure function (`picks/cutoff.ts`) so it is unit‑tested directly.
 
+#### Already‑decided markets
+
+A live pick must be on an outcome that is still genuinely open. Because goals
+only ever accumulate, some markets become a foregone conclusion mid‑game — you
+cannot bet **Over 2.5** once three goals are in, **BTTS** once both sides have
+scored, or a **correct score** the game has already run past. Placing a pick on
+such a market is a settled bet, not a wager, so the gate rejects it (in either
+direction — an already‑won outcome is refused just like an already‑lost one).
+
+- The rule is a pure, unit‑tested function, `isMarketDecidedInPlay(market,
+  selection, homeScore, awayScore)` (shared `grading.ts`). It returns `true`
+  only when the final outcome is fixed regardless of the rest of the game:
+  monotonic goal markets (`totals`, `team_totals`), `btts` once both teams have
+  scored, and `correct_score` once the game has passed the target.
+- Winner‑based markets (`1X2`, `moneyline`, `dnb`, `double_chance`, `spreads`)
+  and parity (`odd_even`) can always still flip while the game is live, so they
+  are never treated as decided in‑play.
+- The gate reads the latest in‑play score from the `Event`
+  (`liveHomeScore`/`liveAwayScore`), refreshed each settlement cycle from the
+  provider score feed (`SettlementService.refreshLiveScores`). When no score is
+  known yet the check is skipped and the pick is allowed on timing alone.
+
+Half‑time / period markets (e.g. "no goals in the first half") are not currently
+gradeable — they are absent from `SUPPORTED_MARKETS` — so they are out of scope
+for this check until those markets are added.
+
 ## 4. CLV & stats treatment (never blended)
 
 - **CLV is excluded for live picks.** `pickClv` returns `null` for any pick with

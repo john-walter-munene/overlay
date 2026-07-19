@@ -129,6 +129,23 @@ export function mapOdds(raw: OddsApiEventOdds): MarketOdds[] {
   return out;
 }
 
+/** Extract the current home/away score from a score event, or null if absent. */
+export function scoresOf(
+  raw: OddsApiScoreEvent,
+): { home: number; away: number } | null {
+  if (!raw.scores) return null;
+  const scoreOf = (team: string): number | null => {
+    const s = raw.scores!.find((x) => x.name === team);
+    return s ? Number(s.score) : null;
+  };
+  const home = scoreOf(raw.home_team);
+  const away = scoreOf(raw.away_team);
+  if (home === null || away === null || Number.isNaN(home) || Number.isNaN(away)) {
+    return null;
+  }
+  return { home, away };
+}
+
 /** Grade a selection from final scores (delegates to the shared grader). */
 export function gradeFromScores(
   raw: OddsApiScoreEvent,
