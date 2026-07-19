@@ -14,6 +14,7 @@
     "test:shared": "node --experimental-strip-types --test \"packages/shared/src/*.test.ts\"",
     "test:unit": "node --experimental-strip-types --test \"packages/shared/src/*.test.ts\" \"apps/api/src/**/*.test.ts\" \"apps/web/lib/**/*.test.ts\"",
     "test:integration": "node --experimental-strip-types --test \"apps/api/src/**/*.itest.ts\"",
+    "smoke:prod": "node --experimental-strip-types scripts/prod-smoke.ts",
     "db:up": "docker compose -f infra/docker-compose.yml up -d",
     "db:down": "docker compose -f infra/docker-compose.yml down",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
