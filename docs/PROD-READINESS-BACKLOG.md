@@ -638,9 +638,9 @@
 **Category:** Ops · **Priority:** P0
 **Description:** Automated Postgres backups, tested restore, and a documented disaster-recovery runbook.
 **Acceptance criteria:**
-- [ ] Scheduled backups; a restore has been verified; runbook exists.
+- [x] Scheduled backups; a restore has been verified; runbook exists. — see [DR-RUNBOOK.md](./DR-RUNBOOK.md), `db-backup.yml`, `db-restore-drill.yml`.
 **Tests:**
-- [ ] Drill: restore into a scratch DB succeeds (documented).
+- [x] Drill: restore into a scratch DB succeeds (documented). — `scripts/db-restore-drill.sh` / `db-restore-drill.yml`.
 
 ### OB-095 — On-call runbook & incident process
 **Category:** Ops · **Priority:** P1
