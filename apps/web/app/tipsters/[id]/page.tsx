@@ -287,6 +287,7 @@ export default async function TipsterPage({
             market: p.market,
             selection: p.selection,
             oddsAtPick: p.oddsAtPick,
+            pickType: 'pre_match',
             stakeUnits: 0,
             status: p.status,
             clv: null,

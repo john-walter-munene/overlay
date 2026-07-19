@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
-  computeTipsterStats,
+  computeSegmentedStats,
   evaluateGraduation,
   nextGraduationStatus,
   normalizeGraduationStatus,
   type SettledPick,
 } from '@overlay/shared';
-import { computeSegmentedStats, type SettledPick } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
 import { resolveGraduationThreshold } from './graduation-config';
 
@@ -55,7 +54,7 @@ export class StatsService {
       update: data,
     });
 
-    await this.evaluateGraduationFor(tipsterId, s.winRate, s.sampleSize);
+    await this.evaluateGraduationFor(tipsterId, stats.winRate, stats.sampleSize);
 
     return stats;
   }
