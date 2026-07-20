@@ -6,6 +6,7 @@
  * Plain <img> (not next/image) so no domain config is needed and it works in
  * both server and client components.
  */
+import { useRef } from 'react';
 import { generatedAvatarUrl } from '../lib/avatar';
 
 export default function Avatar({
@@ -21,11 +22,29 @@ export default function Avatar({
   alt?: string;
   style?: React.CSSProperties;
 }) {
+  // Track src changes so we only bump the cache-buster when the URL actually
+  // changes (not on every render). This prevents the browser from cancelling
+  // in-flight requests due to a constantly-changing src.
+  const versionRef = useRef(0);
+  const prevSrcRef = useRef(src);
+  if (src !== prevSrcRef.current) {
+    versionRef.current += 1;
+    prevSrcRef.current = src;
+  }
+
+  const isGenerated = !src || src.startsWith('https://api.dicebear.com/');
   const url = src && src.length > 0 ? src : generatedAvatarUrl(seed);
+
+  // Attach a unique cache-buster query param for user-uploaded avatars so the
+  // browser re-fetches the image after it has been updated on the server.
+  const imgSrc = isGenerated
+    ? url
+    : `${url}${url.includes('?') ? '&' : '?'}_v=${versionRef.current}`;
+
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={url}
+      src={imgSrc}
       alt={alt}
       width={size}
       height={size}

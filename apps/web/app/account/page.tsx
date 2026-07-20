@@ -60,6 +60,7 @@ export default function AccountPage() {
   useEffect(() => {
     (async () => {
       const p = await getFullProfile();
+      console.log("API profile", p);
       if (!p) {
         router.replace('/login');
         return;

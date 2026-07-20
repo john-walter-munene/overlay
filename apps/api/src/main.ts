@@ -28,7 +28,12 @@ async function bootstrap() {
   // this directory is typically empty. Not affected by the global 'api' prefix.
   const { join } = await import('node:path');
   const uploadsDir = process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads');
-  app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
+  app.useStaticAssets(uploadsDir, {
+  prefix: '/uploads',
+  setHeaders(res) {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  },
+});
 
   // CORS: allow the configured origins (comma-separated, trailing-slash and
   // whitespace tolerant) plus — unless disabled — any *.vercel.app origin so

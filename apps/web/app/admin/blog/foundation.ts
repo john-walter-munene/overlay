@@ -134,6 +134,27 @@ export async function updateArticle(draft: Draft) {
   return res.json().catch(() => null);
 }
 
+export async function uploadArticleCover(
+  file: File,
+): Promise<string> {
+  const formData = new FormData();
+
+  formData.append('file', file);
+
+  const res = await authFetch('/api/articles/cover-upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  await throwIfError(res);
+
+  const data = (await res.json()) as {
+    url: string;
+  };
+
+  return data.url;
+}
+
 export async function deleteArticle(id: string) {
   const res = await authFetch(`/api/articles/${id}`, {
     method: 'DELETE',

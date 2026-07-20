@@ -51,6 +51,24 @@ export async function authFetch(
   });
 }
 
+export async function authFetch(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const token = await getAccessToken();
+
+  const isFormData = init.body instanceof FormData;
+
+  return fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      ...(isFormData ? {} : { 'content-type': 'application/json' }),
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
 export async function signIn(email: string, password: string): Promise<void> {
   const { error } = await supabase().auth.signInWithPassword({
     email,

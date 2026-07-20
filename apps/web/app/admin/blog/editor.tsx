@@ -6,6 +6,7 @@ import { Draft, Status } from './foundation';
 import { Preview } from './view';
 
 // Toolbar
+
 interface ToolbarProps {
   saving: boolean;
   canSave: boolean;
@@ -45,18 +46,23 @@ export function Toolbar({ saving, canSave, onSave, onCancel, }: ToolbarProps) {
   );
 }
 
+
 // Metadata Form
+
 interface MetadataFormProps {
   draft: Draft;
   role: 'admin' | 'tipster' | null;
+
   update<K extends keyof Draft>(
     key: K,
-    value: Draft[K]
+    value: Draft[K],
   ): void;
+
+  onCoverSelect(file: File): void;
 }
 
 
-export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
+export function MetadataForm({ draft, role, update, onCoverSelect, }: MetadataFormProps) {
   return (
     <div
       style={{
@@ -77,6 +83,7 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
         />
       </label>
 
+
       {!draft.id && (
         <label>
           Slug (optional — derived from title)
@@ -92,14 +99,20 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
 
 
       <label>
-        Cover image URL
+        Cover image
         <input
-          style={formStyles.input}
-          placeholder="https://..."
-          value={draft.coverImage}
-          onChange={(e) =>
-            update('coverImage', e.target.value)
-          }
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+
+            if (file) {
+              onCoverSelect(file);
+            }
+
+            // allows selecting the same file again
+            e.target.value = '';
+          }}
         />
       </label>
 
@@ -112,11 +125,11 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
           style={{
             width: '100%',
             borderRadius: 8,
-            border:
-              '1px solid var(--border)',
+            border: '1px solid var(--border)',
           }}
         />
       )}
+
 
       <label>
         Tags (comma separated)
@@ -138,7 +151,7 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
           onChange={(e) =>
             update(
               'category',
-              e.target.value as 'content' | 'news'
+              e.target.value as 'content' | 'news',
             )
           }
         >
@@ -149,7 +162,6 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
           <option value="news">
             News
           </option>
-
         </select>
       </label>
 
@@ -162,15 +174,13 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
           onChange={(e) =>
             update(
               'status',
-              e.target.value as Status
+              e.target.value as Status,
             )
           }
         >
-
           <option value="draft">
             Draft
           </option>
-
 
           {role === 'admin' ? (
             <>
@@ -187,7 +197,6 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
               Submit for review
             </option>
           )}
-
 
           <option value="archived">
             Archived
@@ -217,7 +226,7 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
           onChange={(e) =>
             update(
               'seoDescription',
-              e.target.value
+              e.target.value,
             )
           }
         />
@@ -232,7 +241,7 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
           onChange={(e) =>
             update(
               'canonicalUrl',
-              e.target.value
+              e.target.value,
             )
           }
         />
@@ -242,22 +251,20 @@ export function MetadataForm({ draft, role, update, }: MetadataFormProps) {
   );
 }
 
+
 // Markdown Editor
+
 interface MarkdownEditorProps {
   body: string;
 
   update<K extends keyof Draft>(
     key: K,
-    value: Draft[K]
+    value: Draft[K],
   ): void;
 }
 
 
-export function MarkdownEditor({
-  body,
-  update,
-}: MarkdownEditorProps) {
-
+export function MarkdownEditor({ body, update, }: MarkdownEditorProps) {
   return (
     <textarea
       style={{
@@ -266,28 +273,29 @@ export function MarkdownEditor({
         fontFamily: 'monospace',
         resize: 'vertical',
       }}
-
       value={body}
-
       onChange={(e) =>
         update(
           'body',
-          e.target.value
+          e.target.value,
         )
       }
-
       placeholder="Write markdown here..."
     />
   );
 }
 
+
 // Workspace Tabs
+
 interface WorkspaceTabsProps {
   active: 'write' | 'preview';
+
   setActive(
-    tab: 'write' | 'preview'
+    tab: 'write' | 'preview',
   ): void;
 }
+
 
 export function WorkspaceTabs({ active, setActive, }: WorkspaceTabsProps) {
   return (
@@ -298,28 +306,25 @@ export function WorkspaceTabs({ active, setActive, }: WorkspaceTabsProps) {
         marginBottom: '1rem',
       }}
     >
-
-      {(['write', 'preview'] as const).map(
-        (tab) => (
-          <button
-            key={tab}
-            style={{
-              ...formStyles.button,
-              opacity:
-                active === tab ? 1 : 0.6,
-            }}
-            onClick={() =>setActive(tab)}
-          >
-            {tab === 'write' ? 'Editor': 'Preview'}
-          </button>
-        )
-      )}
-
+      {(['write', 'preview'] as const).map((tab) => (
+        <button
+          key={tab}
+          style={{
+            ...formStyles.button,
+            opacity: active === tab ? 1 : 0.6,
+          }}
+          onClick={() => setActive(tab)}
+        >
+          {tab === 'write' ? 'Editor' : 'Preview'}
+        </button>
+      ))}
     </div>
   );
 }
 
+
 // Editor
+
 interface EditorProps {
   draft: Draft;
   role: 'admin' | 'tipster' | null;
@@ -327,21 +332,38 @@ interface EditorProps {
 
   update<K extends keyof Draft>(
     key: K,
-    value: Draft[K]
+    value: Draft[K],
   ): void;
+
+  onCoverSelect(file: File): void;
 
   onSave(): void;
   onCancel(): void;
 }
 
 
-export function Editor({ draft, role, saving, update, onSave, onCancel, }: EditorProps) {
+export function Editor({
+  draft,
+  role,
+  saving,
+  update,
+  onCoverSelect,
+  onSave,
+  onCancel,
+}: EditorProps) {
   const [workspace, setWorkspace] = useState<'write' | 'preview'>('write');
-  const canSave = draft.title.trim().length > 0 && draft.body.trim().length > 0;
+
+  const canSave =
+    draft.title.trim().length > 0 &&
+    draft.body.trim().length > 0;
 
   return (
     <section>
-      <WorkspaceTabs active={workspace} setActive={setWorkspace} />
+
+      <WorkspaceTabs
+        active={workspace}
+        setActive={setWorkspace}
+      />
 
       <div
         style={{
@@ -359,15 +381,39 @@ export function Editor({ draft, role, saving, update, onSave, onCancel, }: Edito
             overflowY: 'auto',
           }}
         >
-          <MetadataForm draft={draft} role={role} update={update} />
-          <Toolbar saving={saving} canSave={canSave} onSave={onSave} onCancel={onCancel}/>
+
+          <MetadataForm
+            draft={draft}
+            role={role}
+            update={update}
+            onCoverSelect={onCoverSelect}
+          />
+
+          <Toolbar
+            saving={saving}
+            canSave={canSave}
+            onSave={onSave}
+            onCancel={onCancel}
+          />
+
         </aside>
 
+
         <main>
-          {workspace === 'write' ? (<MarkdownEditor body={draft.body} update={update}/>) 
-            : (<Preview body={draft.body}/>)}
+          {workspace === 'write'
+            ? (
+              <MarkdownEditor
+                body={draft.body}
+                update={update}
+              />
+            )
+            : (
+              <Preview body={draft.body} />
+            )}
         </main>
+
       </div>
+
     </section>
   );
 }
