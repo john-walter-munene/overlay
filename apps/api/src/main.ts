@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { loadDotenv } from './common/load-env';
 import { AppModule } from './app.module';
 import { validateEnv } from './common/config';
+import { createLogger } from './common/logging/logger.factory';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 import { SettlementService } from './workers/settlement.service';
 import { EventsService } from './modules/events/events.service';
@@ -16,9 +17,16 @@ async function bootstrap() {
 
   // rawBody: true preserves the exact request bytes on req.rawBody so payment
   // webhook signatures (Stripe) can be verified against the untouched payload.
+  // bufferLogs holds startup logs until the structured logger (OB-091) is
+  // installed, so even boot-time lines are emitted as JSON.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
+    bufferLogs: true,
   });
+
+  // Structured JSON logging + correlation ids (OB-091). useLogger reroutes
+  // every existing Nest `Logger` instance through this transport.
+  app.useLogger(createLogger());
 
   app.setGlobalPrefix('api');
   app.use(helmet());
