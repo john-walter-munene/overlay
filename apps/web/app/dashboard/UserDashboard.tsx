@@ -14,6 +14,7 @@ import Flag from '../Flag';
 import Avatar from '../Avatar';
 import FollowButton from '../FollowButton';
 import { useFollow } from '../FollowProvider';
+import { EmptyState } from '../EmptyState';
 
 interface Sub {
   id: string;
@@ -218,13 +219,14 @@ export default function UserDashboard() {
       {picks === null ? (
         <p style={{ color: 'var(--muted)' }}>Loading…</p>
       ) : recent.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>
-          No picks yet.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Find a tipster to subscribe to
-          </Link>
-          .
-        </p>
+        <div style={{ marginTop: '0.75rem' }}>
+          <EmptyState
+            icon="📭"
+            title="No picks yet"
+            description="Once you subscribe to a tipster, their latest picks land here."
+            actions={[{ href: '/tipsters', label: 'Find a tipster' }]}
+          />
+        </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0' }}>
           {recent.map((p) => (
@@ -267,13 +269,14 @@ export default function UserDashboard() {
       {subs === null ? (
         <p style={{ color: 'var(--muted)' }}>Loading…</p>
       ) : subs.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>
-          You’re not subscribed to anyone yet.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Browse tipsters
-          </Link>{' '}
-          and subscribe to unlock their live picks.
-        </p>
+        <div style={{ marginTop: '0.75rem' }}>
+          <EmptyState
+            icon="🎟️"
+            title="You’re not subscribed to anyone yet"
+            description="Subscribe to a tipster to unlock their live picks the moment they lock, before kickoff."
+            actions={[{ href: '/tipsters', label: 'Browse tipsters' }]}
+          />
+        </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0' }}>
           {subs.map((s) => {
@@ -338,15 +341,22 @@ export default function UserDashboard() {
       {following === null ? (
         <p style={{ color: 'var(--muted)' }}>Loading…</p>
       ) : followingOnly && followingOnly.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>
-          {shownFollowing && shownFollowing.length > 0
-            ? 'Everyone you follow is also subscribed — see them above.'
-            : "You're not following anyone yet."}{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Browse tipsters
-          </Link>{' '}
-          and follow a few to track their record for free.
-        </p>
+        <div style={{ marginTop: '0.75rem' }}>
+          <EmptyState
+            icon="👀"
+            title={
+              shownFollowing && shownFollowing.length > 0
+                ? 'Everyone you follow is also subscribed'
+                : 'You’re not following anyone yet'
+            }
+            description={
+              shownFollowing && shownFollowing.length > 0
+                ? 'See them in Subscribed above. Follow more tipsters to track their record for free.'
+                : 'Follow a few tipsters to track their public record for free — no subscription needed.'
+            }
+            actions={[{ href: '/tipsters', label: 'Browse tipsters' }]}
+          />
+        </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0' }}>
           {(followingOnly ?? []).map((f) => (

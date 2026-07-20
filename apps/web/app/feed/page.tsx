@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
 import type { FeedPick } from '../../lib/api';
+import { EmptyState } from '../EmptyState';
 
 /** How often we poll for settlement status updates (ms). */
 const POLL_MS = 30_000;
@@ -140,13 +141,14 @@ export default function FeedPage() {
       {picks === null ? (
         <p style={{ color: 'var(--muted)' }}>Loading…</p>
       ) : list.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>
-          No picks yet.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Find a tipster to subscribe to
-          </Link>{' '}
-          and their live picks will show up here.
-        </p>
+        <div style={{ marginTop: '2rem' }}>
+          <EmptyState
+            icon="📭"
+            title="No picks yet"
+            description="Subscribe to a tipster and every live and settled pick they lock will show up here automatically."
+            actions={[{ href: '/tipsters', label: 'Find a tipster' }]}
+          />
+        </div>
       ) : (
         <>
           {/* Filters: by tipster (for multiple subscriptions) + by status. */}
