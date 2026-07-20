@@ -1,0 +1,9 @@
+# Triaged container image CVEs for the Trivy scan in CI (OB-086).
+#
+# Add one advisory id per line (CVE-XXXX-NNNN or GHSA-xxxx) to suppress a
+# HIGH/CRITICAL finding that has been reviewed and accepted, with a comment
+# explaining why. Fixable vulnerabilities should be fixed (rebuild on a newer
+# base image / bump the dependency) rather than ignored.
+#
+# Currently empty: the Node base image + apt packages are pinned and rebuilt by
+# Dependabot's `docker` ecosystem updates.

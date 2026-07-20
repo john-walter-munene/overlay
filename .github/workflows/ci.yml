@@ -99,3 +99,39 @@ jobs:
       # Apply all migrations (incl. the funds-ledger table) to the service DB.
       - run: npm run db:deploy
       - run: npm run test:integration
+
+  audit:
+    name: Dependency audit (high/critical gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Gate on new HIGH/CRITICAL advisories. Already-triaged advisories are
+      # allow-listed in .audit-allowlist.json so the build only fails on *new*
+      # ones (OB-086). Uses the lockfile only — no install needed.
+      - name: Audit dependencies
+        run: npm run audit:ci
+
+  image-scan:
+    name: Container image scan (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Build the production image the same way we ship it, then scan it.
+      - name: Build API image
+        run: docker build -t overlay-api:${{ github.sha }} .
+      # Fail on fixable HIGH/CRITICAL OS/library vulnerabilities in the image.
+      # Unfixed advisories are reported but don't block; triaged CVEs live in
+      # .trivyignore.
+      - name: Scan image
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: overlay-api:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore

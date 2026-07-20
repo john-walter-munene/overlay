@@ -593,11 +593,17 @@
 
 ### OB-086 — Dependency & container vulnerability scanning
 **Category:** Security · **Priority:** P1
-**Description:** Add `npm audit`/Dependabot + image scanning to CI; triage the current 22 advisories.
+**Description:** Add `npm audit`/Dependabot + image scanning to CI; triage the current advisories.
 **Acceptance criteria:**
-- [ ] CI fails on new high/critical; existing advisories triaged.
+- [x] CI fails on new high/critical; existing advisories triaged.
 **Tests:**
-- [ ] CI job present and gating.
+- [x] CI job present and gating.
+
+**Implementation:** Dependabot (`npm` + `github-actions` + `docker`) in
+`.github/dependabot.yml`; a `npm audit` gate (`scripts/audit-ci.mjs`, run as the
+CI `audit` job) that fails on new high/critical advisories while triaged ones are
+allow-listed in `.audit-allowlist.json`; and a Trivy container `image-scan` CI
+job. See `docs/SECURITY-SCANNING.md`.
 
 ---
 
