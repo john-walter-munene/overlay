@@ -109,6 +109,12 @@ The seed prints the admin credentials (defaults: `admin@overlay.local` /
 scratch database. Scheduled backups and the full recovery procedure live in
 [docs/DR-RUNBOOK.md](docs/DR-RUNBOOK.md).
 
+### Incidents & on-call
+
+When an alert fires, the on-call runbook covers the escalation path and
+step-by-step responses for the common incidents (settlement stuck, webhook
+backlog, vendor outage, payout failure): [docs/RUNBOOK-ONCALL.md](docs/RUNBOOK-ONCALL.md).
+
 ---
 
 ## 6. Run the apps

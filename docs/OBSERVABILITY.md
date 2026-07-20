@@ -98,7 +98,8 @@ routes them so a breach reaches a human:
 - `severity: page` → PagerDuty (24/7 on-call paging).
 - `severity: ticket` → Slack `#overlay-alerts` (business-hours triage).
 
-Every alert links the on-call runbook (OB-095) via `runbook_url`. Integration
+Every alert links the on-call runbook ([RUNBOOK-ONCALL.md](./RUNBOOK-ONCALL.md),
+OB-095) via `runbook_url`. Integration
 keys are mounted from the secrets manager — never commit real keys.
 
 ## Running the stack locally

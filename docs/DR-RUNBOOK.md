@@ -7,7 +7,8 @@ restorable, and how to recover when the database is lost or corrupted.
   BullMQ backend — settlement re-queues from Postgres and needs no backup.
 - **Owner:** whoever is on-call for ops.
 - **Related:** [OBSERVABILITY.md](./OBSERVABILITY.md) (health/metrics),
-  [`render.yaml`](../render.yaml) (managed Postgres), OB-095 (incident process).
+  [`render.yaml`](../render.yaml) (managed Postgres),
+  [RUNBOOK-ONCALL.md](./RUNBOOK-ONCALL.md) (OB-095, incident process).
 
 ## Objectives
 

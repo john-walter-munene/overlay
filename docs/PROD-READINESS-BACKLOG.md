@@ -647,9 +647,9 @@
 **Category:** Ops · **Priority:** P1
 **Description:** Runbooks for common incidents (settlement stuck, webhook backlog, vendor outage, payout failure).
 **Acceptance criteria:**
-- [ ] Runbooks published; escalation path defined.
+- [x] Runbooks published; escalation path defined. — see [RUNBOOK-ONCALL.md](./RUNBOOK-ONCALL.md) (settlement stuck, webhook backlog, vendor outage, payout failure) + [OBSERVABILITY.md](./OBSERVABILITY.md) alert routing.
 **Tests:**
-- [ ] N/A (doc review checklist).
+- [x] N/A (doc review checklist). — see the checklist in [RUNBOOK-ONCALL.md](./RUNBOOK-ONCALL.md#doc-review-checklist-acceptance-criteria).
 
 ---
 
