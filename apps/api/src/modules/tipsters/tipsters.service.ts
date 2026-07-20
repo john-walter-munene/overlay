@@ -1,9 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  computeVerifiedMetrics,
   graduationBadge,
   isLivePicksGated,
   normalizeGraduationStatus,
   stripHtml,
+  type SettledPick,
 } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
 import {
@@ -171,6 +173,37 @@ export class TipstersService {
         this.prisma.follow.count({ where: { tipsterId } }),
       ]);
 
+    // Additional verified metrics (OB-057): CLV distribution, ROI by sport /
+    // market, and 30/90/all-time windows. Computed over the PRE-MATCH book (the
+    // CLV-bearing track record) with the shared, unit-tested engine so the
+    // numbers are deterministic and never blended with in-play results (OB-039).
+    const metricPicks = await this.prisma.pick.findMany({
+      where: { tipsterId, status: { not: 'pending' }, pickType: 'pre_match' },
+      select: {
+        oddsAtPick: true,
+        stakeUnits: true,
+        status: true,
+        pickType: true,
+        closingOdds: true,
+        settledAt: true,
+        market: true,
+        event: { select: { sport: true } },
+      },
+    });
+    const metricInput: SettledPick[] = metricPicks.map((p) => ({
+      oddsAtPick: p.oddsAtPick,
+      stakeUnits: p.stakeUnits,
+      status: p.status,
+      pickType: p.pickType,
+      closingOdds: p.closingOdds,
+      settledAt: p.settledAt ? p.settledAt.getTime() : null,
+      sport: p.event?.sport ?? null,
+      market: p.market,
+    }));
+    const verifiedMetrics = metricInput.length
+      ? computeVerifiedMetrics(metricInput)
+      : null;
+
     // When live picks aren't gated (provisional "rising" tipster, or a verified
     // tipster who hasn't enabled subscription gating), their open (pre-event)
     // picks are free/public — surface them so anyone can see the current tips.
@@ -212,6 +245,8 @@ export class TipstersService {
         telegram: tipster.socialTelegram,
       },
       stats: tipster.stats,
+      // OB-057: CLV distribution, ROI by sport/market, 30/90/all-time windows.
+      verifiedMetrics,
       subscriberCount,
       followerCount,
       articlesPublished,

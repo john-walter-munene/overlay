@@ -27,6 +27,10 @@ export interface SettledPick {
   closingOdds?: number | null;
   /** Ordering key for drawdown/streak (ms epoch). */
   settledAt?: number | null;
+  /** Sport the pick belongs to, for ROI-by-sport breakdowns (OB-057). */
+  sport?: string | null;
+  /** Market the pick belongs to, for ROI-by-market breakdowns (OB-057). */
+  market?: string | null;
 }
 
 export interface TipsterStats {

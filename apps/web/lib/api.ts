@@ -271,6 +271,49 @@ export interface TipsterStats {
   liveSampleSize: number;
 }
 
+/** OB-057 additional verified metrics surfaced on a tipster profile. */
+export interface MetricStats {
+  yield: number;
+  clvAvg: number;
+  winRate: number;
+  sampleSize: number;
+  roi: number;
+  maxDrawdown: number;
+  currentStreak: number;
+}
+
+export interface ClvDistributionBucket {
+  label: string;
+  lowerPct: number;
+  upperPct: number;
+  count: number;
+}
+
+export interface ClvDistribution {
+  buckets: ClvDistributionBucket[];
+  sampleSize: number;
+  averagePct: number;
+  positiveRate: number;
+}
+
+export interface DimensionStats {
+  key: string;
+  stats: MetricStats;
+}
+
+export interface WindowedStats {
+  last30: MetricStats;
+  last90: MetricStats;
+  allTime: MetricStats;
+}
+
+export interface VerifiedMetrics {
+  clvDistribution: ClvDistribution;
+  bySport: DimensionStats[];
+  byMarket: DimensionStats[];
+  windows: WindowedStats;
+}
+
 export interface TipsterProfile {
   tipsterId: string;
   displayName: string | null;
@@ -299,6 +342,12 @@ export interface TipsterProfile {
     telegram: string | null;
   };
   stats: TipsterStats | null;
+  /**
+   * Additional verified metrics (OB-057): CLV distribution, ROI by sport and by
+   * market, and 30/90/all-time performance windows. Null until the tipster has
+   * settled pre-match picks.
+   */
+  verifiedMetrics: VerifiedMetrics | null;
   subscriberCount: number;
   followerCount: number;
   articlesPublished: number;

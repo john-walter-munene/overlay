@@ -1,6 +1,7 @@
 export * from './types.ts';
 export * from './rbac.ts';
 export * from './stats.ts';
+export * from './advanced-metrics.ts';
 export * from './performance.ts';
 export * from './integrity.ts';
 export * from './content.ts';
