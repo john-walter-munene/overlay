@@ -370,9 +370,9 @@
 **Category:** Stats · **Priority:** P1
 **Description:** Cache leaderboard (Redis) and invalidate on settlement so it "updates within minutes" per exit criteria, without full recompute per request.
 **Acceptance criteria:**
-- [ ] Cached reads; cache invalidated after stats recompute.
+- [x] Cached reads; cache invalidated after stats recompute.
 **Tests:**
-- [ ] Integration: settlement invalidates cache; stale data not served.
+- [x] Integration: settlement invalidates cache; stale data not served.
 
 ### OB-056 — Configurable minimum sample & confidence indicators
 **Category:** Stats · **Priority:** P2
