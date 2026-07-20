@@ -1,0 +1,77 @@
+{
+  "_comment": "Triaged dependency advisories for the OB-086 CI audit gate. Keys are GitHub advisory (GHSA) source ids as reported by `npm audit --json`. Adding an id here suppresses that HIGH/CRITICAL advisory in CI; new (un-listed) high/critical advisories fail the build. Optional `expires` (YYYY-MM-DD) forces a re-triage once passed. See docs/SECURITY-SCANNING.md.",
+  "advisories": {
+    "1109842": {
+      "name": "glob",
+      "severity": "high",
+      "reason": "glob CLI command injection (GHSA-5j98-mcp5-4vw2). Transitive build/dev tooling dependency; the glob CLI is never invoked with untrusted input in this repo. Cleared on next tooling bump.",
+      "expires": "2026-12-31"
+    },
+    "1115554": {
+      "name": "picomatch",
+      "severity": "high",
+      "reason": "picomatch ReDoS (GHSA-3v7f-55p6-f55p). Transitive build/test tooling dependency, not exposed to attacker-controlled glob patterns at runtime. Cleared on next tooling bump.",
+      "expires": "2026-12-31"
+    },
+    "1120654": {
+      "name": "tmp",
+      "severity": "high",
+      "reason": "tmp path traversal via prefix/postfix (GHSA-ph9p-34f9-6g65). Pulled in transitively by @nestjs/cli (dev/build only); not present in the production runtime image. Fix requires a breaking @nestjs/cli major.",
+      "expires": "2026-12-31"
+    },
+    "1113635": {
+      "name": "multer",
+      "severity": "high",
+      "reason": "multer DoS via incomplete cleanup (GHSA-xf7r-hgr6-v32p). Tracked for a @nestjs/platform-express upgrade; the API does not currently expose untrusted multipart upload endpoints. Accepted risk pending upstream bump.",
+      "expires": "2026-12-31"
+    },
+    "1113636": {
+      "name": "multer",
+      "severity": "high",
+      "reason": "multer DoS via resource exhaustion (GHSA-v52c-386h-88mc). Tracked with the @nestjs/platform-express upgrade; no untrusted multipart upload endpoints exposed. Accepted risk pending upstream bump.",
+      "expires": "2026-12-31"
+    },
+    "1113996": {
+      "name": "multer",
+      "severity": "high",
+      "reason": "multer DoS via uncontrolled recursion (GHSA-5528-5vmv-3xc2). Tracked with the @nestjs/platform-express upgrade; no untrusted multipart upload endpoints exposed. Accepted risk pending upstream bump.",
+      "expires": "2026-12-31"
+    },
+    "1121089": {
+      "name": "multer",
+      "severity": "high",
+      "reason": "multer DoS via deeply nested field names (GHSA-72gw-mp4g-v24j). Tracked with the @nestjs/platform-express upgrade; no untrusted multipart upload endpoints exposed. Accepted risk pending upstream bump.",
+      "expires": "2026-12-31"
+    },
+    "1112653": {
+      "name": "next",
+      "severity": "high",
+      "reason": "Next.js RSC request-deserialization DoS (GHSA-9g9p-9gw9-jx7f). Tracked for a Next.js upgrade in the web app; accepted risk pending the framework bump.",
+      "expires": "2026-12-31"
+    },
+    "1116376": {
+      "name": "next",
+      "severity": "high",
+      "reason": "Next.js DoS with Server Components (GHSA-h25m-26qc-wcjf). Tracked for a Next.js upgrade in the web app; accepted risk pending the framework bump.",
+      "expires": "2026-12-31"
+    },
+    "1117931": {
+      "name": "next",
+      "severity": "high",
+      "reason": "Next.js DoS with Server Components (GHSA-ggv3-7p47-pfv8). Tracked for a Next.js upgrade in the web app; accepted risk pending the framework bump.",
+      "expires": "2026-12-31"
+    },
+    "1118954": {
+      "name": "next",
+      "severity": "high",
+      "reason": "Next.js SSRF via WebSocket upgrades (GHSA-q4gf-8mx6-v5v3). Tracked for a Next.js upgrade in the web app; accepted risk pending the framework bump.",
+      "expires": "2026-12-31"
+    },
+    "1118962": {
+      "name": "next",
+      "severity": "high",
+      "reason": "Next.js middleware/proxy bypass in Pages Router i18n apps (GHSA-8h8q-6873-q5fj). Tracked for a Next.js upgrade in the web app; accepted risk pending the framework bump.",
+      "expires": "2026-12-31"
+    }
+  }
+}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { todayIsoDate } from '@overlay/shared/daily-tips';
+import { roleHasPermission } from '@overlay/shared/rbac';
 import { authFetch, getProfile } from '../../../lib/auth';
 
 interface ManagedTip {
@@ -104,7 +105,7 @@ export default function AdminTipsPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'content:moderate')) {
         router.replace('/account');
         return;
       }

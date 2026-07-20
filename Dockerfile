@@ -36,6 +36,11 @@ RUN npm run prisma:generate \
  && npm run build -w @overlay/shared \
  && npm run build -w @overlay/api
 
+# Strip dev-only packages from node_modules so they don't land in the runtime
+# image. This removes build tools (e.g. @nestjs/cli and its transitive deps
+# like glob, picomatch, tmp) that aren't needed at runtime.
+RUN npm prune --omit=dev
+
 # ---- Runtime ----------------------------------------------------------------
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app

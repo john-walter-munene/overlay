@@ -29,7 +29,7 @@ export default function LoginPage() {
       }
       const profile = await getProfile();
       router.push(
-        profile?.role === 'admin'
+        profile?.role === 'admin' || profile?.role === 'staff'
           ? '/admin'
           : profile?.role === 'tipster'
             ? '/dashboard'

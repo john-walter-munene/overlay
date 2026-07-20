@@ -42,6 +42,61 @@ export function newPickDigestEmail(params: {
   };
 }
 
+/**
+ * A tipster-authored tip-drop schedule announcement (OB-034). Carries only the
+ * *timing* of a drop (or a pre-drop reminder) — never any gated pick content.
+ */
+export interface AnnouncementNotification {
+  tipsterId: string;
+  /** Public tipster name for the email/push copy (falls back to "A tipster"). */
+  tipsterName?: string | null;
+  title: string;
+  message?: string | null;
+  /** The resolved drop instant, when known. */
+  dropAt?: Date | null;
+  /** IANA timezone the drop time is expressed in. */
+  timezone?: string | null;
+  /** `published` = schedule just announced; `reminder` = pre-drop nudge. */
+  kind: 'published' | 'reminder';
+}
+
+/** Human "Fri, 10 Jul 2026, 18:00 (Africa/Nairobi)" for an announcement drop. */
+function formatDropTime(dropAt: Date, timeZone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  };
+  if (timeZone) opts.timeZone = timeZone;
+  const when = new Intl.DateTimeFormat('en-GB', opts).format(dropAt);
+  return timeZone ? `${when} (${timeZone})` : when;
+}
+
+/**
+ * Render a schedule-announcement email. Purely about *when* tips drop, so it can
+ * safely go to subscribers ahead of the actual (gated) picks.
+ */
+export function announcementEmail(a: AnnouncementNotification): EmailTemplate {
+  const who = a.tipsterName?.trim() || 'A tipster';
+  const when = a.dropAt ? formatDropTime(a.dropAt, a.timezone) : null;
+  const lead =
+    a.kind === 'reminder'
+      ? `${who}'s tips are dropping soon.`
+      : `${who} scheduled a tip drop.`;
+  const subject =
+    a.kind === 'reminder'
+      ? `Tips dropping soon${when ? ` — ${when}` : ''}`
+      : `Upcoming tips: ${a.title}`;
+  const parts = [lead, a.title];
+  if (when) parts.push(`When: ${when}`);
+  if (a.message?.trim()) parts.push(a.message.trim());
+  return { subject, body: parts.join('\n\n') };
+}
+
 function formatAmount(cents: number, currency = 'USD'): string {
   return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
 }

@@ -1,11 +1,12 @@
 import type { MetadataRoute } from 'next';
-import { listArticleSlugs, listFreeTipDates, SITE_URL } from '../lib/api';
+import { listArticleSlugs, listFreeTipDates, listTipsterIds, SITE_URL } from '../lib/api';
 
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const slugs = await listArticleSlugs();
   const tipDates = await listFreeTipDates();
+  const tipsters = await listTipsterIds();
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, changeFrequency: 'hourly', priority: 1 },
@@ -46,5 +47,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticRoutes, ...tipDateRoutes, ...articleRoutes];
+  const tipsterRoutes: MetadataRoute.Sitemap = tipsters.map((t) => ({
+    url: `${SITE_URL}/tipsters/${t.tipsterId}`,
+    lastModified: new Date(t.updatedAt),
+    changeFrequency: 'daily',
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...tipDateRoutes, ...articleRoutes, ...tipsterRoutes];
 }

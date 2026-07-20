@@ -221,6 +221,9 @@ export default function SiteHeader() {
               href="/admin"
               onClick={handleNavigation}
             >
+          ) : null}
+          {role === 'admin' || role === 'staff' ? (
+            <Link href="/admin" onClick={closeMenu}>
               Admin
             </Link>
           )}

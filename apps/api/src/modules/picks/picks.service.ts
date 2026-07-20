@@ -8,14 +8,21 @@ import {
   generateNonce,
   hashPick,
   buildPerformanceDashboard,
+  isLivePicksGated,
+  normalizeGraduationStatus,
   type PickPayload,
+  type PickType,
   type SettledPick,
 } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
+import { Inject } from '@nestjs/common';
+import type { EntityCache } from '../../common/cache/entity-cache';
+import { TIPSTER_PROFILE_CACHE } from '../../common/cache/cache.module';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { canPublishPicks } from '../tipsters/onboarding';
 import { CreatePickDto } from './dto/create-pick.dto';
+import { evaluatePickTiming } from './cutoff';
 import { buildSubscriberFeed, entitledTipsterIds, toPickRow, type FeedPick } from './feed';
 
 @Injectable()
@@ -24,6 +31,7 @@ export class PicksService {
     private readonly prisma: PrismaService,
     private readonly subs: SubscriptionsService,
     private readonly notifications: NotificationsService,
+    @Inject(TIPSTER_PROFILE_CACHE) private readonly profileCache: EntityCache,
   ) {}
 
   private get pepper(): string {
@@ -31,9 +39,10 @@ export class PicksService {
   }
 
   /**
-   * Submit and LOCK a pick. Rejects picks on events that have already started,
-   * stamps a tamper-evident hash + server timestamp, and writes an audit entry.
-   * The pick is append-only afterwards (see docs/ARCHITECTURE.md §4).
+   * Submit and LOCK a pick. Rejects picks on events past the configurable
+   * cutoff before kickoff (server-clock authoritative) or with missing/invalid
+   * start times, stamps a tamper-evident hash + server timestamp, and writes an
+   * audit entry. The pick is append-only afterwards (see docs/ARCHITECTURE.md §4).
    */
   async createLockedPick(tipsterId: string, dto: CreatePickDto) {
     // Gate publishing on completed onboarding (OB-020): a tipster can't lock
@@ -52,8 +61,17 @@ export class PicksService {
       where: { id: dto.eventId },
     });
     if (!event) throw new NotFoundException('Event not found');
-    if (event.startTime.getTime() <= Date.now()) {
-      throw new BadRequestException('Event has already started; pick rejected');
+
+    // Pre-match picks honour the OB-038 configurable kickoff cutoff; live/
+    // in-play picks (OB-039) bypass it but are rejected once the event has
+    // finished or the running score has already decided the picked market.
+    const pickType: PickType = dto.pickType ?? 'pre_match';
+    const timing = evaluatePickTiming(pickType, event, Date.now(), {
+      market: dto.market,
+      selection: dto.selection,
+    });
+    if (!timing.ok) {
+      throw new BadRequestException(timing.reason);
     }
 
     const payload: PickPayload = {
@@ -76,6 +94,7 @@ export class PicksService {
           selection: dto.selection,
           oddsAtPick: dto.oddsAtPick,
           stakeUnits: dto.stakeUnits,
+          pickType,
           note: dto.note?.trim() || null,
           hash,
           nonce,
@@ -88,7 +107,7 @@ export class PicksService {
           action: 'pick.locked',
           entity: 'Pick',
           entityId: created.id,
-          payload: { hash, market: dto.market, selection: dto.selection },
+          payload: { hash, pickType, market: dto.market, selection: dto.selection },
         },
       });
       return created;
@@ -101,6 +120,10 @@ export class PicksService {
       selection: pick.selection,
       oddsAtPick: pick.oddsAtPick,
     });
+
+    // OB-130: a newly locked pick shows up in the tipster's public profile
+    // (open/free picks), so retire that profile's cached copy.
+    await this.profileCache.invalidate(tipsterId);
 
     return pick;
   }
@@ -152,16 +175,37 @@ export class PicksService {
 
   /**
    * Live picks for a subscriber — includes still-pending (pre-event) picks and
-   * settled ones, with event context. Gated: requires an active subscription.
+   * settled ones, with event context.
+   *
+   * Gating (OB-153): a tipster's live picks are only paywalled once they are
+   * verified AND have enabled subscription gating. Provisional "rising" tipsters
+   * (and verified tipsters who haven't switched gating on) publish their live
+   * picks for free, so newcomers can build an audience without friction.
    */
   async listLiveForSubscriber(
     userId: string,
     tipsterId: string,
   ): Promise<FeedPick[]> {
-    const entitled = await this.subs.isEntitled(userId, tipsterId);
-    if (!entitled) {
-      throw new ForbiddenException('Active subscription required');
+    const tipster = await this.prisma.tipster.findUnique({
+      where: { userId: tipsterId },
+      select: { graduationStatus: true, subscriptionGatingEnabled: true },
+    });
+    if (!tipster) {
+      throw new NotFoundException('Tipster not found');
     }
+
+    const gated = isLivePicksGated({
+      graduationStatus: normalizeGraduationStatus(tipster.graduationStatus),
+      subscriptionGatingEnabled: tipster.subscriptionGatingEnabled,
+    });
+
+    if (gated) {
+      const entitled = await this.subs.isEntitled(userId, tipsterId);
+      if (!entitled) {
+        throw new ForbiddenException('Active subscription required');
+      }
+    }
+
     const picks = await this.prisma.pick.findMany({
       where: { tipsterId },
       orderBy: { lockedAt: 'desc' },
@@ -213,18 +257,20 @@ export class PicksService {
   /**
    * Performance dashboard for a tipster's own account (OB-023): cumulative
    * ROI/yield/CLV/win-rate time-series, drawdown, streak and a pending-vs-settled
-   * breakdown. Built over ALL of the tipster's picks (pending included) with the
-   * shared, unit-tested performance engine.
+   * breakdown. Built over the tipster's PRE-MATCH picks (pending included) so the
+   * CLV-ranked yield is never blended with in-play results (OB-039); live picks
+   * are aggregated separately (see stats service `live*` figures).
    */
   async performanceForTipster(tipsterId: string) {
     const picks = await this.prisma.pick.findMany({
-      where: { tipsterId },
+      where: { tipsterId, pickType: 'pre_match' },
     });
 
     const input: SettledPick[] = picks.map((p) => ({
       oddsAtPick: p.oddsAtPick,
       stakeUnits: p.stakeUnits,
       status: p.status,
+      pickType: p.pickType,
       closingOdds: p.closingOdds,
       settledAt: p.settledAt ? p.settledAt.getTime() : null,
     }));

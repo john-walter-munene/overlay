@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { roleHasPermission, type Role } from '@overlay/shared/rbac';
 import { authFetch, getProfile } from '../../../lib/auth';
 import { formStyles } from '../../formStyles';
 
-type Role = 'user' | 'tipster' | 'admin';
 type TipsterStatus = 'active' | 'suspended';
 
 interface AdminUser {
@@ -29,7 +29,7 @@ interface AdminUsersPage {
   totalPages: number;
 }
 
-const ROLES: Role[] = ['user', 'tipster', 'admin'];
+const ROLES: Role[] = ['user', 'tipster', 'staff', 'admin'];
 const PAGE_SIZE = 20;
 
 const muted = { color: 'var(--muted)' } as const;
@@ -73,7 +73,7 @@ export default function AdminUsersPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'user:manage')) {
         router.replace('/account');
         return;
       }

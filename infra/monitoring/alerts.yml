@@ -3,7 +3,8 @@
 # Load into Prometheus via `rule_files` (see prometheus.yml). Every alert carries
 # a `severity` label that Alertmanager routes to the on-call channel
 # (severity=page -> PagerDuty, severity=ticket -> Slack) and a `runbook_url`
-# pointing at the on-call runbook (OB-095). Metric names are emitted by the API
+# pointing at the on-call runbook (OB-095, docs/RUNBOOK-ONCALL.md). Metric names
+# are emitted by the API
 # at GET /api/metrics (see apps/api/src/common/metrics.ts).
 
 groups:
@@ -24,7 +25,7 @@ groups:
         annotations:
           summary: "Settlement p95 latency > 60s"
           description: "p95 settlement cycle duration has exceeded 60s for 10m (SLO: <30s)."
-          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/PROD-READINESS-BACKLOG.md#ob-095--on-call-runbook--incident-process"
+          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/RUNBOOK-ONCALL.md"
 
       # --- Settlement error-rate / freshness SLO ----------------------------
       # SLO: settlement cycles succeed. Page on any failures in the last 15m.
@@ -37,7 +38,7 @@ groups:
         annotations:
           summary: "Settlement cycles are failing"
           description: "At least one settlement cycle failed in the last 15m."
-          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/PROD-READINESS-BACKLOG.md#ob-095--on-call-runbook--incident-process"
+          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/RUNBOOK-ONCALL.md"
 
       # SLO: a settlement cycle runs at least every few minutes. Page if the
       # pipeline is stalled (no successful cycle in 15m).
@@ -50,7 +51,7 @@ groups:
         annotations:
           summary: "Settlement pipeline stalled"
           description: "No successful settlement cycle completed in the last 15m."
-          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/PROD-READINESS-BACKLOG.md#ob-095--on-call-runbook--incident-process"
+          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/RUNBOOK-ONCALL.md"
 
       # --- Webhook failure SLO ----------------------------------------------
       # SLO: < 5% of payment webhooks fail verification/handling over 15m.
@@ -67,7 +68,7 @@ groups:
         annotations:
           summary: "Payment webhook failure rate > 5%"
           description: "More than 5% of payment webhooks failed over the last 15m."
-          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/PROD-READINESS-BACKLOG.md#ob-095--on-call-runbook--incident-process"
+          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/RUNBOOK-ONCALL.md"
 
       # --- Queue depth SLO --------------------------------------------------
       # SLO: settlement backlog stays small. Warn on a growing backlog.
@@ -80,7 +81,7 @@ groups:
         annotations:
           summary: "Settlement queue backlog > 100"
           description: "The settlement queue has held >100 waiting jobs for 10m."
-          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/PROD-READINESS-BACKLOG.md#ob-095--on-call-runbook--incident-process"
+          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/RUNBOOK-ONCALL.md"
 
       # --- API error-rate SLO -----------------------------------------------
       # SLO: server errors are rare. Page on a burst of 5xx responses.
@@ -93,7 +94,7 @@ groups:
         annotations:
           summary: "API 5xx error rate elevated"
           description: "The API is serving >0.2 server errors/sec (5xx) averaged over 5m."
-          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/PROD-READINESS-BACKLOG.md#ob-095--on-call-runbook--incident-process"
+          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/RUNBOOK-ONCALL.md"
 
       # --- Scrape health ----------------------------------------------------
       # If the API stops exposing metrics we're blind to every SLO above.
@@ -106,4 +107,4 @@ groups:
         annotations:
           summary: "Prometheus cannot scrape the Overlay API"
           description: "The overlay-api /metrics target has been down for 5m."
-          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/PROD-READINESS-BACKLOG.md#ob-095--on-call-runbook--incident-process"
+          runbook_url: "https://github.com/CognitronTechnologies/overlay/blob/main/docs/RUNBOOK-ONCALL.md"

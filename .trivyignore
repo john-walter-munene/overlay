@@ -1,0 +1,36 @@
+# Triaged container image CVEs for the Trivy scan in CI (OB-086).
+#
+# Add one advisory id per line (CVE-XXXX-NNNN or GHSA-xxxx) to suppress a
+# HIGH/CRITICAL finding that has been reviewed and accepted, with a comment
+# explaining why. Fixable vulnerabilities should be fixed (rebuild on a newer
+# base image / bump the dependency) rather than ignored.
+
+# ---------------------------------------------------------------------------
+# npm-bundled toolchain (node:22 base image) — not application code
+# These packages ship inside /usr/local/lib/node_modules/npm/node_modules/
+# and are owned by the Node.js / npm release cadence, not this project.
+# They will be resolved when the base image is updated via Dependabot.
+# ---------------------------------------------------------------------------
+
+# adm-zip 0.5.17 — bundled inside npm's copy of node-gyp; fix: 0.6.0
+CVE-2026-39244
+
+# sigstore 3.1.0 — bundled inside npm for publish provenance; fix: 4.1.1
+CVE-2026-48815
+
+# picomatch 4.0.3 — bundled inside npm's own glob tooling; fix: 4.0.4
+# (The dev-dep instance at 4.0.1 is pruned from the runtime image.)
+CVE-2026-33671
+
+# ---------------------------------------------------------------------------
+# next.js — web-app framework present in workspace node_modules but NEVER
+# imported or executed by the API container.  The CVEs involve request
+# routing / middleware in the Next.js server; none are reachable because
+# next.js is never started.  The proper long-term fix is to separate the
+# web workspace from the API image build (tracked as a follow-up).
+# ---------------------------------------------------------------------------
+CVE-2026-44573
+CVE-2026-44578
+GHSA-8h8q-6873-q5fj
+GHSA-h25m-26qc-wcjf
+GHSA-q4gf-8mx6-v5v3

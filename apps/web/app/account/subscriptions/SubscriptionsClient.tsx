@@ -18,6 +18,7 @@ import {
   NEGATIVE_REASON_LABELS,
   type FeedbackSentiment,
 } from '../../../lib/auth';
+import { EmptyState } from '../../EmptyState';
 
 const MUTED = 'var(--muted)';
 
@@ -182,13 +183,14 @@ export default function SubscriptionsClient() {
       {subs === null ? (
         <p style={{ color: MUTED }}>Loading…</p>
       ) : views.length === 0 ? (
-        <p style={{ color: MUTED }}>
-          No subscriptions yet.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Browse tipsters
-          </Link>{' '}
-          to get started.
-        </p>
+        <div style={{ marginTop: '1.5rem' }}>
+          <EmptyState
+            icon="🎟️"
+            title="No subscriptions yet"
+            description="Subscribe to a verified tipster to unlock their live picks the moment they lock, before kickoff."
+            actions={[{ href: '/tipsters', label: 'Browse tipsters' }]}
+          />
+        </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
           {views.map((v) => (

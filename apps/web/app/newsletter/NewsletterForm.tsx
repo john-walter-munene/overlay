@@ -64,7 +64,8 @@ export default function NewsletterForm() {
 
       {status === 'success' && (
         <p style={{ marginTop: '1.5rem', color: 'var(--accent)' }}>
-          Thanks for subscribing! Check your inbox for a confirmation.
+          Almost there! Check your inbox and click the confirmation link to
+          complete your subscription.
         </p>
       )}
 

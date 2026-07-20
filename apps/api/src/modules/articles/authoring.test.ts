@@ -6,6 +6,17 @@ import { canAuthorArticles, canManageArticle, resolveArticleStatus, } from './au
 const admin = { userId: 'admin-1', role: 'admin' as const, };
 const tipster = { userId: 'tipster-1', role: 'tipster' as const, };
 const user = { userId: 'user-1', role: 'user' as const, };
+import {
+  canAuthorArticles,
+  canManageArticle,
+  isArticleModerator,
+  resolveArticleStatus,
+} from './authoring.ts';
+
+const admin = { userId: 'admin-1', role: 'admin' as const };
+const staff = { userId: 's-1', role: 'staff' as const };
+const tipster = { userId: 't-1', role: 'tipster' as const };
+const user = { userId: 'u-1', role: 'user' as const };
 
 // canAuthorArticles
 test('admins can always author', () => {
@@ -37,6 +48,15 @@ test('plain users can never author', () => {
 });
 
 // canManageArticle
+test('staff moderate content but are not authors', () => {
+  assert.equal(isArticleModerator('staff'), true);
+  assert.equal(isArticleModerator('admin'), true);
+  assert.equal(isArticleModerator('tipster'), false);
+  assert.equal(isArticleModerator('user'), false);
+  assert.equal(canAuthorArticles(staff), false);
+  assert.equal(canAuthorArticles(staff, { status: 'active' }), false);
+});
+
 test('admins can manage any article', () => {
   assert.equal(canManageArticle(admin, { authorId: 'someone-else', }), true,);
 });
@@ -47,6 +67,14 @@ test('tipsters can manage their own articles', () => {
 
 test('tipsters cannot manage another authors articles', () => {
   assert.equal(canManageArticle(tipster, { authorId: 'tipster-2',}), false,);
+test('staff can manage any article (moderation)', () => {
+  assert.equal(canManageArticle(staff, { authorId: 'someone-else' }), true);
+  assert.equal(canManageArticle(staff, { authorId: 's-1' }), true);
+});
+
+test('tipsters can manage only their own articles', () => {
+  assert.equal(canManageArticle(tipster, { authorId: 't-1' }), true);
+  assert.equal(canManageArticle(tipster, { authorId: 't-2' }), false);
 });
 
 test('plain users cannot manage articles', () => {
@@ -67,6 +95,14 @@ test('tipster publish requests become pending review', () => {
 
 test('tipsters may save drafts', () => {
   assert.equal(resolveArticleStatus(tipster, 'draft'), 'draft',);
+test('staff may set any status directly (approve/publish pending posts)', () => {
+  assert.equal(resolveArticleStatus(staff, 'published'), 'published');
+  assert.equal(resolveArticleStatus(staff, 'pending'), 'pending');
+  assert.equal(resolveArticleStatus(staff, 'archived'), 'archived');
+});
+
+test('tipster publish requests are queued for admin review (pending)', () => {
+  assert.equal(resolveArticleStatus(tipster, 'published'), 'pending');
 });
 
 test('tipsters may keep articles pending', () => {

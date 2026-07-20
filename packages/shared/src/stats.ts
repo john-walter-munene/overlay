@@ -24,12 +24,24 @@ export function pickProfitUnits(pick: SettledPick): number {
 }
 
 /**
+ * Is this an in-play (live) pick? Live picks are placed after kickoff, carry no
+ * pre-match closing line, and are excluded from CLV (OB-039). A missing
+ * `pickType` means the legacy default, `pre_match`.
+ */
+export function isLive(pick: SettledPick): boolean {
+  return pick.pickType === 'live';
+}
+
+/**
  * Closing Line Value for one pick, as a fraction.
  * Positive means the pick's odds beat the closing line (a genuine overlay).
  *   clv = oddsAtPick / closingOdds - 1
- * Returns null when closing odds are unavailable/invalid.
+ * Returns null when closing odds are unavailable/invalid, or for live/in-play
+ * picks — an in-play selection has no pre-match closing line, so CLV is
+ * undefined and live picks never contribute to CLV (OB-039).
  */
 export function pickClv(pick: SettledPick): number | null {
+  if (isLive(pick)) return null;
   if (!pick.closingOdds || pick.closingOdds <= 0) return null;
   return pick.oddsAtPick / pick.closingOdds - 1;
 }
@@ -106,6 +118,25 @@ export function computeTipsterStats(picks: SettledPick[]): TipsterStats {
     sampleSize: settled.length,
     maxDrawdown,
     currentStreak: computeCurrentStreak(ordered),
+  };
+}
+
+/**
+ * Split a book into its pre-match and live/in-play sub-books and compute each
+ * independently, so live and pre-match yield are never blended into one
+ * misleading number (OB-039). The `preMatch` segment is the canonical,
+ * CLV-bearing track record; the `live` segment has no CLV. Picks with no
+ * `pickType` count as `pre_match` (the legacy default).
+ */
+export interface SegmentedStats {
+  preMatch: TipsterStats;
+  live: TipsterStats;
+}
+
+export function computeSegmentedStats(picks: SettledPick[]): SegmentedStats {
+  return {
+    preMatch: computeTipsterStats(picks.filter((p) => !isLive(p))),
+    live: computeTipsterStats(picks.filter((p) => isLive(p))),
   };
 }
 

@@ -102,6 +102,19 @@ npm run db:seed             # admin user, 3 blog articles + 3 upcoming events
 The seed prints the admin credentials (defaults: `admin@overlay.local` /
 `change-me-now` — override with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
 
+### Backups & disaster recovery
+
+`npm run db:backup` writes a compressed `pg_dump` archive, and
+`npm run db:restore-drill` proves a backup restores cleanly into a throwaway
+scratch database. Scheduled backups and the full recovery procedure live in
+[docs/DR-RUNBOOK.md](docs/DR-RUNBOOK.md).
+
+### Incidents & on-call
+
+When an alert fires, the on-call runbook covers the escalation path and
+step-by-step responses for the common incidents (settlement stuck, webhook
+backlog, vendor outage, payout failure): [docs/RUNBOOK-ONCALL.md](docs/RUNBOOK-ONCALL.md).
+
 ---
 
 ## 6. Run the apps
@@ -208,7 +221,11 @@ git push -u origin main
   (see `docs/VENDOR-SPIKE.md`).
 - **Email / Web Push** — `RESEND_API_KEY`, `VAPID_*`. For email, set
   `NOTIFIER_PROVIDER=resend`, `RESEND_API_KEY`, and `EMAIL_FROM`; leave
-  `NOTIFIER_PROVIDER=mock` (default) to log instead of sending.
+  `NOTIFIER_PROVIDER=mock` (default) to log instead of sending. For browser web
+  push (new-pick alerts), generate a key pair with
+  `npx web-push generate-vapid-keys` and set `VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`); with the keys unset the
+  push channel is a no-op.
 
 See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` (Phase 4) for the hardening
 checklist before going live.

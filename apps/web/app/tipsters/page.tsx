@@ -226,7 +226,25 @@ export default async function TipstersPage({
                           : 'Free'}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <FollowButton tipsterId={r.tipsterId} size="sm" />
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            gap: '0.4rem',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          {r.subscriptionPriceCents > 0 ? (
+                            <Link
+                              href={`/tipsters/${r.tipsterId}#subscribe`}
+                              className="btn btn--primary btn--sm"
+                              title="Subscribe to unlock this tipster’s premium picks the moment they’re locked — before kickoff."
+                            >
+                              Subscribe
+                            </Link>
+                          ) : null}
+                          <FollowButton tipsterId={r.tipsterId} iconOnly />
+                        </span>
                       </td>
                     </tr>
                   ))}

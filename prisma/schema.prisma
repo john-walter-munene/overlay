@@ -34,11 +34,168 @@ model Tipster {
   createdAt              DateTime            @default(now())
   stripeOnboarded        Boolean             @default(false)
   identityVerified       Boolean             @default(false)
+enum Role {
+  user
+  tipster
+  staff
+  admin
+}
+
+enum PickStatus {
+  pending
+  won
+  lost
+  void
+  half_won
+  half_lost
+}
+
+/// Whether a pick was placed before kickoff (`pre_match`, the default and the
+/// only CLV-bearing type) or during the game (`live`, in-play). Live picks
+/// bypass the OB-038 kickoff cutoff but are excluded from CLV and aggregated
+/// separately so live and pre-match yield are never blended (OB-039).
+enum PickType {
+  pre_match
+  live
+}
+
+enum SubscriptionStatus {
+  active
+  past_due
+  canceled
+}
+
+enum PayoutStatus {
+  pending
+  paid
+  failed
+  awaiting_approval
+  rejected
+}
+
+/// Lifecycle of a user-submitted report about a tipster (OB-161).
+enum ReportStatus {
+  open
+  reviewing
+  resolved
+  dismissed
+}
+
+/// Lifecycle of a support / feedback submission (OB-162).
+enum FeedbackStatus {
+  new
+  reviewed
+  archived
+}
+
+enum ArticleStatus {
+  draft
+  pending
+  published
+  archived
+}
+
+/// Editorial section an article belongs to (OB): `content` is evergreen guides
+/// and how-tos (CLV, bankroll, bookies); `news` is timely happenings in sport
+/// and betting.
+enum ArticleCategory {
+  content
+  news
+}
+
+/// Delivery cadence for a user's notifications (OB-033).
+/// `instant` fans out per pick; `daily` batches picks into one digest email.
+enum NotificationFrequency {
+  instant
+  daily
+}
+
+/// Subscription billing cadence a tipster offers (OB-020).
+enum BillingInterval {
+  weekly
+  monthly
+}
+
+/// How often a tip-drop schedule announcement fires (OB-034).
+/// `one_off` is a single dated drop; `daily`/`weekly` recur at a wall-clock
+/// time in the announcement's timezone.
+enum AnnouncementRecurrence {
+  one_off
+  daily
+  weekly
+}
+
+/// Lifecycle of a tip-drop schedule announcement (OB-034).
+enum AnnouncementStatus {
+  active
+  canceled
+}
+
+model User {
+  id             String   @id @default(cuid())
+  role           Role     @default(user)
+  email          String   @unique
+  // User-chosen public handle (unique, lowercased). Optional until set.
+  username       String?  @unique
+  // Supabase owns authentication; passwordHash is legacy/optional.
+  passwordHash   String?
+  supabaseUserId String?  @unique
+  // Optional profile picture (full public URL). Null falls back to a generated
+  // avatar derived from the username in the UI.
+  avatarUrl      String?
+  createdAt      DateTime @default(now())
+
+  tipster                Tipster?
+  subscriptions          Subscription[]
+  articles               Article[]
+  notificationPreference NotificationPreference?
+  pushSubscriptions      PushSubscription[]
+  reportsMade            TipsterReport[]         @relation("ReportsMade")
+  follows                Follow[]
+}
+
+model Tipster {
+  userId                 String          @id
+  user                   User            @relation(fields: [userId], references: [id])
+  // Public identity (OB-020): shown on the profile / marketplace card.
   displayName            String?
   country                String?
   contactMethod          String?
   contactValue           String?
   billingInterval        BillingInterval     @default(monthly)
+  bio                    String?
+  sports                 String[]
+  subscriptionPriceCents Int             @default(0)
+  // Billing cadence the subscription price is charged on (OB-020).
+  billingInterval        BillingInterval @default(monthly)
+  stripeAccountId        String?
+  // Payout destination (OB-06x): which rail a tipster is paid out on and its
+  // details. `payoutMethod` is one of `stripe` | `crypto` | `mobile_money`;
+  // Stripe uses stripeAccountId, crypto the wallet fields, mobile money the
+  // phone + network fields.
+  payoutMethod           String?
+  payoutWalletAddress    String?
+  payoutWalletChain      String?
+  payoutMobileNumber     String?
+  payoutMobileNetwork    String?
+  // Onboarding wizard (OB-020): Stripe Connect onboarding + identity
+  // verification progress. Publishing is gated until every required step
+  // (profile, sports, bio, pricing, Stripe) is complete; verification is an
+  // optional trust step that unlocks the "verified" badge.
+  stripeOnboarded        Boolean         @default(false)
+  identityVerified       Boolean         @default(false)
+  // Rising-tipster graduation (OB-153): new tipsters start `rising` (provisional
+  // — tips are free/public and live picks are ungated). Crossing the configurable
+  // graduation threshold (verified settled win rate + sample size) auto-advances
+  // them to `pending_review` so an admin can assign the verified tag. Live picks
+  // are only ever gated once `verified` AND `subscriptionGatingEnabled` is on —
+  // graduation never auto-enables billing.
+  graduationStatus          String    @default("rising")
+  subscriptionGatingEnabled Boolean   @default(false)
+  // First time this tipster met the graduation threshold (for the admin review
+  // queue); null until they qualify.
+  graduationEligibleAt      DateTime?
+  // Social / "digital identity" handles surfaced on the verified profile.
   socialX                String?
   socialInstagram        String?
   socialTelegram         String?
@@ -58,6 +215,16 @@ model Tipster {
   user                   User                @relation(fields: [userId], references: [id])
   reports                TipsterReport[]
   stats                  TipsterStats?
+  status                 String          @default("active")
+  createdAt              DateTime        @default(now())
+
+  picks         Pick[]
+  subscriptions Subscription[]
+  stats         TipsterStats?
+  payouts       Payout[]
+  reports       TipsterReport[]
+  followers     Follow[]
+  announcements TipDropAnnouncement[]
 }
 
 model Event {
@@ -72,7 +239,20 @@ model Event {
   closingCapturedAt DateTime?
   picks             Pick[]
 
+  // Latest known in-play score (OB-039). Populated from the provider score feed
+  // while the game is live; `null` until a score is observed. Used by the
+  // timing gate to reject live picks on markets the game has already decided.
+  liveHomeScore Int?
+  liveAwayScore Int?
+
+  picks Pick[]
+
   @@index([startTime])
+  // OB-120: the settlement worker's closing-odds capture scans events at/after
+  // kickoff that haven't been captured yet (closingCapturedAt IS NULL). Leading
+  // with closingCapturedAt lets Postgres seek the small uncaptured set instead of
+  // sequentially scanning every past event.
+  @@index([closingCapturedAt, startTime])
 }
 
 /// Append-only. Core fields are immutable after `lockedAt`.
@@ -88,6 +268,29 @@ model Pick {
   hash        String
   nonce       String
   lockedAt    DateTime   @default(now())
+  id        String  @id @default(cuid())
+  tipsterId String
+  tipster   Tipster @relation(fields: [tipsterId], references: [userId])
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id])
+
+  market     String
+  selection  String
+  oddsAtPick Float
+  stakeUnits Float   @default(1)
+  // Pre-match (before kickoff, CLV-bearing) vs live/in-play (after kickoff,
+  // excluded from CLV, aggregated separately). Set at lock time; immutable.
+  pickType   PickType @default(pre_match)
+  // Optional tipster-authored context / reasoning, captured at lock time.
+  // Not part of the integrity hash — it's commentary, not the wager itself.
+  note       String?
+
+  // Integrity fields (set at lock time, never mutated)
+  hash     String
+  nonce    String
+  lockedAt DateTime @default(now())
+
+  // Settlement fields (worker-only writes)
   status      PickStatus @default(pending)
   closingOdds Float?
   clv         Float?
@@ -99,6 +302,10 @@ model Pick {
 
   @@index([tipsterId, status])
   @@index([eventId, status])
+  // OB-120: profile track record + subscriber feed list picks by tipster newest
+  // first (ORDER BY lockedAt DESC). This composite lets Postgres return rows in
+  // lockedAt order per tipster without a separate sort step.
+  @@index([tipsterId, lockedAt])
 }
 
 model Subscription {
@@ -131,6 +338,10 @@ model Follow {
 }
 
 /// Materialized stats, recomputed by the stats worker after each settlement batch.
+/// Headline fields (roi/yield/clvAvg/winRate/sampleSize/…) cover PRE-MATCH picks
+/// only, so the CLV-ranked yield is never diluted by in-play results. The `live*`
+/// fields carry the separate in-play book so live and pre-match yield are shown
+/// distinctly, never blended (OB-039).
 model TipsterStats {
   tipsterId     String   @id
   roi           Float    @default(0)
@@ -140,8 +351,17 @@ model TipsterStats {
   sampleSize    Int      @default(0)
   maxDrawdown   Float    @default(0)
   currentStreak Int      @default(0)
+  // Live / in-play book, kept separate from the pre-match headline above.
+  liveYield      Float   @default(0)
+  liveWinRate    Float   @default(0)
+  liveSampleSize Int     @default(0)
   updatedAt     DateTime @updatedAt
   tipster       Tipster  @relation(fields: [tipsterId], references: [userId])
+
+  // OB-120: the public leaderboard ranks by yield then CLV (ORDER BY yield DESC,
+  // clvAvg DESC). This composite lets Postgres return the top tipsters via an
+  // ordered index scan instead of sorting the whole stats table.
+  @@index([yield, clvAvg])
 }
 
 model Payout {
@@ -238,11 +458,24 @@ model Feedback {
 
 /// Marketing newsletter opt-ins from the public /newsletter page (OB-072).
 /// Email is unique so re-subscribing is idempotent. Status: subscribed | unsubscribed.
+/// Newsletter opt-ins (OB-072/OB-157). Double opt-in: a signup starts as
+/// `pending` with a confirm token and only becomes `subscribed` after the
+/// visitor clicks the confirmation link (consent recorded in `confirmedAt`).
+/// Every row carries an opaque `unsubscribeToken` powering one-click,
+/// CAN-SPAM/GDPR-compliant unsubscribe. `unsubscribed` rows are retained as a
+/// suppression record and receive nothing.
 model NewsletterSubscriber {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  status    String   @default("subscribed")
-  createdAt DateTime @default(now())
+  id               String    @id @default(cuid())
+  email            String    @unique
+  status           String    @default("pending")
+  /// Set while `pending`; cleared once confirmed. Unique so a link maps to one row.
+  confirmToken     String?   @unique
+  /// Opaque per-subscriber token backing the one-click unsubscribe link.
+  unsubscribeToken String    @unique
+  /// When double opt-in was completed (consent timestamp), null until confirmed.
+  confirmedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([status])
 }
@@ -268,6 +501,24 @@ model Article {
   updatedAt      DateTime        @updatedAt
   category       ArticleCategory @default(content)
   author         User            @relation(fields: [authorId], references: [id])
+  body           String // markdown
+  coverImage     String?
+  tags           String[]
+  status         ArticleStatus   @default(draft)
+  category       ArticleCategory @default(content)
+  readingMinutes Int             @default(1)
+
+  // SEO overrides (fall back to title/excerpt when null)
+  seoTitle       String?
+  seoDescription String?
+  canonicalUrl   String?
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([status, publishedAt])
   @@index([category, status, publishedAt])
@@ -285,6 +536,22 @@ model NotificationPreference {
   unsubscribeToken String                @unique
   updatedAt        DateTime              @updatedAt
   user             User                  @relation(fields: [userId], references: [id])
+}
+
+/// A browser Web Push (VAPID) subscription (OB-031). One row per browser/device
+/// a user has opted in from; `endpoint` is the push service URL and the keys
+/// (`p256dh`, `auth`) encrypt the payload. Expired/unsubscribed endpoints are
+/// pruned when the push service reports them gone (404/410).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Free "Daily Tips" hub (OB-150): admin-curated "bets of the day" shown
@@ -389,4 +656,43 @@ enum NotificationFrequency {
 enum BillingInterval {
   weekly
   monthly
+/// Tipster-authored tip-drop schedule announcement (OB-034): a lightweight,
+/// pick-free heads-up telling subscribers *when* tips will drop (e.g. "Daily
+/// tips at 18:00 EAT"). One-off or recurring, always with an explicit IANA
+/// timezone so the wall-clock time resolves to the correct instant everywhere.
+/// Publishing fans out to active subscribers honouring notification
+/// preferences; announcements never carry gated pick content. `announcedAt`
+/// makes the publish fan-out idempotent; `reminderSentAt` guards the optional
+/// pre-drop reminder.
+model TipDropAnnouncement {
+  id              String                 @id @default(cuid())
+  tipsterId       String
+  tipster         Tipster                @relation(fields: [tipsterId], references: [userId])
+  /// Short headline, e.g. "Daily tips at 18:00 EAT".
+  title           String
+  /// Optional extra context shown under the title (never gated pick content).
+  message         String?
+  /// IANA timezone the wall-clock time is expressed in, e.g. "Africa/Nairobi".
+  timezone        String
+  recurrence      AnnouncementRecurrence @default(one_off)
+  /// Wall-clock time of day in `timezone`, as "HH:MM" (24h).
+  timeOfDay       String
+  /// For `one_off`: the calendar day of the drop (date-only, in `timezone`).
+  dropDate        DateTime?              @db.Date
+  /// For `weekly`: day of week (0 = Sunday … 6 = Saturday).
+  weekday         Int?
+  /// Optional pre-drop reminder lead time in minutes (null = no reminder).
+  reminderMinutes Int?
+  /// Resolved next drop instant (UTC); recomputed on every write.
+  nextDropAt      DateTime?
+  status          AnnouncementStatus     @default(active)
+  /// Set when the publish fan-out has been sent (idempotency guard).
+  announcedAt     DateTime?
+  /// Set when the pre-drop reminder fan-out has been sent (idempotency guard).
+  reminderSentAt  DateTime?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([tipsterId, status])
+  @@index([status, nextDropAt])
 }

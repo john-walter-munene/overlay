@@ -1,9 +1,18 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
-  normalizeSubscriberEmail,
-  newsletterConfirmationBody,
+  confirmFlow,
+  sendWeeklyDigestFlow,
+  subscribeFlow,
+  unsubscribeFlow,
+  type FlowResult,
+  type NewsletterMailer,
 } from './newsletter';
 
 @Injectable()
@@ -15,50 +24,82 @@ export class NewsletterService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  /**
-   * Subscribe an email to the marketing newsletter. Idempotent: re-subscribing
-   * an existing address is a no-op success, and re-activates a previously
-   * unsubscribed address. A confirmation email is sent on first (re)subscribe,
-   * but delivery failures never fail the request — the opt-in is already saved.
-   */
+  /** Adapt NotificationsService to the flow's minimal mailer interface. */
+  private get mailer(): NewsletterMailer {
+    return {
+      sendEmail: (to, subject, body) =>
+        this.notifications.sendEmail(to, subject, body),
+    };
+  }
+
+  /** Public web origin used to build confirm / unsubscribe links in emails. */
+  private baseUrl(): string {
+    return (
+      process.env.PUBLIC_WEB_URL ??
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      'http://localhost:3000'
+    );
+  }
+
+  /** Map a flow result onto the matching HTTP exception (or return ok). */
+  private mapResult(result: FlowResult, unknownMessage: string): { ok: true } {
+    if (result === 'invalid') {
+      throw new BadRequestException('A valid token or email is required.');
+    }
+    if (result === 'unknown') {
+      throw new NotFoundException(unknownMessage);
+    }
+    return { ok: true };
+  }
+
+  /** Start a double opt-in subscription (sends a confirmation link). */
   async subscribe(rawEmail: string): Promise<{ ok: true }> {
-    const email = normalizeSubscriberEmail(rawEmail);
-    if (!email) {
+    const result = await subscribeFlow(
+      this.prisma,
+      this.mailer,
+      this.baseUrl(),
+      rawEmail,
+      this.log,
+    );
+    if (result === 'invalid') {
       throw new BadRequestException('A valid email is required.');
     }
-
-    const existing = await this.prisma.newsletterSubscriber.findUnique({
-      where: { email },
-    });
-    const shouldConfirm = !existing || existing.status !== 'subscribed';
-
-    await this.prisma.newsletterSubscriber.upsert({
-      where: { email },
-      update: { status: 'subscribed' },
-      create: { email, status: 'subscribed' },
-    });
-
-    if (shouldConfirm) {
-      try {
-        await this.notifications.sendEmail(
-          email,
-          'Welcome to the Overlay Bets newsletter',
-          newsletterConfirmationBody(),
-        );
-      } catch (err) {
-        this.log.warn(
-          `Newsletter confirmation email failed for ${email}: ${String(err)}`,
-        );
-      }
-    }
-
     return { ok: true };
+  }
+
+  /** Complete double opt-in for a confirmation token. */
+  async confirm(token: string): Promise<{ ok: true }> {
+    const result = await confirmFlow(this.prisma, this.mailer, token, this.log);
+    return this.mapResult(result, 'Unknown or expired confirmation token');
+  }
+
+  /** One-click unsubscribe for an unsubscribe token. */
+  async unsubscribe(token: string): Promise<{ ok: true }> {
+    const result = await unsubscribeFlow(this.prisma, token);
+    return this.mapResult(result, 'Unknown unsubscribe token');
+  }
+
+  /** Compose + send the weekly "Picks of the Week" digest. */
+  async sendWeeklyDigest(
+    sinceMs?: number,
+  ): Promise<{ sent: number; picks: number }> {
+    return sendWeeklyDigestFlow(
+      this.prisma,
+      this.mailer,
+      this.baseUrl(),
+      sinceMs,
+      this.log,
+    );
   }
 
   /** Admin: list newsletter subscribers, newest first. */
   async listForAdmin(status?: string) {
     const where =
-      status === 'subscribed' || status === 'unsubscribed' ? { status } : {};
+      status === 'subscribed' ||
+      status === 'unsubscribed' ||
+      status === 'pending'
+        ? { status }
+        : {};
     const rows = await this.prisma.newsletterSubscriber.findMany({
       where,
       orderBy: { createdAt: 'desc' },
@@ -72,4 +113,3 @@ export class NewsletterService {
     }));
   }
 }
-

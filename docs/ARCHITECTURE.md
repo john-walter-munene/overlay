@@ -23,7 +23,7 @@
 | Privacy/GDPR export + erasure | **Built** |
 | Multi-currency (FX conversion) | **Built** |
 | Observability (Prometheus metrics, health) | **Built**; Sentry pending |
-| DB-level pick immutability trigger | **Pending** (app-layer today) |
+| DB-level pick immutability trigger | **Built** (app-layer guard + Postgres trigger — OB-035) |
 
 > The backlog (`PROD-READINESS-BACKLOG.md`) tracks the remaining production-hardening work with stable `OB-###` IDs.
 
@@ -176,7 +176,7 @@ audit_log(id PK, actor, action, entity, entity_id, payload_json, created_at)
 ```
 
 **Integrity rules**
-- `picks`: application forbids UPDATE of core fields post-lock; only the settlement worker writes settlement fields. DB triggers/row-level checks enforce immutability; every write mirrored to `audit_log`.
+- `picks`: application forbids UPDATE of core fields post-lock; only the settlement worker writes settlement fields. A `BEFORE UPDATE` trigger (`pick_enforce_immutability`, OB-035) enforces this at the DB layer — core wager/integrity fields (market/selection/odds/hash/nonce/lockedAt…) can never change, and settlement fields may only progress the pick forward (closing-line capture while pending → the `pending → terminal` grade → a one-time CLV write), so a settled pick can't be re-graded, un-settled, or back-dated. Every write is mirrored to `audit_log`.
 - `hash = SHA256(canonical(pick_payload) + nonce)`; `locked_at` from trusted server clock.
 
 ---
@@ -270,7 +270,7 @@ The **stats math lives in `packages/shared`** so it's independently unit-testabl
 
 ## 8. Security & integrity
 
-- **Pick immutability:** app-layer guard + DB constraint/trigger; all mutations → `audit_log`.
+- **Pick immutability:** app-layer guard + DB trigger (`pick_enforce_immutability`, OB-035); all mutations → `audit_log`.
 - **Webhook verification:** Stripe + data-vendor signatures validated; reject unsigned.
 - **AuthZ:** role checks (tipster can post; only settlement worker writes results); subscription entitlement gate on pick reads.
 - **Secrets:** env-managed, never in repo; rotate keys.
@@ -297,6 +297,6 @@ The **stats math lives in `packages/shared`** so it's independently unit-testabl
 4. **Hosting:** ✅ Decided — **Render** (API + worker + Postgres + Redis via `render.yaml`) + **Vercel** (web).
 5. **Data vendor + closing-odds source** (book close vs Betfair exchange price). → `VENDOR-SPIKE.md`. Adapters exist for The Odds API + API-Football; production key + validation pending (OB-045).
 6. **Single vs dual-source settlement** for trust vs cost (OB-047, stretch).
-7. **DB-level pick immutability trigger** — pending (OB-035); app-layer guard in place today.
+7. **DB-level pick immutability trigger** — ✅ Decided & built (OB-035): app-layer guard backed by the `pick_enforce_immutability` `BEFORE UPDATE` trigger.
 8. **Public-chain anchoring** — deferred to post-MVP (OB-037, stretch).
 ```

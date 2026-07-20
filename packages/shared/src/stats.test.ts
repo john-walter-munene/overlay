@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   computeTipsterStats,
   computeCurrentStreak,
+  computeSegmentedStats,
   pickProfitUnits,
   pickClv,
 } from './stats.ts';
@@ -36,6 +37,11 @@ test('pickClv: positive when pick odds beat the close', () => {
 
 test('pickClv: null when closing odds missing', () => {
   assert.equal(pickClv(p({ closingOdds: null })), null);
+});
+
+test('pickClv: null for live/in-play picks even with closing odds', () => {
+  // In-play picks have no pre-match closing line, so CLV is undefined (OB-039).
+  assert.equal(pickClv(p({ pickType: 'live', oddsAtPick: 2.2, closingOdds: 2.0 })), null);
 });
 
 test('computeTipsterStats: ROI and yield over a mixed book', () => {
@@ -120,4 +126,39 @@ test('computeCurrentStreak: negative losing streak, skipping void', () => {
     p({ status: 'lost', settledAt: 4 }),
   ]);
   assert.equal(streak, -2);
+});
+
+test('computeSegmentedStats: live and pre-match yields are kept separate', () => {
+  // Pre-match book: 3 wins @2.0 (+3), 1 loss (-1) → ROI 0.5, yield 50.
+  // Live book: 1 win @2.0 (+1), 1 loss (-1) → ROI 0, yield 0.
+  const seg = computeSegmentedStats([
+    p({ status: 'won' }),
+    p({ status: 'won' }),
+    p({ status: 'won' }),
+    p({ status: 'lost' }),
+    p({ pickType: 'live', status: 'won' }),
+    p({ pickType: 'live', status: 'lost' }),
+  ]);
+  assert.ok(Math.abs(seg.preMatch.yield - 50) < 1e-9);
+  assert.equal(seg.preMatch.sampleSize, 4);
+  assert.equal(seg.live.yield, 0);
+  assert.equal(seg.live.sampleSize, 2);
+});
+
+test('computeSegmentedStats: live picks are excluded from CLV', () => {
+  // Only the pre-match pick has (valid) CLV; the live pick's is dropped.
+  const seg = computeSegmentedStats([
+    p({ status: 'won', oddsAtPick: 2.2, closingOdds: 2.0 }), // +0.1
+    p({ pickType: 'live', status: 'won', oddsAtPick: 2.2, closingOdds: 2.0 }),
+  ]);
+  assert.ok(Math.abs(seg.preMatch.clvAvg - 0.1) < 1e-9);
+  assert.equal(seg.live.clvAvg, 0); // no CLV-bearing picks in the live book
+});
+
+test('computeTipsterStats: live picks never contribute to CLV', () => {
+  const stats = computeTipsterStats([
+    p({ status: 'won', oddsAtPick: 2.2, closingOdds: 2.0 }), // +0.1
+    p({ pickType: 'live', status: 'lost', oddsAtPick: 3.0, closingOdds: 1.5 }), // would be +1.0 if counted
+  ]);
+  assert.ok(Math.abs(stats.clvAvg - 0.1) < 1e-9);
 });

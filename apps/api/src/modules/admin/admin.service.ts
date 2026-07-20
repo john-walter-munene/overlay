@@ -1,12 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { canAssignRole, type Role } from '@overlay/shared';
 import { PrismaService } from '../../prisma.service';
 import { SettlementService } from '../../workers/settlement.service';
+import type { AuthUser } from '../../common/crypto';
 import {
   normalizeUsersQuery,
   paginateUsers,
@@ -56,6 +59,7 @@ export class AdminService {
       pendingPayouts,
       publishedArticles,
       draftArticles,
+      graduationReviews,
     ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.tipster.count(),
@@ -65,6 +69,10 @@ export class AdminService {
       this.prisma.payout.count({ where: { status: 'pending' } }),
       this.prisma.article.count({ where: { status: 'published' } }),
       this.prisma.article.count({ where: { status: 'draft' } }),
+      // Rising tipsters who have met the graduation threshold and await review.
+      this.prisma.tipster.count({
+        where: { graduationStatus: 'pending_review' },
+      }),
     ]);
 
     const grossPendingPayoutCents = await this.prisma.payout.aggregate({
@@ -82,6 +90,7 @@ export class AdminService {
       grossPendingPayoutCents: grossPendingPayoutCents._sum.amountCents ?? 0,
       publishedArticles,
       draftArticles,
+      graduationReviews,
     };
   }
 
@@ -144,11 +153,16 @@ export class AdminService {
   }
 
   async setUserRole(
-    actorId: string,
+    actor: AuthUser,
     userId: string,
-    role: 'user' | 'tipster' | 'admin',
+    role: Role,
     note?: string,
   ) {
+    if (!canAssignRole(actor.role, role)) {
+      throw new ForbiddenException(
+        `Role '${actor.role}' may not assign role '${role}'`,
+      );
+    }
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
@@ -167,7 +181,7 @@ export class AdminService {
       }
       await tx.auditLog.create({
         data: {
-          actor: `admin:${actorId}`,
+          actor: `admin:${actor.userId}`,
           action: 'user.role_changed',
           entity: 'User',
           entityId: userId,
@@ -202,6 +216,113 @@ export class AdminService {
           entity: 'Tipster',
           entityId: tipsterId,
           payload: withNote({ status }, note),
+        },
+      });
+      return updated;
+    });
+  }
+
+  /**
+   * The rising-tipster graduation review queue (OB-153): tipsters who have met
+   * the graduation threshold (`pending_review`) and are awaiting an admin
+   * decision to assign the verified tag. Oldest-qualified first so no tipster
+   * waits indefinitely. Includes the tipster's settled stats for context.
+   */
+  async listGraduationReviews() {
+    const rows = await this.prisma.tipster.findMany({
+      where: { graduationStatus: 'pending_review' },
+      orderBy: { graduationEligibleAt: 'asc' },
+      select: {
+        userId: true,
+        displayName: true,
+        graduationEligibleAt: true,
+        subscriptionGatingEnabled: true,
+        user: { select: { email: true, username: true } },
+        stats: { select: { winRate: true, sampleSize: true, yield: true } },
+      },
+    });
+    return rows.map((t) => ({
+      tipsterId: t.userId,
+      name: t.displayName ?? t.user?.username ?? null,
+      email: t.user?.email ?? null,
+      eligibleAt: t.graduationEligibleAt,
+      subscriptionGatingEnabled: t.subscriptionGatingEnabled,
+      winRate: t.stats?.winRate ?? 0,
+      settledBets: t.stats?.sampleSize ?? 0,
+      yield: t.stats?.yield ?? 0,
+    }));
+  }
+
+  /**
+   * Review a graduation-eligible tipster (OB-153). `verify` assigns the verified
+   * tag (Rising → Verified), making them eligible to gate live picks; `reject`
+   * returns them to provisional `rising`. Verifying never enables billing on its
+   * own — subscription gating stays off until explicitly switched on.
+   */
+  async reviewTipsterGraduation(
+    actorId: string,
+    tipsterId: string,
+    decision: 'verify' | 'reject',
+    note?: string,
+  ) {
+    const tipster = await this.prisma.tipster.findUnique({
+      where: { userId: tipsterId },
+    });
+    if (!tipster) throw new NotFoundException('Tipster not found');
+
+    const graduationStatus = decision === 'verify' ? 'verified' : 'rising';
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.tipster.update({
+        where: { userId: tipsterId },
+        data: { graduationStatus },
+      });
+      await tx.auditLog.create({
+        data: {
+          actor: `admin:${actorId}`,
+          action: `tipster.graduation_${decision === 'verify' ? 'verified' : 'rejected'}`,
+          entity: 'Tipster',
+          entityId: tipsterId,
+          payload: withNote({ graduationStatus }, note),
+        },
+      });
+      return updated;
+    });
+  }
+
+  /**
+   * Turn subscription gating on/off for a tipster's live picks (OB-153). Gating
+   * can only be enabled once the tipster is verified — it's the explicit,
+   * non-automatic step that starts paywalling live picks.
+   */
+  async setTipsterGating(
+    actorId: string,
+    tipsterId: string,
+    enabled: boolean,
+    note?: string,
+  ) {
+    const tipster = await this.prisma.tipster.findUnique({
+      where: { userId: tipsterId },
+    });
+    if (!tipster) throw new NotFoundException('Tipster not found');
+    if (enabled && tipster.graduationStatus !== 'verified') {
+      throw new BadRequestException(
+        'Tipster must be verified before subscription gating can be enabled',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.tipster.update({
+        where: { userId: tipsterId },
+        data: { subscriptionGatingEnabled: enabled },
+      });
+      await tx.auditLog.create({
+        data: {
+          actor: `admin:${actorId}`,
+          action: `tipster.gating_${enabled ? 'enabled' : 'disabled'}`,
+          entity: 'Tipster',
+          entityId: tipsterId,
+          payload: withNote({ subscriptionGatingEnabled: enabled }, note),
         },
       });
       return updated;

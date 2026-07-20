@@ -10,7 +10,12 @@ import { Response } from 'express';
 import { IsIn, IsOptional } from 'class-validator';
 import { ExportsService } from './exports.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/roles.guard';
+import {
+  RolesGuard,
+  Roles,
+  PermissionsGuard,
+  Permissions,
+} from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
 
@@ -96,8 +101,8 @@ export class ExportsController {
   // ───────────────────────────────────
 
   @Get('admin/users')
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @UseGuards(PermissionsGuard)
+  @Permissions('user:manage')
   async adminUsers(
     @Query() query: ExportQuery,
     @Res() res: Response,
@@ -109,8 +114,8 @@ export class ExportsController {
   }
 
   @Get('admin/audit-log')
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @UseGuards(PermissionsGuard)
+  @Permissions('audit:read')
   async adminAuditLog(
     @Query() query: ExportQuery,
     @Res() res: Response,
@@ -122,8 +127,8 @@ export class ExportsController {
   }
 
   @Get('admin/settlements')
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @UseGuards(PermissionsGuard)
+  @Permissions('finance:manage')
   async adminSettlements(
     @Query() query: ExportQuery,
     @Res() res: Response,
@@ -135,8 +140,8 @@ export class ExportsController {
   }
 
   @Get('admin/reports')
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @UseGuards(PermissionsGuard)
+  @Permissions('content:moderate')
   async adminReports(
     @Query() query: ExportQuery,
     @Res() res: Response,
@@ -148,8 +153,8 @@ export class ExportsController {
   }
 
   @Get('admin/payouts')
-  @UseGuards(RolesGuard)
-  @Roles('admin')
+  @UseGuards(PermissionsGuard)
+  @Permissions('finance:manage')
   async adminPayouts(
     @Query() query: ExportQuery,
     @Res() res: Response,

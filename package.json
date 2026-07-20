@@ -12,22 +12,29 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "test:shared": "node --experimental-strip-types --test \"packages/shared/src/*.test.ts\"",
-    "test:unit": "node --experimental-strip-types --test \"packages/shared/src/*.test.ts\" \"apps/api/src/**/*.test.ts\"",
+    "test:unit": "node --experimental-strip-types --test \"packages/shared/src/*.test.ts\" \"apps/api/src/**/*.test.ts\" \"apps/web/lib/**/*.test.ts\" \"scripts/*.test.mjs\"",
     "test:integration": "node --experimental-strip-types --test \"apps/api/src/**/*.itest.ts\"",
+    "smoke:prod": "node --experimental-strip-types scripts/prod-smoke.ts",
+    "audit:ci": "node scripts/audit-ci.mjs",
     "db:up": "docker compose -f infra/docker-compose.yml up -d",
     "db:down": "docker compose -f infra/docker-compose.yml down",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev --schema prisma/schema.prisma",
     "db:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
-    "db:seed": "node prisma/seed.mjs"
+    "db:seed": "node prisma/seed.mjs",
+    "db:backup": "bash scripts/db-backup.sh",
+    "db:restore": "bash scripts/db-restore.sh",
+    "db:restore-drill": "bash scripts/db-restore-drill.sh"
   },
   "engines": {
     "node": ">=22"
   },
   "overrides": {
-    "ioredis": "5.11.1"
+    "ioredis": "5.11.1",
+    "multer": "2.2.0"
   },
   "devDependencies": {
+    "@bradygaster/squad-cli": "^0.11.0",
     "prisma": "^5.20.0",
     "typescript": "^5.6.0"
   }

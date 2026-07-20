@@ -31,7 +31,7 @@ export default function AuthCallbackPage() {
       if (profile) {
         if (profile.role === 'tipster') {
           dest = linkType === 'signup' ? '/onboarding' : '/dashboard';
-        } else if (profile.role === 'admin') {
+        } else if (profile.role === 'admin' || profile.role === 'staff') {
           dest = '/admin';
         } else {
           dest = '/account';

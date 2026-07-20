@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   gradeMarket,
+  isMarketDecidedInPlay,
   parseSpreadSelection,
   parseTotalSelection,
   signedPoint,
@@ -118,4 +119,47 @@ test('gradeMarket Asian quarter totals: half-win / half-loss', () => {
   assert.equal(gradeMarket('totals', 'over 2.75', 2, 1), 'half_won');
   // Under 2.25, total 2: 2.0 (push) and 2.5 (win) → half_won
   assert.equal(gradeMarket('totals', 'under 2.25', 1, 1), 'half_won');
+});
+
+test('isMarketDecidedInPlay: totals lock once the line is passed', () => {
+  // Over 2.5 is a foregone win once 3 goals are in; still open at 2.
+  assert.equal(isMarketDecidedInPlay('totals', 'over 2.5', 2, 1), true);
+  assert.equal(isMarketDecidedInPlay('totals', 'over 2.5', 1, 1), false);
+  // Under 2.5 is a foregone loss once 3 goals are in; still open below the line.
+  assert.equal(isMarketDecidedInPlay('totals', 'under 2.5', 2, 1), true);
+  assert.equal(isMarketDecidedInPlay('totals', 'under 2.5', 1, 1), false);
+  // Whole line: still open on a push (could go over or stay level at full time).
+  assert.equal(isMarketDecidedInPlay('totals', 'over 3', 2, 1), false);
+  assert.equal(isMarketDecidedInPlay('totals', 'over 3', 3, 1), true);
+  // Quarter line: half-win at the current score is not yet fully decided.
+  assert.equal(isMarketDecidedInPlay('totals', 'over 2.75', 2, 1), false);
+  assert.equal(isMarketDecidedInPlay('totals', 'over 2.75', 3, 0), false);
+  assert.equal(isMarketDecidedInPlay('totals', 'over 2.75', 4, 0), true);
+});
+
+test('isMarketDecidedInPlay: team totals lock on the picked team only', () => {
+  assert.equal(isMarketDecidedInPlay('team_totals', 'home over 1.5', 2, 0), true);
+  assert.equal(isMarketDecidedInPlay('team_totals', 'home over 1.5', 1, 3), false);
+  assert.equal(isMarketDecidedInPlay('team_totals', 'home under 1.5', 2, 0), true);
+});
+
+test('isMarketDecidedInPlay: btts locks once both teams have scored', () => {
+  assert.equal(isMarketDecidedInPlay('btts', 'yes', 1, 1), true);
+  assert.equal(isMarketDecidedInPlay('btts', 'no', 1, 1), true);
+  assert.equal(isMarketDecidedInPlay('btts', 'yes', 2, 0), false);
+  assert.equal(isMarketDecidedInPlay('btts', 'no', 0, 0), false);
+});
+
+test('isMarketDecidedInPlay: correct score locks once the game runs past it', () => {
+  assert.equal(isMarketDecidedInPlay('correct_score', '1-0', 2, 0), true);
+  assert.equal(isMarketDecidedInPlay('correct_score', '1-0', 0, 1), true);
+  assert.equal(isMarketDecidedInPlay('correct_score', '2-1', 1, 0), false);
+});
+
+test('isMarketDecidedInPlay: winner and parity markets can always still flip', () => {
+  assert.equal(isMarketDecidedInPlay('1X2', 'home', 3, 0), false);
+  assert.equal(isMarketDecidedInPlay('moneyline', 'home', 3, 0), false);
+  assert.equal(isMarketDecidedInPlay('double_chance', '1x', 3, 0), false);
+  assert.equal(isMarketDecidedInPlay('spreads', 'home -1.5', 3, 0), false);
+  assert.equal(isMarketDecidedInPlay('odd_even', 'odd', 3, 0), false);
 });

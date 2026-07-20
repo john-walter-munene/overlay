@@ -1,0 +1,42 @@
+# Dependabot keeps dependencies patched (OB-086). Security updates for known
+# advisories are raised automatically; the weekly schedule catches the rest.
+# New high/critical advisories are additionally gated in CI (see ci.yml → security).
+version: 2
+updates:
+  # npm workspaces (root lockfile covers packages/* and apps/*).
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    versioning-strategy: increase
+    labels:
+      - dependencies
+    # Batch low-risk updates to keep PR noise down; security fixes are exempt
+    # from grouping so they surface individually.
+    groups:
+      dev-dependencies:
+        dependency-type: development
+      production-dependencies:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions used by the workflows in .github/workflows.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions
+
+  # Base image + apt packages in the API/worker Dockerfile.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - docker

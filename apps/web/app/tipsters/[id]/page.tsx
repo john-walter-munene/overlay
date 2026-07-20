@@ -5,11 +5,18 @@ import { buildClvChart } from '@overlay/shared/tipster-profile';
 import { countryLabel } from '@overlay/shared/countries';
 import Flag from '../../Flag';
 import FollowButton from '../../FollowButton';
+import SubscribeButton from '../../SubscribeButton';
 import Avatar from '../../Avatar';
-import { getTipster, SITE_URL } from '../../../lib/api';
+import { getTipster, listTipsterIds, tipsterStaticParams, SITE_URL } from '../../../lib/api';
+import type { VerifiedMetrics as VerifiedMetricsData } from '../../../lib/api';
 import TipsterTips from './TipsterTips';
 
 export const revalidate = 60;
+
+/** Pre-render active tipster profiles at build time for SEO/perf (OB-131). */
+export async function generateStaticParams() {
+  return tipsterStaticParams(await listTipsterIds());
+}
 
 export async function generateMetadata({
   params,
@@ -85,6 +92,197 @@ function ClvChart({ points }: { points: number[] }) {
         />
       )}
     </svg>
+  );
+}
+
+/**
+ * Additional verified metrics (OB-057): a CLV distribution histogram, ROI by
+ * sport and by market, and 30/90/all-time performance windows. All figures come
+ * from the shared, unit-tested stats engine — deterministic and computed over
+ * the tipster's pre-match (CLV-bearing) book only.
+ */
+function pctText(v: number, digits = 1): string {
+  return `${v >= 0 ? '+' : ''}${v.toFixed(digits)}%`;
+}
+
+function WindowCard({
+  label,
+  stats,
+}: {
+  label: string;
+  stats: VerifiedMetricsData['windows']['last30'];
+}) {
+  return (
+    <div
+      style={{
+        padding: '0.9rem 1rem',
+        border: '1px solid var(--border)',
+        borderRadius: 12,
+      }}
+    >
+      <div style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>{label}</div>
+      {stats.sampleSize > 0 ? (
+        <>
+          <div style={{ fontSize: '1.3rem', fontWeight: 600 }}>
+            {pctText(stats.yield)}
+          </div>
+          <div style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>
+            {stats.sampleSize} pick{stats.sampleSize === 1 ? '' : 's'} ·{' '}
+            {(stats.winRate * 100).toFixed(0)}% win
+          </div>
+        </>
+      ) : (
+        <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>No picks</div>
+      )}
+    </div>
+  );
+}
+
+function DimensionTable({
+  heading,
+  rows,
+}: {
+  heading: string;
+  rows: VerifiedMetricsData['bySport'];
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <div>
+      <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem' }}>{heading}</h3>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+        <thead>
+          <tr style={{ color: 'var(--muted)', textAlign: 'left' }}>
+            <th style={{ padding: '0.25rem 0', fontWeight: 500 }}>Name</th>
+            <th style={{ padding: '0.25rem 0', fontWeight: 500, textAlign: 'right' }}>
+              Yield
+            </th>
+            <th style={{ padding: '0.25rem 0', fontWeight: 500, textAlign: 'right' }}>
+              Win
+            </th>
+            <th style={{ padding: '0.25rem 0', fontWeight: 500, textAlign: 'right' }}>
+              Picks
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }}>
+              <td style={{ padding: '0.35rem 0' }}>{r.key}</td>
+              <td style={{ padding: '0.35rem 0', textAlign: 'right' }}>
+                {pctText(r.stats.yield)}
+              </td>
+              <td style={{ padding: '0.35rem 0', textAlign: 'right' }}>
+                {(r.stats.winRate * 100).toFixed(0)}%
+              </td>
+              <td style={{ padding: '0.35rem 0', textAlign: 'right' }}>
+                {r.stats.sampleSize}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ClvHistogram({
+  distribution,
+}: {
+  distribution: VerifiedMetricsData['clvDistribution'];
+}) {
+  const max = Math.max(1, ...distribution.buckets.map((b) => b.count));
+  return (
+    <div>
+      <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem' }}>CLV distribution</h3>
+      <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>
+        {(distribution.positiveRate * 100).toFixed(0)}% of{' '}
+        {distribution.sampleSize} graded pick
+        {distribution.sampleSize === 1 ? '' : 's'} beat the closing line.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+        {distribution.buckets.map((b) => (
+          <div
+            key={b.label}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <span
+              style={{
+                width: 96,
+                flexShrink: 0,
+                color: 'var(--muted)',
+                fontSize: '0.78rem',
+                textAlign: 'right',
+              }}
+            >
+              {b.label}
+            </span>
+            <div
+              style={{
+                flex: 1,
+                height: 14,
+                background: 'var(--border)',
+                borderRadius: 4,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${(b.count / max) * 100}%`,
+                  height: '100%',
+                  background: 'var(--accent)',
+                }}
+              />
+            </div>
+            <span style={{ width: 24, textAlign: 'right', fontSize: '0.8rem' }}>
+              {b.count}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VerifiedMetrics({ metrics }: { metrics: VerifiedMetricsData }) {
+  const { windows, clvDistribution, bySport, byMarket } = metrics;
+  const hasBreakdown = bySport.length > 0 || byMarket.length > 0;
+  return (
+    <section aria-labelledby="metrics-heading" style={{ marginTop: '2rem' }}>
+      <h2 id="metrics-heading" style={{ margin: '0 0 0.75rem' }}>
+        Verified performance
+      </h2>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '0.75rem',
+        }}
+      >
+        <WindowCard label="Last 30 days" stats={windows.last30} />
+        <WindowCard label="Last 90 days" stats={windows.last90} />
+        <WindowCard label="All time" stats={windows.allTime} />
+      </div>
+
+      {clvDistribution.sampleSize > 0 ? (
+        <div style={{ marginTop: '1.5rem' }}>
+          <ClvHistogram distribution={clvDistribution} />
+        </div>
+      ) : null}
+
+      {hasBreakdown ? (
+        <div
+          style={{
+            marginTop: '1.5rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: '1.5rem',
+          }}
+        >
+          <DimensionTable heading="ROI by sport" rows={bySport} />
+          <DimensionTable heading="ROI by market" rows={byMarket} />
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -177,6 +375,23 @@ export default async function TipsterPage({
                 ✓ Verified
               </span>
             ) : null}
+            {t.graduation?.provisional ? (
+              <span
+                title="Rising tipster — tips are free while this tipster builds a verified track record"
+                style={{
+                  marginLeft: '0.6rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: 'var(--muted)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 999,
+                  padding: '0.1rem 0.5rem',
+                  verticalAlign: 'middle',
+                }}
+              >
+                🌱 Rising tipster
+              </span>
+            ) : null}
           </h1>
           <p style={{ color: 'var(--muted)', margin: 0 }}>
             {t.country ? `${countryLabel(t.country)} · ` : ''}
@@ -186,9 +401,40 @@ export default async function TipsterPage({
           </p>
         </div>
       </div>
-      <div style={{ margin: '0.75rem 0 0.25rem' }}>
+      <div
+        style={{
+          margin: '0.75rem 0 0.5rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.6rem',
+          alignItems: 'center',
+        }}
+      >
         <FollowButton tipsterId={t.tipsterId} />
+        {t.subscriptionPriceCents > 0 ? (
+          <a
+            href="#subscribe"
+            className="btn btn--primary"
+            title="Paid — unlock this tipster’s premium picks the moment they’re locked, before kickoff. Cancel anytime."
+          >
+            ★ Subscribe · ${(t.subscriptionPriceCents / 100).toFixed(2)}/
+            {t.billingInterval === 'weekly' ? 'wk' : 'mo'}
+          </a>
+        ) : null}
       </div>
+      <p
+        style={{
+          color: 'var(--muted)',
+          fontSize: '0.85rem',
+          margin: '0 0 0.75rem',
+          maxWidth: 560,
+        }}
+      >
+        <strong style={{ color: 'var(--fg)' }}>Follow</strong> to track this
+        tipster’s verified record for free — no picks unlocked.{' '}
+        <strong style={{ color: 'var(--fg)' }}>Subscribe</strong> to unlock their
+        premium picks the moment they’re locked, before kickoff.
+      </p>
       {t.bio ? <p style={{ color: 'var(--fg)' }}>{t.bio}</p> : null}
       {t.sports.length ? (
         <p style={{ color: 'var(--muted)', marginTop: 0 }}>{t.sports.join(' · ')}</p>
@@ -225,6 +471,65 @@ export default async function TipsterPage({
         )}
       </section>
 
+      {s && s.liveSampleSize > 0 ? (
+        <section
+          aria-label="Live / in-play record"
+          style={{
+            margin: '1.5rem 0',
+            padding: '1.25rem',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <span
+              title="In-play (after kickoff) picks. Excluded from CLV and scored separately from the pre-match record above — never blended."
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                padding: '0.05rem 0.4rem',
+                borderRadius: 999,
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                color: 'var(--danger)',
+                border: '1px solid var(--danger)',
+              }}
+            >
+              <span aria-hidden>●</span> Live
+            </span>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>In-play record</h2>
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+              gap: '1rem',
+            }}
+          >
+            <Stat label="Live yield" value={`${s.liveYield.toFixed(1)}%`} />
+            <Stat
+              label="Live win rate"
+              value={`${(s.liveWinRate * 100).toFixed(0)}%`}
+            />
+            <Stat label="Live picks" value={`${s.liveSampleSize}`} />
+          </div>
+          <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '1rem 0 0' }}>
+            Placed after kickoff, so they carry no closing-line value and are kept
+            separate from the pre-match record above.
+          </p>
+        </section>
+      ) : null}
+
       {clv.sampleSize > 0 ? (
         <section style={{ marginTop: '2rem' }}>
           <div
@@ -257,11 +562,58 @@ export default async function TipsterPage({
         </section>
       ) : null}
 
+      {t.verifiedMetrics ? (
+        <VerifiedMetrics metrics={t.verifiedMetrics} />
+      ) : null}
+
+      {t.subscriptionPriceCents > 0 ? (
+        <section
+          id="subscribe"
+          aria-labelledby="subscribe-heading"
+          style={{
+            margin: '2rem 0',
+            padding: '1.25rem',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+          }}
+        >
+          <h2 id="subscribe-heading" style={{ marginTop: 0 }}>
+            Subscribe
+          </h2>
+          <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+            Unlock {t.displayName ?? t.username ?? 'this tipster'}’s premium
+            picks the moment they’re locked — before kickoff. Cancel anytime.
+            Following stays free and only tracks their public record.
+          </p>
+          <SubscribeButton
+            tipsterId={t.tipsterId}
+            priceCents={t.subscriptionPriceCents}
+            billingInterval={t.billingInterval}
+          />
+        </section>
+      ) : null}
+
       <div style={{ margin: '1.5rem 0' }}>
         <TipsterTips
           tipsterId={t.tipsterId}
-          priceCents={t.subscriptionPriceCents}
-          billingInterval={t.billingInterval}
+          liveGated={t.liveGated}
+          freeOpenPicks={(t.openPicks ?? []).map((p) => ({
+            id: p.id,
+            tipsterId: t.tipsterId,
+            tipsterName: t.displayName ?? t.username,
+            market: p.market,
+            selection: p.selection,
+            oddsAtPick: p.oddsAtPick,
+            pickType: 'pre_match',
+            stakeUnits: 0,
+            status: p.status,
+            clv: null,
+            result: null,
+            note: p.note,
+            lockedAt: Date.parse(p.lockedAt),
+            settledAt: null,
+            event: null,
+          }))}
         />
       </div>
 

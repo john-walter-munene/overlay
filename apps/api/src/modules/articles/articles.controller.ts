@@ -17,7 +17,12 @@ import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { UpdateArticleAuthorStatusDto } from './dto/update-article-author-status.dto';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/roles.guard';
+import {
+  RolesGuard,
+  Roles,
+  PermissionsGuard,
+  Permissions,
+} from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
 import { MAX_COVER_BYTES, type UploadedCover } from './cover-upload';
@@ -71,9 +76,17 @@ bySlug(@Param('slug') slug: string) {
 
   // ---- authoring ----
 
+  @Get('admin/all')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('content:moderate')
+  all() {
+    return this.articles.listAll();
+  }
+
+  /** Articles the caller may manage (moderators: all, tipsters: their own). */
   @Get('manage/mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'tipster')
+  @Roles('admin', 'staff', 'tipster')
   mine(@CurrentUser() user: AuthUser) {
     return this.articles.listMine(user);
   }
@@ -90,7 +103,7 @@ bySlug(@Param('slug') slug: string) {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'tipster')
+  @Roles('admin', 'staff', 'tipster')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateArticleDto,
@@ -106,6 +119,8 @@ bySlug(@Param('slug') slug: string) {
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
   ) {
+  @Roles('admin', 'staff', 'tipster')
+  remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.articles.remove(id, user);
   }
 

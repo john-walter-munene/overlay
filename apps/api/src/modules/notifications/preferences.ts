@@ -5,6 +5,7 @@
 // Notifier (see notifications.service.ts for the Nest wiring).
 
 import { randomBytes } from 'node:crypto';
+import type { PrismaClient } from '@prisma/client';
 import type { EmailTemplate, NewPickNotification } from './templates';
 import type { Notifier } from './notifier.interface';
 
@@ -42,6 +43,62 @@ export function defaultPreference(unsubscribeToken: string): NotificationPrefere
 /** Generate a fresh, URL-safe unsubscribe token. */
 export function generateUnsubscribeToken(): string {
   return randomBytes(24).toString('base64url');
+}
+
+interface StoredPreferenceRow {
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  frequency: string;
+  unsubscribeToken: string;
+}
+
+function toPreferenceValues(row: StoredPreferenceRow): NotificationPreference {
+  return {
+    emailEnabled: row.emailEnabled,
+    pushEnabled: row.pushEnabled,
+    frequency: row.frequency as DigestFrequency,
+    unsubscribeToken: row.unsubscribeToken,
+  };
+}
+
+/**
+ * Resolve a tipster's active subscribers into preference-paired recipients,
+ * lazily creating a default preference row (both channels on, instant cadence)
+ * for any subscriber that lacks one so every recipient carries an unsubscribe
+ * token. Shared by the new-pick and announcement fan-outs.
+ */
+export async function loadSubscriberRecipients(
+  prisma: PrismaClient,
+  tipsterId: string,
+): Promise<PreferenceRecipient[]> {
+  const subs = await prisma.subscription.findMany({
+    where: { tipsterId, status: 'active' },
+    include: { user: { include: { notificationPreference: true } } },
+  });
+
+  const missing = subs.filter((s) => !s.user.notificationPreference);
+  const created = new Map<string, NotificationPreference>();
+  if (missing.length > 0) {
+    const rows = missing.map((s) => ({
+      userId: s.userId,
+      unsubscribeToken: generateUnsubscribeToken(),
+    }));
+    await prisma.notificationPreference.createMany({
+      data: rows,
+      skipDuplicates: true,
+    });
+    for (const r of rows) {
+      created.set(r.userId, defaultPreference(r.unsubscribeToken));
+    }
+  }
+
+  return subs.map((s) => ({
+    userId: s.userId,
+    email: s.user.email,
+    preference: s.user.notificationPreference
+      ? toPreferenceValues(s.user.notificationPreference)
+      : created.get(s.userId) ?? defaultPreference(generateUnsubscribeToken()),
+  }));
 }
 
 /**
@@ -113,6 +170,58 @@ export async function dispatchNewPickWithPreferences(
   }
 
   await Promise.all(jobs);
+}
+
+/**
+ * Fan out a tip-drop schedule announcement (OB-034) honouring each recipient's
+ * preferences: opted-out users get nothing, and each enabled channel is used.
+ * Unlike new-pick fan-out, announcements are time-sensitive scheduling alerts
+ * rather than picks, so they are *not* batched into the daily digest — every
+ * cadence receives them. Emails carry the one-click unsubscribe footer. Returns
+ * the number of recipients that received at least one channel.
+ */
+export async function dispatchAnnouncementWithPreferences(
+  notifier: Notifier,
+  template: EmailTemplate,
+  recipients: PreferenceRecipient[],
+  baseUrl: string,
+): Promise<number> {
+  const jobs: Array<Promise<void>> = [];
+  let notified = 0;
+
+  for (const r of recipients) {
+    const pref = r.preference;
+    if (isOptedOut(pref)) continue;
+
+    let touched = false;
+    if (pref.emailEnabled) {
+      touched = true;
+      jobs.push(
+        notifier.sendEmail({
+          to: r.email,
+          subject: template.subject,
+          body: withUnsubscribeFooter(
+            template.body,
+            unsubscribeUrl(baseUrl, pref.unsubscribeToken),
+          ),
+        }),
+      );
+    }
+    if (pref.pushEnabled) {
+      touched = true;
+      jobs.push(
+        notifier.sendPush({
+          userId: r.userId,
+          title: template.subject,
+          body: template.body,
+        }),
+      );
+    }
+    if (touched) notified += 1;
+  }
+
+  await Promise.all(jobs);
+  return notified;
 }
 
 /** One recipient's pending picks, ready to be sent as a single digest. */

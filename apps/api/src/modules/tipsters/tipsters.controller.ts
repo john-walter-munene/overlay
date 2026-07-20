@@ -78,6 +78,12 @@ export class TipstersController {
     return this.tipsters.listMarketplace(query);
   }
 
+  /** Active tipster ids for sitemap / ISR static generation (OB-131). */
+  @Get('sitemap')
+  sitemap() {
+    return this.tipsters.listPublicTipsterIds();
+  }
+
   @Get(':id')
   getProfile(@Param('id') id: string) {
     return this.tipsters.getProfile(id);

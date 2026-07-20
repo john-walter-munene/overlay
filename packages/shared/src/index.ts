@@ -1,5 +1,7 @@
 export * from './types.ts';
+export * from './rbac.ts';
 export * from './stats.ts';
+export * from './advanced-metrics.ts';
 export * from './performance.ts';
 export * from './integrity.ts';
 export * from './content.ts';
@@ -10,5 +12,7 @@ export * from './subscriptions.ts';
 export * from './countries.ts';
 export * from './currencies.ts';
 export * from './grading.ts';
+export * from './graduation.ts';
 export * from './daily-tips.ts';
+export * from './announcement-schedule.ts';
 export * from './odds.ts';

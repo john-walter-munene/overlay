@@ -178,6 +178,49 @@ export async function listArticleSlugs(): Promise<
   return (await getJson(`/api/articles/sitemap`, 0)) ?? [];
 }
 
+/** One active tipster for sitemap / static-generation of public profiles. */
+export interface TipsterSitemapEntry {
+  tipsterId: string;
+  updatedAt: string;
+}
+
+/**
+ * Active tipster ids + timestamps used to statically generate (ISR) public
+ * profile pages and to build the sitemap (OB-131). Cached for an hour — the
+ * roster changes slowly and individual profiles revalidate on their own.
+ */
+export async function listTipsterIds(): Promise<TipsterSitemapEntry[]> {
+  return (await getJson<TipsterSitemapEntry[]>(`/api/tipsters/sitemap`, 3600)) ?? [];
+}
+
+/**
+ * Upper bound on how many tipster profiles are pre-rendered at build time. The
+ * rest are generated on-demand and cached (ISR), so the build stays bounded no
+ * matter how large the roster grows.
+ */
+export const MAX_PRERENDERED_TIPSTERS = 200;
+
+/**
+ * Build the `generateStaticParams` list for tipster profiles from a set of
+ * sitemap entries: drops blank/duplicate ids and caps the count so the build
+ * never fans out to an unbounded number of pages.
+ */
+export function tipsterStaticParams(
+  entries: { tipsterId: string }[],
+  limit: number = MAX_PRERENDERED_TIPSTERS,
+): { id: string }[] {
+  const seen = new Set<string>();
+  const params: { id: string }[] = [];
+  for (const entry of entries) {
+    const id = entry.tipsterId?.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    params.push({ id });
+    if (params.length >= limit) break;
+  }
+  return params;
+}
+
 /**
  * A free "bet of the day" from the public Daily Tips hub (OB-150). Admin-curated
  * and ungated — not linked to any tipster. `date` is the calendar day
@@ -221,6 +264,54 @@ export interface TipsterStats {
   roi: number;
   maxDrawdown: number;
   currentStreak: number;
+  // Live / in-play book (OB-039), materialized separately so it is never
+  // blended into the pre-match headline above.
+  liveYield: number;
+  liveWinRate: number;
+  liveSampleSize: number;
+}
+
+/** OB-057 additional verified metrics surfaced on a tipster profile. */
+export interface MetricStats {
+  yield: number;
+  clvAvg: number;
+  winRate: number;
+  sampleSize: number;
+  roi: number;
+  maxDrawdown: number;
+  currentStreak: number;
+}
+
+export interface ClvDistributionBucket {
+  label: string;
+  lowerPct: number;
+  upperPct: number;
+  count: number;
+}
+
+export interface ClvDistribution {
+  buckets: ClvDistributionBucket[];
+  sampleSize: number;
+  averagePct: number;
+  positiveRate: number;
+}
+
+export interface DimensionStats {
+  key: string;
+  stats: MetricStats;
+}
+
+export interface WindowedStats {
+  last30: MetricStats;
+  last90: MetricStats;
+  allTime: MetricStats;
+}
+
+export interface VerifiedMetrics {
+  clvDistribution: ClvDistribution;
+  bySport: DimensionStats[];
+  byMarket: DimensionStats[];
+  windows: WindowedStats;
 }
 
 export interface TipsterProfile {
@@ -234,12 +325,29 @@ export interface TipsterProfile {
   subscriptionPriceCents: number;
   billingInterval: 'weekly' | 'monthly';
   verified: boolean;
+  /**
+   * Rising-tipster graduation badge (OB-153): "Rising tipster" while provisional,
+   * "Verified tipster" once graduated.
+   */
+  graduation: {
+    status: 'rising' | 'pending_review' | 'verified';
+    label: string;
+    provisional: boolean;
+  };
+  /** Whether the tipster's live (pre-event) picks are gated behind a subscription. */
+  liveGated: boolean;
   socials: {
     x: string | null;
     instagram: string | null;
     telegram: string | null;
   };
   stats: TipsterStats | null;
+  /**
+   * Additional verified metrics (OB-057): CLV distribution, ROI by sport and by
+   * market, and 30/90/all-time performance windows. Null until the tipster has
+   * settled pre-match picks.
+   */
+  verifiedMetrics: VerifiedMetrics | null;
   subscriberCount: number;
   followerCount: number;
   articlesPublished: number;
@@ -248,10 +356,24 @@ export interface TipsterProfile {
     market: string;
     selection: string;
     oddsAtPick: number;
+    pickType: 'pre_match' | 'live';
     status: string;
     clv: number | null;
     note: string | null;
     settledAt: string | null;
+  }[];
+  /**
+   * Free open (pre-event) picks, shown publicly while the tipster's live picks
+   * aren't gated. Empty once gating is enabled.
+   */
+  openPicks: {
+    id: string;
+    market: string;
+    selection: string;
+    oddsAtPick: number;
+    status: string;
+    note: string | null;
+    lockedAt: string;
   }[];
 }
 
@@ -269,6 +391,7 @@ export interface LivePick {
   selection: string;
   oddsAtPick: number;
   stakeUnits: number;
+  pickType: 'pre_match' | 'live';
   status: string;
   hash: string;
   clv: number | null;
@@ -423,6 +546,7 @@ export interface FeedPick {
   selection: string;
   oddsAtPick: number;
   stakeUnits: number;
+  pickType: 'pre_match' | 'live';
   status: string;
   clv: number | null;
   result: string | null;

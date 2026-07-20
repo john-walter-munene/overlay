@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../../lib/auth';
+import { roleHasPermission } from '@overlay/shared/rbac';
 import { formStyles } from '../../formStyles';
 
 type Outcome = 'won' | 'lost' | 'void' | 'half_won' | 'half_lost';
@@ -103,7 +104,7 @@ export default function AdminSettlementsPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'finance:manage')) {
         router.replace('/account');
         return;
       }

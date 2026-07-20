@@ -10,11 +10,24 @@ import {
   updateUsername,
   changePassword,
   changeEmail,
+  exportMyData,
+  deleteMyAccount,
   getNotificationPreferences,
   updateNotificationPreferences,
   type FullProfile,
   type NotificationPreferences,
 } from '../../lib/auth';
+import {
+  isPushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../../lib/push';
+import { roleHasPermission } from '@overlay/shared/rbac';
+import {
+  DELETE_CONFIRM_PHRASE,
+  isDeleteConfirmed,
+  validateNewPassword,
+} from '../../lib/account';
 import { formStyles } from '../formStyles';
 import AvatarPicker from '../AvatarPicker';
 
@@ -54,9 +67,21 @@ export default function AccountPage() {
 
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [prefsMsg, setPrefsMsg] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushSupported, setPushSupported] = useState(true);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  useEffect(() => {
+    setPushSupported(isPushSupported());
+  }, []);
   useEffect(() => {
     (async () => {
       const p = await getFullProfile();
@@ -106,6 +131,11 @@ export default function AccountPage() {
   async function savePassword(e: React.FormEvent) {
     e.preventDefault();
     setPasswordMsg(null);
+    const invalid = validateNewPassword(newPassword);
+    if (invalid) {
+      setPasswordMsg(invalid);
+      return;
+    }
     try {
       await changePassword(newPassword);
       setPasswordMsg('Password updated ✓');
@@ -120,6 +150,41 @@ export default function AccountPage() {
     router.push('/');
   }
 
+  async function downloadData() {
+    setExportMsg(null);
+    setExportBusy(true);
+    try {
+      await exportMyData();
+      setExportMsg('Download started ✓');
+    } catch (err) {
+      setExportMsg(err instanceof Error ? err.message : 'Failed to export');
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  /**
+   * Irreversible: anonymizes the account's PII (append-only picks are
+   * preserved) then signs out. Gated behind a typed confirmation so it can't
+   * be triggered by an accidental click.
+   */
+  async function confirmDeleteAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setDeleteMsg(null);
+    if (!isDeleteConfirmed(deleteConfirm)) {
+      setDeleteMsg(`Type ${DELETE_CONFIRM_PHRASE} to confirm.`);
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      await deleteMyAccount();
+      router.replace('/');
+    } catch (err) {
+      setDeleteMsg(err instanceof Error ? err.message : 'Failed to delete');
+      setDeleteBusy(false);
+    }
+  }
+
   async function savePrefs(patch: Partial<NotificationPreferences>) {
     setPrefsMsg(null);
     const previous = prefs;
@@ -131,6 +196,30 @@ export default function AccountPage() {
     } catch (err) {
       setPrefs(previous);
       setPrefsMsg(err instanceof Error ? err.message : 'Failed');
+    }
+  }
+
+  /**
+   * Toggling push both saves the preference and (de)registers this browser with
+   * the Push API so alerts actually reach the device. If the browser opt-in
+   * fails (unsupported / permission denied) we surface the reason and leave the
+   * preference off.
+   */
+  async function togglePush(enabled: boolean) {
+    setPrefsMsg(null);
+    setPushBusy(true);
+    try {
+      if (enabled) {
+        await subscribeToPush();
+        await savePrefs({ pushEnabled: true });
+      } else {
+        await unsubscribeFromPush();
+        await savePrefs({ pushEnabled: false });
+      }
+    } catch (err) {
+      setPrefsMsg(err instanceof Error ? err.message : 'Failed to update push');
+    } finally {
+      setPushBusy(false);
     }
   }
 
@@ -193,7 +282,7 @@ export default function AccountPage() {
             </Link>
           </>
         ) : null}
-        {profile.role === 'admin' ? (
+        {roleHasPermission(profile.role, 'audit:read') ? (
           <Link href="/admin" className="btn btn--primary btn--sm">
             Admin dashboard
           </Link>
@@ -337,10 +426,16 @@ export default function AccountPage() {
                 <input
                   type="checkbox"
                   checked={prefs.pushEnabled}
-                  onChange={(e) => savePrefs({ pushEnabled: e.target.checked })}
+                  disabled={pushBusy}
+                  onChange={(e) => togglePush(e.target.checked)}
                 />
                 Push notifications
               </label>
+              {!pushSupported ? (
+                <p style={labelStyle}>
+                  Push isn&apos;t supported in this browser.
+                </p>
+              ) : null}
               <label style={{ display: 'grid', gap: '0.3rem' }}>
                 <span style={labelStyle}>New-pick delivery</span>
                 <select
@@ -363,7 +458,7 @@ export default function AccountPage() {
       </div>
 
       {/* --- Subscriptions --- */}
-      {profile.role === 'admin' ? (
+      {roleHasPermission(profile.role, 'user:manage') ? (
         <p>
           <Link href="/admin/users" style={{ color: 'var(--accent)' }}>
             → Manage users
@@ -414,6 +509,118 @@ export default function AccountPage() {
       )}
         </>
       ) : null}
+
+      {/* --- Data & privacy (GDPR self-service) --- */}
+      <section style={{ ...cardStyle, marginTop: '2rem' }}>
+        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Data &amp; privacy</h2>
+        <p style={labelStyle}>
+          Download everything we hold about you, or permanently close your
+          account.
+        </p>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.6rem',
+            alignItems: 'center',
+            marginTop: '0.75rem',
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={downloadData}
+            disabled={exportBusy}
+          >
+            {exportBusy ? 'Preparing…' : 'Export my data'}
+          </button>
+          {exportMsg ? <span style={labelStyle}>{exportMsg}</span> : null}
+        </div>
+
+        <div style={dividerStyle} />
+
+        <h3 style={{ margin: '0 0 0.35rem', fontSize: '1rem', color: 'var(--danger)' }}>
+          Delete account
+        </h3>
+        <p style={labelStyle}>
+          This anonymizes your personal data and signs you out. It can&apos;t be
+          undone.
+        </p>
+        {!deleteOpen ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDeleteMsg(null);
+              setDeleteConfirm('');
+              setDeleteOpen(true);
+            }}
+            style={{
+              marginTop: '0.5rem',
+              background: 'transparent',
+              color: 'var(--danger)',
+              border: '1px solid var(--danger)',
+              borderRadius: 8,
+              padding: '0.6rem 1.2rem',
+              cursor: 'pointer',
+            }}
+          >
+            Delete my account…
+          </button>
+        ) : (
+          <form
+            onSubmit={confirmDeleteAccount}
+            style={{ ...formStyles.form, gap: '0.5rem', marginTop: '0.5rem' }}
+          >
+            <label style={labelStyle} htmlFor="delete-confirm">
+              Type <strong>{DELETE_CONFIRM_PHRASE}</strong> to confirm.
+            </label>
+            <input
+              id="delete-confirm"
+              style={formStyles.input}
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder={DELETE_CONFIRM_PHRASE}
+              autoComplete="off"
+            />
+            {deleteMsg ? (
+              <p style={{ ...labelStyle, color: 'var(--danger)' }}>{deleteMsg}</p>
+            ) : null}
+            <div style={{ display: 'flex', gap: '0.6rem' }}>
+              <button
+                type="submit"
+                disabled={deleteBusy || !isDeleteConfirmed(deleteConfirm)}
+                style={{
+                  background: 'var(--danger)',
+                  color: 'var(--on-accent)',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.6rem 1.2rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  opacity: deleteBusy || !isDeleteConfirmed(deleteConfirm) ? 0.6 : 1,
+                }}
+              >
+                {deleteBusy ? 'Deleting…' : 'Permanently delete'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleteBusy}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--muted)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '0.6rem 1.2rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
 
       <button
         onClick={logout}

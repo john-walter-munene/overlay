@@ -3,17 +3,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { roleHasPermission } from '@overlay/shared/rbac';
 import {
   getProfile,
   adminListNewsletter,
+  adminSendNewsletterDigest,
   type AdminNewsletterSubscriber,
 } from '../../../lib/auth';
 
-type StatusFilter = '' | 'subscribed' | 'unsubscribed';
+type StatusFilter = '' | 'subscribed' | 'pending' | 'unsubscribed';
 
 const STATUSES: { value: StatusFilter; label: string }[] = [
   { value: '', label: 'All' },
   { value: 'subscribed', label: 'Subscribed' },
+  { value: 'pending', label: 'Pending' },
   { value: 'unsubscribed', label: 'Unsubscribed' },
 ];
 
@@ -23,6 +26,8 @@ export default function AdminNewsletterPage() {
   const [filter, setFilter] = useState<StatusFilter>('subscribed');
   const [rows, setRows] = useState<AdminNewsletterSubscriber[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [digestMsg, setDigestMsg] = useState<string | null>(null);
+  const [digestBusy, setDigestBusy] = useState(false);
 
   const load = useCallback(async (status: StatusFilter) => {
     setRows(null);
@@ -41,7 +46,7 @@ export default function AdminNewsletterPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'content:moderate')) {
         router.replace('/account');
         return;
       }
@@ -52,6 +57,23 @@ export default function AdminNewsletterPage() {
   useEffect(() => {
     if (authorized) load(filter);
   }, [authorized, filter, load]);
+
+  async function sendDigest() {
+    setDigestBusy(true);
+    setDigestMsg(null);
+    try {
+      const { sent, picks } = await adminSendNewsletterDigest();
+      setDigestMsg(
+        picks === 0
+          ? 'No picks in the last 7 days — nothing was sent.'
+          : `Weekly digest sent to ${sent} subscriber${sent === 1 ? '' : 's'} (${picks} pick${picks === 1 ? '' : 's'}).`,
+      );
+    } catch {
+      setDigestMsg('Failed to send the weekly digest.');
+    } finally {
+      setDigestBusy(false);
+    }
+  }
 
   function exportCsv() {
     if (!rows || rows.length === 0) return;
@@ -116,14 +138,26 @@ export default function AdminNewsletterPage() {
         ))}
         <button
           type="button"
+          onClick={sendDigest}
+          disabled={digestBusy}
+          className="btn btn--primary btn--sm"
+          style={{ marginLeft: 'auto' }}
+        >
+          {digestBusy ? 'Sending…' : 'Send weekly digest'}
+        </button>
+        <button
+          type="button"
           onClick={exportCsv}
           disabled={!rows || rows.length === 0}
           className="btn btn--secondary btn--sm"
-          style={{ marginLeft: 'auto' }}
         >
           Export CSV
         </button>
       </div>
+
+      {digestMsg ? (
+        <p style={{ color: 'var(--accent)', marginTop: 0 }}>{digestMsg}</p>
+      ) : null}
 
       {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
 

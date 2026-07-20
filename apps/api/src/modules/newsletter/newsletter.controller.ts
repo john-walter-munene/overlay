@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { IsEmail, MaxLength } from 'class-validator';
 import { NewsletterService } from './newsletter.service';
@@ -11,9 +11,10 @@ class SubscribeDto {
 }
 
 /**
- * Public newsletter signup (OB-072). Anyone (signed in or not) can subscribe
- * with an email; the address is stored and a confirmation email is sent.
- * Rate-limited by the write throttler to deter abuse.
+ * Public newsletter signup with double opt-in (OB-157). Anyone can subscribe;
+ * the address is stored as `pending` and a confirmation email is sent. The
+ * confirm and unsubscribe endpoints are token-authenticated and exposed over
+ * both GET (email clients open the link) and POST (RFC 8058 one-click).
  */
 @Controller('newsletter')
 export class NewsletterController {
@@ -23,5 +24,33 @@ export class NewsletterController {
   @Throttle(writeThrottle())
   subscribe(@Body() dto: SubscribeDto) {
     return this.newsletter.subscribe(dto.email);
+  }
+
+  // Double opt-in confirmation. The token in the emailed link maps to one row.
+  @Get('confirm')
+  confirmGet(@Query('token') token = '') {
+    return this.newsletter.confirm(token);
+  }
+
+  @Post('confirm')
+  confirmPost(
+    @Query('token') queryToken = '',
+    @Body() body: { token?: string } = {},
+  ) {
+    return this.newsletter.confirm(body.token ?? queryToken);
+  }
+
+  // One-click unsubscribe (CAN-SPAM/GDPR). Public; the token authenticates it.
+  @Get('unsubscribe')
+  unsubscribeGet(@Query('token') token = '') {
+    return this.newsletter.unsubscribe(token);
+  }
+
+  @Post('unsubscribe')
+  unsubscribePost(
+    @Query('token') queryToken = '',
+    @Body() body: { token?: string } = {},
+  ) {
+    return this.newsletter.unsubscribe(body.token ?? queryToken);
   }
 }

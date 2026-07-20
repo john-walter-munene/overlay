@@ -29,6 +29,7 @@ We sell **data, tools, and picks** — we do **not** take bets (keeps us out of 
 | `docs/ROADMAP.md` | Phased delivery plan (Phase 0–4) with exit criteria |
 | `docs/NAMING.md` | Branding rationale + name/domain candidates |
 | `docs/VENDOR-SPIKE.md` | Sports-data vendor evaluation brief (the critical first task) |
+| `docs/DEPLOY.md` | Deployment runbook — provision Postgres+Redis, deploy API+worker, migrate, smoke test |
 
 ---
 

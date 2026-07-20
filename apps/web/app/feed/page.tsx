@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
 import type { FeedPick } from '../../lib/api';
+import { EmptyState } from '../EmptyState';
 
 /** How often we poll for settlement status updates (ms). */
 const POLL_MS = 30_000;
@@ -140,13 +141,14 @@ export default function FeedPage() {
       {picks === null ? (
         <p style={{ color: 'var(--muted)' }}>Loading…</p>
       ) : list.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>
-          No picks yet.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Find a tipster to subscribe to
-          </Link>{' '}
-          and their live picks will show up here.
-        </p>
+        <div style={{ marginTop: '2rem' }}>
+          <EmptyState
+            icon="📭"
+            title="No picks yet"
+            description="Subscribe to a tipster and every live and settled pick they lock will show up here automatically."
+            actions={[{ href: '/tipsters', label: 'Find a tipster' }]}
+          />
+        </div>
       ) : (
         <>
           {/* Filters: by tipster (for multiple subscriptions) + by status. */}
@@ -244,6 +246,22 @@ export default function FeedPage() {
 
               <div style={{ margin: '0.4rem 0 0.2rem' }}>
                 <strong>{p.selection}</strong>{' '}
+                {p.pickType === 'live' ? (
+                  <span
+                    title="Placed in-play (after kickoff). Excluded from CLV and scored separately from pre-match picks."
+                    style={{
+                      padding: '0.05rem 0.4rem',
+                      borderRadius: 999,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      color: 'var(--danger)',
+                      border: '1px solid var(--danger)',
+                    }}
+                  >
+                    ● Live
+                  </span>
+                ) : null}{' '}
                 <span style={{ color: 'var(--muted)' }}>
                   ({p.market} @ {p.oddsAtPick.toFixed(2)} · {p.stakeUnits}u)
                 </span>

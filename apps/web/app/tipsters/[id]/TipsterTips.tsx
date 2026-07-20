@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { authFetch, getAccessToken } from '../../../lib/auth';
 import { API_URL, type FeedPick } from '../../../lib/api';
-import SubscribeButton from '../../SubscribeButton';
 
 const MUTED = 'var(--muted)';
 const BORDER = 'var(--border)';
@@ -52,19 +51,48 @@ function statusColor(status: string): string {
   return 'var(--accent)'; // pending / open
 }
 
+/** Small pill flagging an in-play (live) pick so it's never mistaken for a
+ * pre-match selection — live picks carry no CLV and are scored separately. */
+function LiveBadge() {
+  return (
+    <span
+      title="Placed in-play (after kickoff). Excluded from CLV and scored separately from pre-match picks."
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        marginLeft: '0.4rem',
+        padding: '0.05rem 0.4rem',
+        borderRadius: 999,
+        fontSize: '0.68rem',
+        fontWeight: 700,
+        letterSpacing: '0.02em',
+        textTransform: 'uppercase',
+        color: 'var(--danger)',
+        border: '1px solid var(--danger)',
+        verticalAlign: 'middle',
+      }}
+    >
+      <span aria-hidden>●</span> Live
+    </span>
+  );
+}
+
 /**
- * Unified "Tips" browser on a tipster's public profile (OB-012): filter their
- * picks by Open (pre-event) / Settled / All. Settled picks are public; open
- * picks are gated behind an active subscription (paywall otherwise).
+ * Unified "Tips" browser on a tipster's public profile (OB-012 / OB-153): filter
+ * their picks by Open (pre-event) / Settled / All. Settled picks are always
+ * public. Open picks are free/public while the tipster is provisional or hasn't
+ * enabled subscription gating (`liveGated` false); once gated they're paywalled
+ * behind an active subscription.
  */
 export default function TipsterTips({
   tipsterId,
-  priceCents,
-  billingInterval,
+  liveGated = false,
+  freeOpenPicks = [],
 }: {
   tipsterId: string;
-  priceCents: number;
-  billingInterval: 'weekly' | 'monthly';
+  liveGated?: boolean;
+  freeOpenPicks?: FeedPick[];
 }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [settledOutcome, setSettledOutcome] = useState<SettledOutcome>('all');
@@ -117,11 +145,14 @@ export default function TipsterTips({
   }, [tipsterId]);
 
   const entitled = live.kind === 'entitled';
-  // When entitled the live feed already contains open + settled; otherwise use
-  // the public settled list and paywall the open picks.
+  // When the live feed loaded it already contains open + settled. Otherwise use
+  // the public settled list, and — when the tipster isn't gating — the free open
+  // picks fetched with the public profile.
   const openPicks = entitled
     ? live.picks.filter((p) => p.status === 'pending')
-    : [];
+    : liveGated
+      ? []
+      : freeOpenPicks;
   const settledPicks = entitled
     ? live.picks.filter((p) => p.status !== 'pending')
     : settled;
@@ -147,13 +178,18 @@ export default function TipsterTips({
         ? filteredSettled
         : entitled
           ? live.picks
-          : settledPicks;
+          : [...openPicks, ...settledPicks];
 
-  const showPaywall = !entitled && filter !== 'settled';
+  // Paywall the open picks only when the tipster gates them AND the viewer isn't
+  // entitled. Provisional / ungated tipsters publish their open picks for free.
+  const showPaywall = liveGated && !entitled && filter !== 'settled';
 
-  // Open count is gated for non-subscribers, so show a lock instead of a number.
-  const openBadge = entitled ? String(openPicks.length) : '🔒';
-  const allCount = entitled ? live.picks.length : settledPicks.length;
+  // When gated and not entitled the open count is hidden behind a lock.
+  const openBadge =
+    liveGated && !entitled ? '🔒' : String(openPicks.length);
+  const allCount = entitled
+    ? live.picks.length
+    : openPicks.length + settledPicks.length;
   const mainTabs: { key: Filter; label: string; badge: string }[] = [
     { key: 'open', label: 'Open', badge: openBadge },
     { key: 'settled', label: 'Settled', badge: String(settledPicks.length) },
@@ -228,11 +264,9 @@ export default function TipsterTips({
               : 'Subscribe to see this tipster’s picks the moment they’re locked — before kickoff.'}
           </p>
           <div style={{ display: 'inline-block' }}>
-            <SubscribeButton
-              tipsterId={tipsterId}
-              priceCents={priceCents}
-              billingInterval={billingInterval}
-            />
+            <a href="#subscribe" className="btn btn--primary">
+              ★ Subscribe to unlock
+            </a>
           </div>
         </div>
       ) : null}
@@ -267,6 +301,7 @@ export default function TipsterTips({
                 </td>
                 <td>
                   {p.selection}
+                  {p.pickType === 'live' ? <LiveBadge /> : null}
                   {p.note ? (
                     <div
                       style={{
@@ -299,9 +334,11 @@ export default function TipsterTips({
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
-                      {p.event && p.lockedAt < p.event.startTime
-                        ? ' · before kickoff'
-                        : ''}
+                      {p.pickType === 'live'
+                        ? ' · in-play'
+                        : p.event && p.lockedAt < p.event.startTime
+                          ? ' · before kickoff'
+                          : ''}
                     </div>
                   ) : null}
                 </td>

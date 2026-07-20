@@ -259,14 +259,15 @@
 
 ## 5. Picks & Integrity
 
-### OB-035 — DB-level pick immutability (append-only enforcement)
+### OB-035 — DB-level pick immutability (append-only enforcement) — ✅ Done
 **Category:** Integrity · **Priority:** P0
 **Description:** ARCHITECTURE.md mandates DB-enforced immutability; today it's app-layer only. Add a Postgres trigger/rule preventing UPDATE of core pick fields post-lock (only settlement fields writable, and only once).
+**Status:** Shipped in migration `20260719130000_pick_immutability_trigger` — a `BEFORE UPDATE` trigger (`pick_enforce_immutability`) on `Pick`.
 **Acceptance criteria:**
-- [ ] Direct SQL UPDATE of core fields (market/selection/odds/hash/nonce/lockedAt) is rejected.
-- [ ] Settlement fields writable only on pending→terminal transition.
+- [x] Direct SQL UPDATE of core fields (market/selection/odds/hash/nonce/lockedAt) is rejected.
+- [x] Settlement fields writable only on pending→terminal transition (closing-line capture while pending and the one-time CLV write remain permitted; a settled pick can't be re-graded or un-settled).
 **Tests:**
-- [ ] Integration: attempt to mutate a locked pick's odds fails at DB layer.
+- [x] Integration: attempt to mutate a locked pick's odds fails at DB layer (`apps/api/src/modules/picks/immutability.itest.ts`).
 
 ### OB-036 — Pick hash verification endpoint & public proof
 **Category:** Integrity · **Priority:** P1
@@ -288,9 +289,22 @@
 **Category:** Integrity · **Priority:** P1
 **Description:** Enforce a configurable cutoff before kickoff (not just start-time), clock-skew tolerance, and reject picks on events with missing/invalid start times.
 **Acceptance criteria:**
-- [ ] Configurable cutoff; server-clock authoritative; edge cases rejected with clear errors.
+- [x] Configurable cutoff; server-clock authoritative; edge cases rejected with clear errors.
 **Tests:**
-- [ ] Unit/integration: pick at cutoff boundary; event without start time.
+- [x] Unit/integration: pick at cutoff boundary; event without start time.
+
+### OB-039 — Live / in-play picks (design spike + model)
+**Category:** Integrity · **Priority:** P1 · **Depends on:** OB-038
+**Description:** Support picks placed *during* an ongoing game (in-play). This deliberately conflicts with the pre-match integrity model: `createLockedPick` rejects anything after `startTime` (see `picks.service.ts`), and CLV is defined against the **pre-match closing line**, which does not exist for an in-play selection. Rather than weaken the OB-038 cutoff, model live picks as a distinct type. **Do a design spike first**, then implement. Proposed shape: add a `pickType` discriminator (`pre_match` | `live`) to `Pick`; live picks bypass the kickoff cutoff but keep their own integrity guarantee (hash + authoritative server timestamp at submission, graded on final result); live picks are **excluded from CLV** (or carry an in-play line reference instead) and are surfaced/aggregated separately so live and pre-match yield are never blended into one misleading number.
+**Acceptance criteria:**
+- [ ] Design note documenting the live-pick model, integrity guarantee, and CLV/stats treatment (in `docs/`) reviewed before build.
+- [ ] `Pick` carries a `pickType`; live picks are accepted after kickoff while pre-match picks still honour the OB-038 cutoff.
+- [ ] Live picks are hashed + server-timestamped and remain append-only; they are excluded from CLV and shown/aggregated distinctly from pre-match picks.
+- [ ] Public track record and tipster stats do not blend live and pre-match yield.
+**Tests:**
+- [ ] Unit: cutoff gate rejects a late `pre_match` pick but allows a `live` pick.
+- [ ] Unit: stats/CLV aggregation excludes live picks from CLV and keeps yields separated.
+- [ ] Integration: a live pick is hashed, timestamped, graded on result, and cannot be mutated.
 
 ---
 
@@ -356,9 +370,9 @@
 **Category:** Stats · **Priority:** P1
 **Description:** Cache leaderboard (Redis) and invalidate on settlement so it "updates within minutes" per exit criteria, without full recompute per request.
 **Acceptance criteria:**
-- [ ] Cached reads; cache invalidated after stats recompute.
+- [x] Cached reads; cache invalidated after stats recompute.
 **Tests:**
-- [ ] Integration: settlement invalidates cache; stale data not served.
+- [x] Integration: settlement invalidates cache; stale data not served.
 
 ### OB-056 — Configurable minimum sample & confidence indicators
 **Category:** Stats · **Priority:** P2
@@ -485,6 +499,18 @@
 **Tests:**
 - [x] Integration: opted-out user receives nothing; digest batches correctly.
 
+### OB-034 — Tip-drop schedule announcements & subscriber alerts
+**Category:** Notifications · **Priority:** P1 · **Depends on:** OB-031, OB-032
+**Description:** Let a tipster tell subscribers **when** their tips will drop, and make sure subscribers are alerted **when** a tip actually lands. Instant "new pick" fan-out already exists (`notifyNewPick` in `picks.service.ts`, email + digests) and real-time delivery is covered by OB-031 (Web Push) / OB-032 (queue fan-out) — the **new** capability here is a tipster-authored **schedule announcement**: a lightweight entity (e.g. "Daily tips at 18:00 EAT", one-off or recurring, with timezone) that a tipster publishes and that notifies their active subscribers ahead of the drop, respecting existing notification preferences and unsubscribe tokens.
+**Acceptance criteria:**
+- [ ] A tipster can create/edit/cancel a tip-drop announcement (one-off or recurring) with an explicit timezone; stored with an audit entry.
+- [ ] Publishing (and an optional pre-drop reminder) fans out to active subscribers via email + push, honouring per-user preferences and one-click unsubscribe.
+- [ ] Subscribers see upcoming scheduled drops for tipsters they follow/subscribe to; announcements never leak gated pick content.
+- [ ] Reuses the OB-032 queue fan-out; no blocking of the request path.
+**Tests:**
+- [ ] Unit: schedule model (recurrence + timezone) resolves the correct next drop time.
+- [ ] Integration: announcement fan-out reaches active subscribers, skips opted-out users, and is idempotent.
+
 ---
 
 ## 11. Content, Blog & SEO
@@ -537,9 +563,9 @@
 **Category:** Security · **Priority:** P0
 **Description:** Remove `change-me` defaults for `JWT_SECRET`, `PICK_HASH_PEPPER`; require strong secrets from env; document rotation (esp. pepper implications).
 **Acceptance criteria:**
-- [ ] App refuses to boot in prod with default/weak secrets; rotation runbook exists.
+- [x] App refuses to boot in prod with default/weak secrets; rotation runbook exists (`docs/RUNBOOK-SECRETS.md`).
 **Tests:**
-- [ ] Unit: boot guard rejects default secrets when NODE_ENV=production.
+- [x] Unit: boot guard rejects default secrets when NODE_ENV=production (`apps/api/src/common/config.test.ts`).
 
 ### OB-083 — Security headers & CORS hardening
 **Category:** Security · **Priority:** P1
@@ -567,11 +593,17 @@
 
 ### OB-086 — Dependency & container vulnerability scanning
 **Category:** Security · **Priority:** P1
-**Description:** Add `npm audit`/Dependabot + image scanning to CI; triage the current 22 advisories.
+**Description:** Add `npm audit`/Dependabot + image scanning to CI; triage the current advisories.
 **Acceptance criteria:**
-- [ ] CI fails on new high/critical; existing advisories triaged.
+- [x] CI fails on new high/critical; existing advisories triaged.
 **Tests:**
-- [ ] CI job present and gating.
+- [x] CI job present and gating.
+
+**Implementation:** Dependabot (`npm` + `github-actions` + `docker`) in
+`.github/dependabot.yml`; a `npm audit` gate (`scripts/audit-ci.mjs`, run as the
+CI `audit` job) that fails on new high/critical advisories while triaged ones are
+allow-listed in `.audit-allowlist.json`; and a Trivy container `image-scan` CI
+job. See `docs/SECURITY-SCANNING.md`.
 
 ---
 
@@ -613,17 +645,17 @@
 **Category:** Ops · **Priority:** P0
 **Description:** Automated Postgres backups, tested restore, and a documented disaster-recovery runbook.
 **Acceptance criteria:**
-- [ ] Scheduled backups; a restore has been verified; runbook exists.
+- [x] Scheduled backups; a restore has been verified; runbook exists. — see [DR-RUNBOOK.md](./DR-RUNBOOK.md), `db-backup.yml`, `db-restore-drill.yml`.
 **Tests:**
-- [ ] Drill: restore into a scratch DB succeeds (documented).
+- [x] Drill: restore into a scratch DB succeeds (documented). — `scripts/db-restore-drill.sh` / `db-restore-drill.yml`.
 
 ### OB-095 — On-call runbook & incident process
 **Category:** Ops · **Priority:** P1
 **Description:** Runbooks for common incidents (settlement stuck, webhook backlog, vendor outage, payout failure).
 **Acceptance criteria:**
-- [ ] Runbooks published; escalation path defined.
+- [x] Runbooks published; escalation path defined. — see [RUNBOOK-ONCALL.md](./RUNBOOK-ONCALL.md) (settlement stuck, webhook backlog, vendor outage, payout failure) + [OBSERVABILITY.md](./OBSERVABILITY.md) alert routing.
 **Tests:**
-- [ ] N/A (doc review checklist).
+- [x] N/A (doc review checklist). — see the checklist in [RUNBOOK-ONCALL.md](./RUNBOOK-ONCALL.md#doc-review-checklist-acceptance-criteria).
 
 ---
 

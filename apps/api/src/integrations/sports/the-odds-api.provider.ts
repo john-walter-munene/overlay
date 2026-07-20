@@ -9,6 +9,7 @@ import { fetchJson } from './http';
 import {
   mapEvents,
   mapOdds,
+  scoresOf,
   toEventResult,
   type OddsApiEvent,
   type OddsApiEventOdds,
@@ -66,6 +67,19 @@ export class TheOddsApiProvider implements SportsDataProvider {
     const event = raw.find((e) => e.id === eventId);
     if (!event || !event.completed) return null;
     return toEventResult(event);
+  }
+
+  async getLiveScore(
+    vendorEventId: string,
+  ): Promise<{ home: number; away: number } | null> {
+    const { sport, eventId } = this.splitId(vendorEventId);
+    const url = `${this.base}/sports/${sport}/scores?apiKey=${this.apiKey}&daysFrom=3`;
+    const raw = await fetchJson<OddsApiScoreEvent[]>(url, undefined, {
+      label: this.name,
+    });
+    const event = raw.find((e) => e.id === eventId);
+    if (!event) return null;
+    return scoresOf(event);
   }
 
   private splitId(vendorEventId: string): { sport: string; eventId: string } {

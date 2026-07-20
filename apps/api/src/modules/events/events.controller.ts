@@ -10,7 +10,12 @@ import {
 import { IsString } from 'class-validator';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/roles.guard';
+import {
+  RolesGuard,
+  Roles,
+  PermissionsGuard,
+  Permissions,
+} from '../../common/roles.guard';
 
 class IngestDto {
   @IsString() sport!: string;
@@ -51,8 +56,8 @@ export class EventsController {
   }
 
   @Post('ingest')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('data:ingest')
   async ingest(@Body() dto: IngestDto) {
     const count = await this.events.ingest(dto.sport);
     return { ingested: count };
