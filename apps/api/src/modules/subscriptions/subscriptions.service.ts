@@ -258,18 +258,49 @@ export class SubscriptionsService {
   async listForUserView(userId: string) {
     const subs = await this.prisma.subscription.findMany({
       where: { userId },
+      orderBy: { createdAt: 'desc' },
       include: {
         tipster: {
-          select: { displayName: true, user: { select: { username: true } } },
+          select: {
+            userId: true,
+            displayName: true,
+            country: true,
+            subscriptionPriceCents: true,
+            billingInterval: true,
+            user: { select: { username: true, avatarUrl: true } },
+            stats: true,
+          },
         },
       },
     });
+
+    // Which of these the user also follows for free — so the UI can offer a
+    // follow toggle alongside the paid relationship.
+    const follows = await this.prisma.follow.findMany({
+      where: { userId },
+      select: { tipsterId: true },
+    });
+    const following = new Set(follows.map((f) => f.tipsterId));
+
     return subs.map((s) => ({
       id: s.id,
       tipsterId: s.tipsterId,
       tipsterName: s.tipster?.displayName ?? s.tipster?.user?.username ?? null,
+      avatarUrl: s.tipster?.user?.avatarUrl ?? null,
+      country: s.tipster?.country ?? null,
+      subscriptionPriceCents: s.tipster?.subscriptionPriceCents ?? 0,
+      billingInterval: s.tipster?.billingInterval ?? 'monthly',
       status: s.status,
       currentPeriodEnd: s.currentPeriodEnd,
+      isFollowing: following.has(s.tipsterId),
+      stats: s.tipster?.stats
+        ? {
+            yield: s.tipster.stats.yield,
+            clvAvg: s.tipster.stats.clvAvg,
+            winRate: s.tipster.stats.winRate,
+            sampleSize: s.tipster.stats.sampleSize,
+          }
+        : null,
     }));
   }
 

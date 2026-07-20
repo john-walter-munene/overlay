@@ -5,6 +5,7 @@ import { buildClvChart } from '@overlay/shared/tipster-profile';
 import { countryLabel } from '@overlay/shared/countries';
 import Flag from '../../Flag';
 import FollowButton from '../../FollowButton';
+import SubscribeButton from '../../SubscribeButton';
 import Avatar from '../../Avatar';
 import { getTipster, listTipsterIds, tipsterStaticParams, SITE_URL } from '../../../lib/api';
 import TipsterTips from './TipsterTips';
@@ -208,9 +209,40 @@ export default async function TipsterPage({
           </p>
         </div>
       </div>
-      <div style={{ margin: '0.75rem 0 0.25rem' }}>
+      <div
+        style={{
+          margin: '0.75rem 0 0.5rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.6rem',
+          alignItems: 'center',
+        }}
+      >
         <FollowButton tipsterId={t.tipsterId} />
+        {t.subscriptionPriceCents > 0 ? (
+          <a
+            href="#subscribe"
+            className="btn btn--primary"
+            title="Paid — unlock this tipster’s premium picks the moment they’re locked, before kickoff. Cancel anytime."
+          >
+            ★ Subscribe · ${(t.subscriptionPriceCents / 100).toFixed(2)}/
+            {t.billingInterval === 'weekly' ? 'wk' : 'mo'}
+          </a>
+        ) : null}
       </div>
+      <p
+        style={{
+          color: 'var(--muted)',
+          fontSize: '0.85rem',
+          margin: '0 0 0.75rem',
+          maxWidth: 560,
+        }}
+      >
+        <strong style={{ color: 'var(--fg)' }}>Follow</strong> to track this
+        tipster’s verified record for free — no picks unlocked.{' '}
+        <strong style={{ color: 'var(--fg)' }}>Subscribe</strong> to unlock their
+        premium picks the moment they’re locked, before kickoff.
+      </p>
       {t.bio ? <p style={{ color: 'var(--fg)' }}>{t.bio}</p> : null}
       {t.sports.length ? (
         <p style={{ color: 'var(--muted)', marginTop: 0 }}>{t.sports.join(' · ')}</p>
@@ -338,11 +370,36 @@ export default async function TipsterPage({
         </section>
       ) : null}
 
+      {t.subscriptionPriceCents > 0 ? (
+        <section
+          id="subscribe"
+          aria-labelledby="subscribe-heading"
+          style={{
+            margin: '2rem 0',
+            padding: '1.25rem',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+          }}
+        >
+          <h2 id="subscribe-heading" style={{ marginTop: 0 }}>
+            Subscribe
+          </h2>
+          <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+            Unlock {t.displayName ?? t.username ?? 'this tipster'}’s premium
+            picks the moment they’re locked — before kickoff. Cancel anytime.
+            Following stays free and only tracks their public record.
+          </p>
+          <SubscribeButton
+            tipsterId={t.tipsterId}
+            priceCents={t.subscriptionPriceCents}
+            billingInterval={t.billingInterval}
+          />
+        </section>
+      ) : null}
+
       <div style={{ margin: '1.5rem 0' }}>
         <TipsterTips
           tipsterId={t.tipsterId}
-          priceCents={t.subscriptionPriceCents}
-          billingInterval={t.billingInterval}
           liveGated={t.liveGated}
           freeOpenPicks={(t.openPicks ?? []).map((p) => ({
             id: p.id,

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { authFetch, getAccessToken } from '../../../lib/auth';
 import { API_URL, type FeedPick } from '../../../lib/api';
-import SubscribeButton from '../../SubscribeButton';
 
 const MUTED = 'var(--muted)';
 const BORDER = 'var(--border)';
@@ -88,14 +87,10 @@ function LiveBadge() {
  */
 export default function TipsterTips({
   tipsterId,
-  priceCents,
-  billingInterval,
   liveGated = false,
   freeOpenPicks = [],
 }: {
   tipsterId: string;
-  priceCents: number;
-  billingInterval: 'weekly' | 'monthly';
   liveGated?: boolean;
   freeOpenPicks?: FeedPick[];
 }) {
@@ -269,11 +264,9 @@ export default function TipsterTips({
               : 'Subscribe to see this tipster’s picks the moment they’re locked — before kickoff.'}
           </p>
           <div style={{ display: 'inline-block' }}>
-            <SubscribeButton
-              tipsterId={tipsterId}
-              priceCents={priceCents}
-              billingInterval={billingInterval}
-            />
+            <a href="#subscribe" className="btn btn--primary">
+              ★ Subscribe to unlock
+            </a>
           </div>
         </div>
       ) : null}

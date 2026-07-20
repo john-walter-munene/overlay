@@ -18,8 +18,20 @@ import { useFollow } from '../FollowProvider';
 interface Sub {
   id: string;
   tipsterId: string;
+  tipsterName: string | null;
+  avatarUrl: string | null;
+  country: string | null;
+  subscriptionPriceCents: number;
+  billingInterval: 'weekly' | 'monthly';
   status: string;
   currentPeriodEnd: string | null;
+  isFollowing: boolean;
+  stats: {
+    yield: number;
+    clvAvg: number;
+    winRate: number;
+    sampleSize: number;
+  } | null;
 }
 
 function statusLabel(status: string): string {
@@ -27,6 +39,29 @@ function statusLabel(status: string): string {
   if (status === 'half_won') return '½ won';
   if (status === 'half_lost') return '½ lost';
   return status;
+}
+
+/** Human label + colour for a subscription's billing status. */
+function subStatus(status: string): { label: string; color: string } {
+  if (status === 'active') return { label: 'Active', color: 'var(--success)' };
+  if (status === 'past_due')
+    return { label: 'Past due', color: 'var(--danger)' };
+  if (status === 'canceled')
+    return { label: 'Canceled', color: 'var(--muted)' };
+  return { label: status, color: 'var(--muted)' };
+}
+
+/** "Renews 12 Aug" / "Ends 12 Aug" line for a subscription row. */
+function renewalLine(status: string, iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const when = d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  return status === 'canceled' ? `Access until ${when}` : `Renews ${when}`;
 }
 
 /**
@@ -70,6 +105,17 @@ export default function UserDashboard() {
       : followReady
         ? following.filter((f) => isFollowing(f.tipsterId))
         : following;
+
+  // Clean separation of the two relationships: a tipster you actively pay for
+  // lives in "Subscribed"; "Following" then only shows tipsters you track for
+  // free, so nobody appears in both lists at once.
+  const activeSubIds = new Set(
+    (subs ?? []).filter((s) => s.status === 'active').map((s) => s.tipsterId),
+  );
+  const followingOnly =
+    shownFollowing === null
+      ? null
+      : shownFollowing.filter((f) => !activeSubIds.has(f.tipsterId));
 
   const cardStyle: React.CSSProperties = {
     border: '1px solid var(--border)',
@@ -213,23 +259,97 @@ export default function UserDashboard() {
         </ul>
       )}
 
-      <h2 style={{ marginTop: '2.5rem', fontSize: '1.2rem' }}>Following</h2>
+      <h2 style={{ marginTop: '2.5rem', fontSize: '1.2rem' }}>Subscribed</h2>
       <p style={{ color: 'var(--muted)', marginTop: 0, fontSize: '0.9rem' }}>
-        Tipsters you track for free. Subscribe to unlock their live picks.
+        Tipsters you pay for — their live picks unlock the moment they’re locked,
+        before kickoff.
       </p>
-      {following === null ? (
+      {subs === null ? (
         <p style={{ color: 'var(--muted)' }}>Loading…</p>
-      ) : shownFollowing && shownFollowing.length === 0 ? (
+      ) : subs.length === 0 ? (
         <p style={{ color: 'var(--muted)' }}>
-          You're not following anyone yet.{' '}
+          You’re not subscribed to anyone yet.{' '}
           <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
             Browse tipsters
           </Link>{' '}
-          and follow a few to track their record.
+          and subscribe to unlock their live picks.
         </p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0' }}>
-          {(shownFollowing ?? []).map((f) => (
+          {subs.map((s) => {
+            const st = subStatus(s.status);
+            const renews = renewalLine(s.status, s.currentPeriodEnd);
+            return (
+              <li
+                key={s.id}
+                style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '0.85rem 1rem',
+                  marginBottom: '0.6rem',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.75rem',
+                }}
+              >
+                <div style={{ minWidth: 0, display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                  <Avatar src={s.avatarUrl} seed={s.tipsterName ?? s.tipsterId} size={40} />
+                  <div style={{ minWidth: 0 }}>
+                    <Link
+                      href={`/tipsters/${s.tipsterId}`}
+                      style={{ color: 'var(--accent)', fontWeight: 600 }}
+                    >
+                      {s.tipsterName ?? s.tipsterId}
+                    </Link>
+                    {s.country ? (
+                      <Flag code={s.country} style={{ marginLeft: '0.4rem', verticalAlign: 'middle' }} />
+                    ) : null}
+                    <div style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                      <span style={{ color: st.color, fontWeight: 600 }}>{st.label}</span>
+                      {renews ? ` · ${renews}` : ''}
+                      {s.stats
+                        ? ` · ${s.stats.yield.toFixed(1)}% yield · ${s.stats.sampleSize} picks`
+                        : ''}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Link
+                    href="/account/subscriptions"
+                    className="btn btn--secondary btn--sm"
+                  >
+                    Manage
+                  </Link>
+                  <FollowButton tipsterId={s.tipsterId} size="sm" />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <h2 style={{ marginTop: '2.5rem', fontSize: '1.2rem' }}>Following</h2>
+      <p style={{ color: 'var(--muted)', marginTop: 0, fontSize: '0.9rem' }}>
+        Tipsters you track for free. Following surfaces their public record only —
+        subscribe to unlock their live picks.
+      </p>
+      {following === null ? (
+        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+      ) : followingOnly && followingOnly.length === 0 ? (
+        <p style={{ color: 'var(--muted)' }}>
+          {shownFollowing && shownFollowing.length > 0
+            ? 'Everyone you follow is also subscribed — see them above.'
+            : "You're not following anyone yet."}{' '}
+          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
+            Browse tipsters
+          </Link>{' '}
+          and follow a few to track their record for free.
+        </p>
+      ) : (
+        <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0' }}>
+          {(followingOnly ?? []).map((f) => (
             <li
               key={f.tipsterId}
               style={{
@@ -264,18 +384,12 @@ export default function UserDashboard() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {f.isSubscribed ? (
-                  <span style={{ color: 'var(--success)', fontSize: '0.85rem', fontWeight: 600 }}>
-                    ✓ Subscribed
-                  </span>
-                ) : (
-                  <Link
-                    href={`/tipsters/${f.tipsterId}`}
-                    className="btn btn--primary btn--sm"
-                  >
-                    Subscribe
-                  </Link>
-                )}
+                <Link
+                  href={`/tipsters/${f.tipsterId}`}
+                  className="btn btn--primary btn--sm"
+                >
+                  Subscribe
+                </Link>
                 <FollowButton tipsterId={f.tipsterId} size="sm" />
               </div>
             </li>

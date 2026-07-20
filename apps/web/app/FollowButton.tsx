@@ -35,7 +35,11 @@ export default function FollowButton({
       disabled={!ready}
       onClick={() => toggle(tipsterId)}
       style={block ? { width: '100%' } : undefined}
-      title={following ? 'Stop tracking this tipster' : 'Track this tipster for free'}
+      title={
+        following
+          ? 'Following — tracking this tipster’s record for free. Click to stop. (Doesn’t unlock premium picks — subscribe for those.)'
+          : 'Free — track this tipster’s verified record. Doesn’t unlock premium picks; subscribe for those.'
+      }
     >
       {following ? '✓ Following' : '+ Follow'}
     </button>
