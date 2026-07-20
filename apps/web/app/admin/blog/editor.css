@@ -1,0 +1,384 @@
+/* ==========================================================
+   BLOG EDITOR
+   ========================================================== */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ----------------------------------------------------------
+   Desktop layout
+   ---------------------------------------------------------- */
+
+.editor-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+/* ----------------------------------------------------------
+   Sidebar
+   ---------------------------------------------------------- */
+
+.editor-sidebar {
+  position: sticky;
+  top: 1.5rem;
+
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+
+  padding-right: .35rem;
+}
+
+.editor-sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.editor-sidebar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+/* ----------------------------------------------------------
+   Workspace
+   ---------------------------------------------------------- */
+
+.editor-workspace {
+  min-width: 0;
+}
+
+.editor-workspace>* {
+  width: 100%;
+}
+
+/* ----------------------------------------------------------
+   Markdown editor
+   ---------------------------------------------------------- */
+
+.markdown-editor {
+  width: 100%;
+
+  min-height: 72vh;
+
+  padding: 1.75rem;
+
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
+
+  font-size: 1rem;
+  line-height: 1.9;
+
+  border: 1px solid var(--border);
+  border-radius: 14px;
+
+  background: var(--surface);
+  color: var(--fg);
+
+  resize: vertical;
+
+  outline: none;
+
+  transition:
+    border-color .2s,
+    box-shadow .2s;
+}
+
+.markdown-editor:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+/* ----------------------------------------------------------
+   Preview
+   ---------------------------------------------------------- */
+
+.preview-panel {
+  min-height: 72vh;
+
+  padding: 2.25rem;
+
+  border: 1px solid var(--border);
+  border-radius: 14px;
+
+  background: var(--surface);
+}
+
+.preview-panel article {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* ----------------------------------------------------------
+   Metadata
+   ---------------------------------------------------------- */
+
+.metadata-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.metadata-form label {
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+.metadata-form input,
+.metadata-form select,
+.metadata-form textarea {
+  margin-top: 0;
+}
+
+/* ----------------------------------------------------------
+   Cover picker
+   ---------------------------------------------------------- */
+
+.cover-picker {
+  position: relative;
+  overflow: hidden;
+
+  cursor: pointer;
+
+  transition:
+    border-color .2s,
+    background .2s;
+}
+
+.cover-picker:hover {
+  border-color: var(--accent);
+}
+
+.cover-preview {
+  position: relative;
+
+  overflow: hidden;
+
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.cover-preview img {
+  width: 100%;
+  display: block;
+
+  aspect-ratio: 16 / 9;
+
+  object-fit: cover;
+}
+
+/* ----------------------------------------------------------
+   Toolbar
+   ---------------------------------------------------------- */
+
+.editor-toolbar {
+  display: flex;
+  gap: .75rem;
+
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+
+  border-top: 1px solid var(--border);
+}
+
+.editor-toolbar button:first-child {
+  flex: 1;
+}
+
+/* ----------------------------------------------------------
+   Workspace tabs
+   ---------------------------------------------------------- */
+
+.workspace-tabs {
+  display: inline-flex;
+  gap: .35rem;
+
+  padding: .35rem;
+
+  border-radius: 999px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+
+  margin-bottom: 1.5rem;
+}
+
+.workspace-tab {
+  border-radius: 999px;
+
+  transition:
+    background .2s,
+    color .2s,
+    opacity .2s;
+}
+
+/* ----------------------------------------------------------
+   Images
+   ---------------------------------------------------------- */
+
+img {
+  max-width: 100%;
+}
+
+/* ==========================================================
+   TABLET
+   ========================================================== */
+
+@media (max-width: 1024px) {
+
+  .editor-layout {
+    grid-template-columns: 290px minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  .markdown-editor,
+  .preview-panel {
+    min-height: 65vh;
+  }
+
+}
+
+/* ==========================================================
+   MOBILE
+   ========================================================== */
+
+@media (max-width: 768px) {
+
+  /* Everything becomes single-column */
+
+  .editor-layout {
+    display: block;
+  }
+
+  /* Sidebar should no longer be sticky */
+
+  .editor-sidebar {
+    position: static;
+
+    max-height: none;
+    overflow: visible;
+
+    padding-right: 0;
+
+    margin-top: 1rem;
+  }
+
+  /* Sticky top navigation */
+
+  .workspace-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+
+    display: flex;
+
+    width: 100%;
+
+    margin: -1rem -1rem 1rem;
+    padding: .6rem;
+
+    border-radius: 0;
+
+    background: var(--bg);
+
+    border-left: none;
+    border-right: none;
+
+    backdrop-filter: blur(16px);
+  }
+
+  .workspace-tab {
+    flex: 1;
+
+    min-height: 48px;
+
+    font-size: .95rem;
+  }
+
+  /* Writing experience */
+
+  .markdown-editor {
+
+    min-height: calc(100vh - 170px);
+
+    padding: 1rem;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  .preview-panel {
+
+    min-height: calc(100vh - 170px);
+
+    padding: 1.1rem;
+
+    border-radius: 10px;
+  }
+
+  /* Metadata spacing */
+
+  .metadata-form {
+    gap: 1rem;
+  }
+
+  .metadata-form input,
+  .metadata-form select,
+  .metadata-form textarea {
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  /* Better touch targets */
+
+  .editor-toolbar {
+    flex-direction: column;
+
+    gap: .75rem;
+  }
+
+  .editor-toolbar button {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .cover-preview img {
+    aspect-ratio: 16 / 9;
+  }
+
+}
+
+/* ==========================================================
+   LARGE DESKTOP
+   ========================================================== */
+
+@media (min-width: 1600px) {
+
+  .editor-layout {
+    grid-template-columns: 380px minmax(0, 1fr);
+    gap: 3rem;
+  }
+
+  .markdown-editor,
+  .preview-panel {
+    min-height: 80vh;
+
+    padding: 2.25rem;
+
+    font-size: 1.05rem;
+  }
+
+}

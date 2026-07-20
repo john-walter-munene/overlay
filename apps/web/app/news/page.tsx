@@ -9,7 +9,8 @@ export const metadata: Metadata = {
   alternates: { canonical: '/news' },
 };
 
-export const revalidate = 300;
+// Always fetch fresh article data so published/deleted changes reflect immediately.
+export const revalidate = 0;
 
 export default async function NewsIndex({
   searchParams,

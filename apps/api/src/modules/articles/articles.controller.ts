@@ -7,8 +7,11 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ArticlesService } from './articles.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
@@ -17,6 +20,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { RolesGuard, Roles } from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
+import { MAX_COVER_BYTES, type UploadedCover } from './cover-upload';
 
 @Controller('articles')
 export class ArticlesController {
@@ -103,6 +107,31 @@ bySlug(@Param('slug') slug: string) {
     @CurrentUser() user: AuthUser,
   ) {
     return this.articles.remove(id, user);
+  }
+
+  // ---- cover image upload ----
+
+  @Post('cover-upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'tipster')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_COVER_BYTES } }),
+  )
+  uploadCover(
+    @CurrentUser() user: AuthUser,
+    @UploadedFile() file?: UploadedCover,
+  ) {
+    return this.articles.uploadCover(user, file);
+  }
+
+  @Delete('cover-remove/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin', 'tipster')
+  removeCover(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.articles.removeCover(user, id);
   }
 
   // ---- admin ----

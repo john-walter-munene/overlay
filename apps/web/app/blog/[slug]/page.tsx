@@ -5,7 +5,8 @@ import { marked } from 'marked';
 import { sanitizeHtml } from '@overlay/shared/markdown';
 import { getArticle, listArticleSlugs, SITE_URL } from '../../../lib/api';
 
-export const revalidate = 300;
+// Always fetch fresh article data so published/deleted changes reflect immediately.
+export const revalidate = 0;
 
 /** Pre-render published article routes at build time for SEO/perf. */
 export async function generateStaticParams() {

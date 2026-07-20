@@ -41,21 +41,6 @@ export async function authFetch(
   init: RequestInit = {},
 ): Promise<Response> {
   const token = await getAccessToken();
-  return fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-      ...(init.headers ?? {}),
-    },
-  });
-}
-
-export async function authFetch(
-  path: string,
-  init: RequestInit = {},
-): Promise<Response> {
-  const token = await getAccessToken();
 
   const isFormData = init.body instanceof FormData;
 

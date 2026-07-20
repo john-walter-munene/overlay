@@ -1,6 +1,3 @@
-// Overlay Bets — Prisma schema (v1)
-// See docs/ARCHITECTURE.md §4 for the data model and integrity rules.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +5,312 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String                  @id @default(cuid())
+  role                   Role                    @default(user)
+  email                  String                  @unique
+  passwordHash           String?
+  createdAt              DateTime                @default(now())
+  supabaseUserId         String?                 @unique
+  username               String?                 @unique
+  avatarUrl              String?
+  articles               Article[]
+  follows                Follow[]
+  notificationPreference NotificationPreference?
+  subscriptions          Subscription[]
+  tipster                Tipster?
+  reportsMade            TipsterReport[]         @relation("ReportsMade")
+}
+
+model Tipster {
+  userId                 String              @id
+  bio                    String?
+  sports                 String[]
+  subscriptionPriceCents Int                 @default(0)
+  stripeAccountId        String?
+  status                 String              @default("active")
+  createdAt              DateTime            @default(now())
+  stripeOnboarded        Boolean             @default(false)
+  identityVerified       Boolean             @default(false)
+  displayName            String?
+  country                String?
+  contactMethod          String?
+  contactValue           String?
+  billingInterval        BillingInterval     @default(monthly)
+  socialX                String?
+  socialInstagram        String?
+  socialTelegram         String?
+  identityDocPath        String?
+  identityDocName        String?
+  identityDocSubmittedAt DateTime?
+  payoutMethod           String?
+  payoutWalletAddress    String?
+  payoutWalletChain      String?
+  payoutMobileNumber     String?
+  payoutMobileNetwork    String?
+  articleAuthorStatus    ArticleAuthorStatus @default(pending)
+  followers              Follow[]
+  payouts                Payout[]
+  picks                  Pick[]
+  subscriptions          Subscription[]
+  user                   User                @relation(fields: [userId], references: [id])
+  reports                TipsterReport[]
+  stats                  TipsterStats?
+}
+
+model Event {
+  id                String    @id @default(cuid())
+  vendorEventId     String    @unique
+  sport             String
+  league            String?
+  home              String
+  away              String
+  startTime         DateTime
+  status            String    @default("scheduled")
+  closingCapturedAt DateTime?
+  picks             Pick[]
+
+  @@index([startTime])
+}
+
+/// Append-only. Core fields are immutable after `lockedAt`.
+/// Only the settlement worker writes settlement fields (status/result/closingOdds/clv/settledAt).
+model Pick {
+  id          String     @id @default(cuid())
+  tipsterId   String
+  eventId     String
+  market      String
+  selection   String
+  oddsAtPick  Float
+  stakeUnits  Float      @default(1)
+  hash        String
+  nonce       String
+  lockedAt    DateTime   @default(now())
+  status      PickStatus @default(pending)
+  closingOdds Float?
+  clv         Float?
+  result      String?
+  settledAt   DateTime?
+  note        String?
+  event       Event      @relation(fields: [eventId], references: [id])
+  tipster     Tipster    @relation(fields: [tipsterId], references: [userId])
+
+  @@index([tipsterId, status])
+  @@index([eventId, status])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String
+  tipsterId            String
+  stripeSubscriptionId String?            @unique
+  status               SubscriptionStatus @default(active)
+  currentPeriodEnd     DateTime?
+  provider             String             @default("stripe")
+  tipster              Tipster            @relation(fields: [tipsterId], references: [userId])
+  user                 User               @relation(fields: [userId], references: [id])
+
+  @@unique([userId, tipsterId])
+}
+
+/// A free "follow": a user tracks a tipster's public performance without
+/// subscribing. Distinct from Subscription (which is paid and unlocks gated
+/// picks) — following never grants access to live/pre-event selections.
+model Follow {
+  id        String   @id @default(cuid())
+  userId    String
+  tipsterId String
+  createdAt DateTime @default(now())
+  tipster   Tipster  @relation(fields: [tipsterId], references: [userId])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, tipsterId])
+  @@index([tipsterId])
+}
+
+/// Materialized stats, recomputed by the stats worker after each settlement batch.
+model TipsterStats {
+  tipsterId     String   @id
+  roi           Float    @default(0)
+  yield         Float    @default(0)
+  clvAvg        Float    @default(0)
+  winRate       Float    @default(0)
+  sampleSize    Int      @default(0)
+  maxDrawdown   Float    @default(0)
+  currentStreak Int      @default(0)
+  updatedAt     DateTime @updatedAt
+  tipster       Tipster  @relation(fields: [tipsterId], references: [userId])
+}
+
+model Payout {
+  id               String       @id @default(cuid())
+  tipsterId        String
+  amountCents      Int
+  period           String
+  status           PayoutStatus @default(pending)
+  stripeTransferId String?
+  createdAt        DateTime     @default(now())
+  grossCents       Int          @default(0)
+  feeCents         Int          @default(0)
+  kind             String       @default("scheduled")
+  tipster          Tipster      @relation(fields: [tipsterId], references: [userId])
+
+  @@index([status])
+  @@index([tipsterId])
+}
+
+/// Funds ledger (OB-06x): one row per *collected* payment (or refund reversal).
+/// Payouts are computed from summed collected revenue here — never from the raw
+/// active-subscriber count — so the platform can only pay out money it actually
+/// received. Written only from verified provider webhooks.
+/// amountCents  — USD minor units (platform accounting currency); negative for refunds.
+/// reference    — unique provider-side id (charge/session/invoice/event) for idempotent inserts.
+/// period       — YYYY-MM the payment is attributed to (drives the monthly payout).
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  tipsterId   String
+  provider    String
+  reference   String   @unique
+  amountCents Int
+  currency    String   @default("USD")
+  period      String
+  createdAt   DateTime @default(now())
+
+  @@index([tipsterId, period])
+  @@index([userId, tipsterId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actor     String
+  action    String
+  entity    String
+  entityId  String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+}
+
+/// Feedback a subscriber leaves about a tipster they subscribe to (OB-161):
+/// either praise (positive) or a complaint/report (negative, e.g. a faked
+/// record or scam). Surfaced on the admin dashboard. Requires a subscription.
+model TipsterReport {
+  id         String       @id @default(cuid())
+  reporterId String
+  tipsterId  String
+  /// Positive: accurate | communication | value | recommend | other.
+  /// Negative: fake_record | scam | impersonation | spam | other.
+  reason     String
+  details    String?
+  status     ReportStatus @default(open)
+  reviewNote String?
+  reviewedAt DateTime?
+  createdAt  DateTime     @default(now())
+  /// 'positive' (praise) or 'negative' (complaint/report).
+  sentiment  String       @default("negative")
+  reporter   User         @relation("ReportsMade", fields: [reporterId], references: [id])
+  tipster    Tipster      @relation(fields: [tipsterId], references: [userId])
+
+  @@index([status])
+  @@index([tipsterId])
+  @@index([reporterId])
+}
+
+/// Support-center feedback: questions, product suggestions, bug reports, fee
+/// queries etc. (OB-162). May be submitted by a signed-in user or anonymously;
+/// reviewed on the admin dashboard. `email` is optional so we can follow up.
+model Feedback {
+  id        String         @id @default(cuid())
+  userId    String?
+  email     String?
+  /// One of: suggestion | bug | question | fees | complaint | other.
+  category  String
+  message   String
+  status    FeedbackStatus @default(new)
+  createdAt DateTime       @default(now())
+
+  @@index([status])
+}
+
+/// Marketing newsletter opt-ins from the public /newsletter page (OB-072).
+/// Email is unique so re-subscribing is idempotent. Status: subscribed | unsubscribed.
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  status    String   @default("subscribed")
+  createdAt DateTime @default(now())
+
+  @@index([status])
+}
+
+/// SEO content surface (blog / strategy guides). Drives organic traffic.
+/// Slug is immutable-by-convention once published so external links don't rot.
+model Article {
+  id             String          @id @default(cuid())
+  slug           String          @unique
+  title          String
+  excerpt        String
+  body           String
+  coverImage     String?
+  tags           String[]
+  status         ArticleStatus   @default(draft)
+  readingMinutes Int             @default(1)
+  seoTitle       String?
+  seoDescription String?
+  canonicalUrl   String?
+  authorId       String
+  publishedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  category       ArticleCategory @default(content)
+  author         User            @relation(fields: [authorId], references: [id])
+
+  @@index([status, publishedAt])
+  @@index([category, status, publishedAt])
+  @@index([tags])
+}
+
+/// Per-user notification preferences (OB-033): channel opt-in (email/push, or
+/// both off = fully unsubscribed) and cadence (instant vs daily digest). The
+/// `unsubscribeToken` backs CAN-SPAM one-click unsubscribe links in emails.
+model NotificationPreference {
+  userId           String                @id
+  emailEnabled     Boolean               @default(true)
+  pushEnabled      Boolean               @default(true)
+  frequency        NotificationFrequency @default(instant)
+  unsubscribeToken String                @unique
+  updatedAt        DateTime              @updatedAt
+  user             User                  @relation(fields: [userId], references: [id])
+}
+
+/// Free "Daily Tips" hub (OB-150): admin-curated "bets of the day" shown
+/// publicly per calendar day and ungated (visible without sign-up). These are
+/// house tips not linked to any tipster, kept clearly separate from paid live
+/// picks and always carrying the "information only" disclaimer in the UI.
+model FreeTip {
+  id        String   @id @default(cuid())
+  /// The calendar day this tip is listed under (date-only, UTC).
+  tipDate   DateTime @db.Date
+  sport     String
+  league    String?
+  /// Fixture / matchup label, e.g. "Arsenal vs Chelsea".
+  match     String
+  market    String
+  selection String
+  /// Decimal odds for the selection, when provided.
+  odds      Float?
+  /// Optional short analysis / reasoning shown under the tip.
+  analysis  String?
+  /// Display ordering within a day (lower first), then createdAt.
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tipDate])
 }
 
 enum Role {
@@ -87,365 +390,3 @@ enum BillingInterval {
   weekly
   monthly
 }
-
-model User {
-  id             String         @id @default(cuid())
-  role           Role           @default(user)
-  email          String         @unique
-  // User-chosen public handle (unique, lowercased). Optional until set.
-  username       String?        @unique
-  // Supabase owns authentication; passwordHash is legacy/optional.
-  passwordHash   String?
-  supabaseUserId String?        @unique
-  // Optional profile picture (full public URL). Null falls back to a generated
-  // avatar derived from the username in the UI.
-  avatarUrl      String?
-  createdAt      DateTime       @default(now())
-
-  tipster       Tipster?
-  subscriptions Subscription[]
-  articles      Article[]
-  notificationPreference NotificationPreference?
-  reportsMade   TipsterReport[] @relation("ReportsMade")
-  follows       Follow[]
-}
-
-model Tipster {
-  userId                 String   @id
-  user                   User     @relation(fields: [userId], references: [id])
-
-  // Public identity (OB-020): shown on the profile / marketplace card.
-  displayName            String?
-  country                String?
-
-  // Preferred direct-contact channel captured at onboarding: one of
-  // `phone` | `telegram` | `whatsapp`, with the handle/number in contactValue.
-  contactMethod          String?
-  contactValue           String?
-
-  bio                    String?
-  sports                 String[]
-
-  subscriptionPriceCents Int      @default(0)
-
-  // Billing cadence the subscription price is charged on (OB-020).
-  billingInterval        BillingInterval @default(monthly)
-
-  stripeAccountId        String?
-
-  // Payout destination (OB-06x): which rail a tipster is paid out on and its
-  // details. `payoutMethod` is one of `stripe` | `crypto` | `mobile_money`;
-  // Stripe uses stripeAccountId, crypto the wallet fields, mobile money the
-  // phone + network fields.
-  payoutMethod           String?
-  payoutWalletAddress    String?
-  payoutWalletChain      String?
-  payoutMobileNumber     String?
-  payoutMobileNetwork    String?
-
-  // Onboarding wizard (OB-020): Stripe Connect onboarding + identity
-  // verification progress. Publishing is gated until every required step
-  // (profile, sports, bio, pricing, Stripe) is complete; verification is an
-  // optional trust step that unlocks the "verified" badge.
-  stripeOnboarded        Boolean  @default(false)
-  identityVerified       Boolean  @default(false)
-
-  // Social / "digital identity" handles surfaced on the verified profile.
-  socialX                String?
-  socialInstagram        String?
-  socialTelegram         String?
-
-  // Uploaded official document (ID / passport / driver licence) backing the
-  // verification step. Path is storage-relative; name is the original filename.
-  identityDocPath        String?
-  identityDocName        String?
-  identityDocSubmittedAt DateTime?
-
-  status                 String   @default("active")
-
-  // Editorial workflow (OB-0xx): controls whether a tipster may create and
-  // manage blog articles. This is intentionally independent of the marketplace
-  // status above so that article authorship can be approved, suspended or
-  // reinstated without affecting subscriptions, picks or payouts.
-  articleAuthorStatus    ArticleAuthorStatus @default(pending)
-
-  createdAt              DateTime @default(now())
-
-  picks                  Pick[]
-  subscriptions          Subscription[]
-  stats                  TipsterStats?
-  payouts                Payout[]
-  reports                TipsterReport[]
-  followers              Follow[]
-}
-
-model Event {
-  id                String    @id @default(cuid())
-  vendorEventId     String    @unique
-  sport             String
-  league            String?
-  home              String
-  away              String
-  startTime         DateTime
-  status            String    @default("scheduled")
-  closingCapturedAt DateTime?
-
-  picks Pick[]
-
-  @@index([startTime])
-}
-
-/// Append-only. Core fields are immutable after `lockedAt`.
-/// Only the settlement worker writes settlement fields (status/result/closingOdds/clv/settledAt).
-model Pick {
-  id         String  @id @default(cuid())
-  tipsterId  String
-  tipster    Tipster @relation(fields: [tipsterId], references: [userId])
-  eventId    String
-  event      Event   @relation(fields: [eventId], references: [id])
-
-  market     String
-  selection  String
-  oddsAtPick Float
-  stakeUnits Float   @default(1)
-  // Optional tipster-authored context / reasoning, captured at lock time.
-  // Not part of the integrity hash — it's commentary, not the wager itself.
-  note       String?
-
-  // Integrity fields (set at lock time, never mutated)
-  hash     String
-  nonce    String
-  lockedAt DateTime @default(now())
-
-  // Settlement fields (worker-only writes)
-  status      PickStatus @default(pending)
-  closingOdds Float?
-  clv         Float?
-  result      String?
-  settledAt   DateTime?
-
-  @@index([tipsterId, status])
-  @@index([eventId, status])
-}
-
-model Subscription {
-  id                   String             @id @default(cuid())
-  userId               String
-  user                 User               @relation(fields: [userId], references: [id])
-  tipsterId            String
-  tipster              Tipster            @relation(fields: [tipsterId], references: [userId])
-  // Which payment provider settles this subscription (stripe, crypto, momo…).
-  provider             String             @default("stripe")
-  stripeSubscriptionId String?            @unique
-  status               SubscriptionStatus @default(active)
-  currentPeriodEnd     DateTime?
-
-  @@unique([userId, tipsterId])
-}
-
-/// A free "follow": a user tracks a tipster's public performance without
-/// subscribing. Distinct from Subscription (which is paid and unlocks gated
-/// picks) — following never grants access to live/pre-event selections.
-model Follow {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  tipsterId String
-  tipster   Tipster  @relation(fields: [tipsterId], references: [userId])
-  createdAt DateTime @default(now())
-
-  @@unique([userId, tipsterId])
-  @@index([tipsterId])
-}
-
-/// Materialized stats, recomputed by the stats worker after each settlement batch.
-model TipsterStats {
-  tipsterId     String   @id
-  tipster       Tipster  @relation(fields: [tipsterId], references: [userId])
-  roi           Float    @default(0)
-  yield         Float    @default(0)
-  clvAvg        Float    @default(0)
-  winRate       Float    @default(0)
-  sampleSize    Int      @default(0)
-  maxDrawdown   Float    @default(0)
-  currentStreak Int      @default(0)
-  updatedAt     DateTime @updatedAt
-}
-
-model Payout {
-  id               String       @id @default(cuid())
-  tipsterId        String
-  tipster          Tipster      @relation(fields: [tipsterId], references: [userId])
-  amountCents      Int
-  // Gross collected revenue this payout covers, and the platform fee taken.
-  // Balance accounting reserves grossCents so it can't be paid out twice.
-  grossCents       Int          @default(0)
-  feeCents         Int          @default(0)
-  // 'scheduled' (regular weekly run, auto) or 'on_demand' (tipster-requested,
-  // needs admin approval when off the regular schedule).
-  kind             String       @default("scheduled")
-  period           String
-  status           PayoutStatus @default(pending)
-  stripeTransferId String?
-  createdAt        DateTime     @default(now())
-
-  @@index([status])
-  @@index([tipsterId])
-}
-
-/// Funds ledger (OB-06x): one row per *collected* payment (or refund reversal).
-/// Payouts are computed from summed collected revenue here — never from the raw
-/// active-subscriber count — so the platform can only pay out money it actually
-/// received. Written only from verified provider webhooks.
-///   amountCents  — USD minor units (platform accounting currency); negative for refunds.
-///   reference    — unique provider-side id (charge/session/invoice/event) for idempotent inserts.
-///   period       — YYYY-MM the payment is attributed to (drives the monthly payout).
-model Payment {
-  id          String   @id @default(cuid())
-  userId      String
-  tipsterId   String
-  provider    String
-  reference   String   @unique
-  amountCents Int
-  currency    String   @default("USD")
-  period      String
-  createdAt   DateTime @default(now())
-
-  @@index([tipsterId, period])
-  @@index([userId, tipsterId])
-}
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  actor     String
-  action    String
-  entity    String
-  entityId  String
-  payload   Json?
-  createdAt DateTime @default(now())
-
-  @@index([entity, entityId])
-}
-
-/// Feedback a subscriber leaves about a tipster they subscribe to (OB-161):
-/// either praise (positive) or a complaint/report (negative, e.g. a faked
-/// record or scam). Surfaced on the admin dashboard. Requires a subscription.
-model TipsterReport {
-  id         String       @id @default(cuid())
-  reporterId String
-  reporter   User         @relation("ReportsMade", fields: [reporterId], references: [id])
-  tipsterId  String
-  tipster    Tipster      @relation(fields: [tipsterId], references: [userId])
-  /// 'positive' (praise) or 'negative' (complaint/report).
-  sentiment  String       @default("negative")
-  /// Positive: accurate | communication | value | recommend | other.
-  /// Negative: fake_record | scam | impersonation | spam | other.
-  reason     String
-  details    String?
-  status     ReportStatus @default(open)
-  reviewNote String?
-  reviewedAt DateTime?
-  createdAt  DateTime     @default(now())
-
-  @@index([status])
-  @@index([tipsterId])
-  @@index([reporterId])
-}
-
-/// Support-center feedback: questions, product suggestions, bug reports, fee
-/// queries etc. (OB-162). May be submitted by a signed-in user or anonymously;
-/// reviewed on the admin dashboard. `email` is optional so we can follow up.
-model Feedback {
-  id        String         @id @default(cuid())
-  userId    String?
-  email     String?
-  /// One of: suggestion | bug | question | fees | complaint | other.
-  category  String
-  message   String
-  status    FeedbackStatus @default(new)
-  createdAt DateTime       @default(now())
-
-  @@index([status])
-}
-
-/// Marketing newsletter opt-ins from the public /newsletter page (OB-072).
-/// Email is unique so re-subscribing is idempotent. Status: subscribed | unsubscribed.
-model NewsletterSubscriber {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  status    String   @default("subscribed")
-  createdAt DateTime @default(now())
-
-  @@index([status])
-}
-
-/// SEO content surface (blog / strategy guides). Drives organic traffic.
-/// Slug is immutable-by-convention once published so external links don't rot.
-model Article {
-  id              String        @id @default(cuid())
-  slug            String        @unique
-  title           String
-  excerpt         String
-  body            String // markdown
-  coverImage      String?
-  tags            String[]
-  status          ArticleStatus @default(draft)
-  category        ArticleCategory @default(content)
-  readingMinutes  Int           @default(1)
-
-  // SEO overrides (fall back to title/excerpt when null)
-  seoTitle        String?
-  seoDescription  String?
-  canonicalUrl    String?
-
-  authorId        String
-  author          User          @relation(fields: [authorId], references: [id])
-
-  publishedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@index([status, publishedAt])
-  @@index([category, status, publishedAt])
-  @@index([tags])
-}
-
-/// Per-user notification preferences (OB-033): channel opt-in (email/push, or
-/// both off = fully unsubscribed) and cadence (instant vs daily digest). The
-/// `unsubscribeToken` backs CAN-SPAM one-click unsubscribe links in emails.
-model NotificationPreference {
-  userId           String                @id
-  user             User                  @relation(fields: [userId], references: [id])
-  emailEnabled     Boolean               @default(true)
-  pushEnabled      Boolean               @default(true)
-  frequency        NotificationFrequency @default(instant)
-  unsubscribeToken String                @unique
-  updatedAt        DateTime              @updatedAt
-}
-
-/// Free "Daily Tips" hub (OB-150): admin-curated "bets of the day" shown
-/// publicly per calendar day and ungated (visible without sign-up). These are
-/// house tips not linked to any tipster, kept clearly separate from paid live
-/// picks and always carrying the "information only" disclaimer in the UI.
-model FreeTip {
-  id        String   @id @default(cuid())
-  /// The calendar day this tip is listed under (date-only, UTC).
-  tipDate   DateTime @db.Date
-  sport     String
-  league    String?
-  /// Fixture / matchup label, e.g. "Arsenal vs Chelsea".
-  match     String
-  market    String
-  selection String
-  /// Decimal odds for the selection, when provided.
-  odds      Float?
-  /// Optional short analysis / reasoning shown under the tip.
-  analysis  String?
-  /// Display ordering within a day (lower first), then createdAt.
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tipDate])
-}
-

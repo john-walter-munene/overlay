@@ -16,7 +16,6 @@ import {
   createArticle,
   updateArticle,
   deleteArticle,
-  uploadArticleCover,
 } from './foundation';
 
 import { Editor } from './editor';
@@ -26,12 +25,16 @@ const MUTED = 'var(--muted)';
 
 export default function BlogAuthoringPage() {
   const router = useRouter();
+
   const [authorized, setAuthorized] = useState(false);
   const [role, setRole] = useState<'admin' | 'tipster' | null>(null);
+
   const [articles, setArticles] = useState<ManagedArticle[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -45,7 +48,11 @@ export default function BlogAuthoringPage() {
       const rows = await loadArticles();
       setArticles(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load articles',);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load articles',
+      );
     } finally {
       setLoading(false);
     }
@@ -77,31 +84,24 @@ export default function BlogAuthoringPage() {
     })();
   }, [router, load]);
 
-  // Update draft field
-  function update<K extends keyof Draft>(key: K, value: Draft[K],) {
-    setDraft((current) => current? { ...current, [key]: value, } : current,);
+  // Update draft
+
+  function update<K extends keyof Draft>(
+    key: K,
+    value: Draft[K],
+  ) {
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            [key]: value,
+          }
+        : current,
+    );
   }
 
-  // Upload cover image and set the URL on the draft
-  const onCoverSelect = useCallback(async (file: File) => {
-    setSaving(true);
-    setError(null);
-
-    try {
-      const url = await uploadArticleCover(file);
-      update('coverImage', url);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Cover upload failed',
-      );
-    } finally {
-      setSaving(false);
-    }
-  }, [update]);
-
   // Save article
+
   async function save() {
     if (!draft) {
       return;
@@ -121,7 +121,6 @@ export default function BlogAuthoringPage() {
       }
 
       setDraft(null);
-
       await load();
     } catch (err) {
       setError(
@@ -137,7 +136,7 @@ export default function BlogAuthoringPage() {
   // Delete article
 
   async function remove(id: string) {
-    if (!confirm('Delete this article? This cannot be undone.',)) {
+    if (!confirm('Delete this article? This cannot be undone.')) {
       return;
     }
 
@@ -155,11 +154,16 @@ export default function BlogAuthoringPage() {
 
       await load();
     } catch (err) {
-      setError(err instanceof Error? err.message : 'Delete failed',);
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Delete failed',
+      );
     }
   }
 
-  // Loading screen
+  // Loading
+
   if (!authorized) {
     return (
       <main
@@ -175,6 +179,7 @@ export default function BlogAuthoringPage() {
   }
 
   // Page
+
   return (
     <main
       style={{
@@ -202,28 +207,31 @@ export default function BlogAuthoringPage() {
         articles.
       </p>
 
-      {error ? (<p style={formStyles.error}>{error}</p>) : null}
-      {notice ? (<p style={{ color: '#4ade80' }}>{notice}</p>) : null}
+      {error && (
+        <p style={formStyles.error}>{error}</p>
+      )}
+
+      {notice && (
+        <p style={{ color: '#4ade80' }}>{notice}</p>
+      )}
+
       {draft ? (
-  <Editor
-    draft={draft}
-    role={role}
-    saving={saving}
-    update={update}
-    onCoverSelect={onCoverSelect}
-    onSave={save}
-    onCancel={() => setDraft(null)}
-  />
-) : (
+        <Editor
+          draft={draft}
+          role={role}
+          saving={saving}
+          update={update}
+          onSave={save}
+          onCancel={() => setDraft(null)}
+        />
+      ) : (
         <>
           <button
             style={{
               ...formStyles.button,
               marginTop: '1rem',
             }}
-            onClick={() =>
-              setDraft({ ...EMPTY_DRAFT })
-            }
+            onClick={() => setDraft({ ...EMPTY_DRAFT })}
           >
             New article
           </button>
@@ -231,9 +239,7 @@ export default function BlogAuthoringPage() {
           <ArticleList
             loading={loading}
             articles={articles}
-            onEdit={(article) =>
-              setDraft(toDraft(article))
-            }
+            onEdit={(article) => setDraft(toDraft(article))}
             onDelete={remove}
           />
         </>

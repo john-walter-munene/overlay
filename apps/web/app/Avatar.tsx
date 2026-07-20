@@ -1,10 +1,11 @@
+'use client';
+
 /**
  * User/tipster avatar. Shows the uploaded/chosen image when present, otherwise
  * a deterministic generated avatar (DiceBear) seeded by the username so it's
  * stable per user.
  *
- * Plain <img> (not next/image) so no domain config is needed and it works in
- * both server and client components.
+ * Plain <img> (not next/image) so no domain config is needed.
  */
 import { useRef } from 'react';
 import { generatedAvatarUrl } from '../lib/avatar';

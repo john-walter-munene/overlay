@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { storeCover, deleteCover, InvalidCoverError, type UploadedCover } from './cover-upload';
 import {
   slugify,
   dedupeSlug,
@@ -157,6 +158,35 @@ export class ArticlesService {
         publishedAt: status === 'published' ? new Date() : null,
       },
     });
+  }
+
+  async uploadCover(actor: AuthoringActor, file: UploadedCover | undefined): Promise<{ url: string }> {
+    await this.assertCanAuthor(actor);
+    try {
+      const url = await storeCover(file);
+      return { url };
+    } catch (err) {
+      if (err instanceof InvalidCoverError) {
+        throw new BadRequestException(err.message);
+      }
+      throw err;
+    }
+  }
+
+  async removeCover(actor: AuthoringActor, id: string) {
+    const existing = await this.prisma.article.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Article not found');
+    if (!canManageArticle(actor, existing)) {
+      throw new ForbiddenException('Not allowed to edit this article');
+    }
+    if (existing.coverImage) {
+      await deleteCover(existing.coverImage);
+    }
+    await this.prisma.article.update({
+      where: { id },
+      data: { coverImage: null },
+    });
+    return { deleted: true };
   }
 
   async update(id: string, dto: UpdateArticleDto, actor: AuthoringActor) {

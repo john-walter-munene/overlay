@@ -118,11 +118,11 @@ export async function listArticles(params?: {
   if (params?.tag) qs.set('tag', params.tag);
   if (params?.category) qs.set('category', params.category);
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
-  return (await getJson<ArticleCard[]>(`/api/articles${suffix}`)) ?? [];
+  return (await getJson<ArticleCard[]>(`/api/articles${suffix}`, 0)) ?? [];
 }
 
 export async function getArticle(slug: string): Promise<Article | null> {
-  return getJson<Article>(`/api/articles/${encodeURIComponent(slug)}`);
+  return getJson<Article>(`/api/articles/${encodeURIComponent(slug)}`, 0);
 }
 
 // --- Global search ----------------------------------------------------------
@@ -175,7 +175,7 @@ export async function search(q: string): Promise<SearchResults> {
 export async function listArticleSlugs(): Promise<
   { slug: string; updatedAt: string; publishedAt: string | null }[]
 > {
-  return (await getJson(`/api/articles/sitemap`)) ?? [];
+  return (await getJson(`/api/articles/sitemap`, 0)) ?? [];
 }
 
 /**
