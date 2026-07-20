@@ -3,6 +3,11 @@ import { createServer } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import { loadDotenv } from './common/load-env';
 import { AppModule } from './app.module';
+import { createLogger } from './common/logging/logger.factory';
+import {
+  newCorrelationId,
+  runWithCorrelation,
+} from './common/logging/correlation';
 import { SettlementService } from './workers/settlement.service';
 import { startSettlementQueue } from './workers/settlement.queue';
 import { METRICS_CONTENT_TYPE, metrics } from './common/metrics';
@@ -20,7 +25,12 @@ import { EventsService } from './modules/events/events.service';
  */
 async function main() {
   loadDotenv();
-  const app = await NestFactory.createApplicationContext(AppModule);
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    bufferLogs: true,
+  });
+  // Structured JSON logging + correlation ids (OB-091), shared with the API.
+  const logger = createLogger();
+  app.useLogger(logger);
   const settlement = app.get(SettlementService);
   const mode = process.env.WORKER_MODE ?? 'interval';
 
@@ -57,17 +67,31 @@ async function main() {
   }
 
   const intervalMs = Number(process.env.WORKER_INTERVAL_MS ?? 60_000);
-  // eslint-disable-next-line no-console
-  console.log(`Overlay worker (interval mode); cycle every ${intervalMs}ms`);
+  logger.log(
+    `Overlay worker (interval mode); cycle every ${intervalMs}ms`,
+    'Worker',
+  );
 
-  const tick = async () => {
-    try {
-      await settlement.runOnce();
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('settlement cycle failed', err);
-    }
-  };
+  // Each cycle runs inside a fresh job correlation id (OB-091) so every log
+  // line it emits — here and in the services it calls — shares a `jobId`, and a
+  // failure is logged as structured JSON rather than a bare console.error.
+  const runJob = (name: string, fn: () => Promise<void>) =>
+    runWithCorrelation(
+      { correlationId: newCorrelationId(), kind: 'job' },
+      async () => {
+        try {
+          await fn();
+        } catch (err) {
+          logger.error(
+            `${name} failed`,
+            err instanceof Error ? err.stack : String(err),
+            'Worker',
+          );
+        }
+      },
+    );
+
+  const tick = () => runJob('settlement cycle', () => settlement.runOnce());
 
   await tick();
   setInterval(tick, intervalMs);
@@ -78,19 +102,15 @@ async function main() {
   if (process.env.INGEST_SPORTS?.trim()) {
     const events = app.get(EventsService);
     const ingestMs = Number(process.env.INGEST_INTERVAL_MS ?? 15 * 60_000);
-    const ingestTick = async () => {
-      try {
+    const ingestTick = () =>
+      runJob('ingest cycle', async () => {
         const summary = await events.ingestConfigured();
         const total = summary.reduce((n, s) => n + (s.ingested ?? 0), 0);
-        // eslint-disable-next-line no-console
-        console.log(
+        logger.log(
           `ingest cycle: ${total} fixture(s) across ${summary.length} sport(s)`,
+          'Worker',
         );
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('ingest cycle failed', err);
-      }
-    };
+      });
     await ingestTick();
     setInterval(ingestTick, ingestMs);
   }
@@ -99,18 +119,13 @@ async function main() {
   // into a single email per cycle. Defaults to every 24h.
   const notifications = app.get(NotificationsService);
   const digestMs = Number(process.env.DIGEST_INTERVAL_MS ?? 24 * 60 * 60_000);
-  const digestTick = async () => {
-    try {
+  const digestTick = () =>
+    runJob('digest cycle', async () => {
       const sent = await notifications.sendDailyDigests(
         new Date(Date.now() - digestMs),
       );
-      // eslint-disable-next-line no-console
-      console.log(`digest cycle sent ${sent} email(s)`);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('digest cycle failed', err);
-    }
-  };
+      logger.log(`digest cycle sent ${sent} email(s)`, 'Worker');
+    });
   setInterval(digestTick, digestMs);
 
   // Weekly "Picks of the Week" newsletter (OB-157): composes the week's picks
@@ -121,18 +136,14 @@ async function main() {
     process.env.NEWSLETTER_DIGEST_INTERVAL_MS ?? 7 * 24 * 60 * 60_000,
   );
   if (weeklyMs > 0) {
-    const weeklyTick = async () => {
-      try {
+    const weeklyTick = () =>
+      runJob('newsletter digest cycle', async () => {
         const { sent, picks } = await newsletter.sendWeeklyDigest(weeklyMs);
-        // eslint-disable-next-line no-console
-        console.log(
+        logger.log(
           `newsletter digest cycle sent ${sent} email(s) for ${picks} pick(s)`,
+          'Worker',
         );
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('newsletter digest cycle failed', err);
-      }
-    };
+      });
     setInterval(weeklyTick, weeklyMs);
   }
 }
