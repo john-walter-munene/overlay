@@ -21,9 +21,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
-  const t = await getTipster(params.id);
+  const { id } = await params;
+  const t = await getTipster(id);
   if (!t) return { title: 'Tipster not found — Overlay Bets' };
   const name = t.displayName ?? t.username ?? t.tipsterId;
   const y = t.stats ? `${t.stats.yield.toFixed(1)}% yield` : 'verified picks';
@@ -339,9 +340,10 @@ function VerificationExplainer() {
 export default async function TipsterPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const t = await getTipster(params.id);
+  const { id } = await params;
+  const t = await getTipster(id);
   if (!t) notFound();
   const s = t.stats;
   const clv = buildClvChart(t.recentPicks);

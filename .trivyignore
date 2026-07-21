@@ -6,7 +6,7 @@
 # base image / bump the dependency) rather than ignored.
 
 # ---------------------------------------------------------------------------
-# npm-bundled toolchain (node:22 base image) — not application code
+# npm-bundled toolchain (node:26 base image) — not application code
 # These packages ship inside /usr/local/lib/node_modules/npm/node_modules/
 # and are owned by the Node.js / npm release cadence, not this project.
 # They will be resolved when the base image is updated via Dependabot.
@@ -21,6 +21,19 @@ CVE-2026-48815
 # picomatch 4.0.3 — bundled inside npm's own glob tooling; fix: 4.0.4
 # (The dev-dep instance at 4.0.1 is pruned from the runtime image.)
 CVE-2026-33671
+
+# undici 6.26.0 — bundled inside npm's own HTTP client; fix: 6.27.0
+# usr/local/lib/node_modules/npm/node_modules/undici — not application code.
+CVE-2026-12151
+
+# brace-expansion 5.0.6 — bundled inside npm's glob tooling; fix: 5.0.7
+# usr/local/lib/node_modules/npm/node_modules/brace-expansion — not application code.
+CVE-2026-13149
+
+# tar 7.5.16 — bundled inside npm for pack/publish; fix: 7.5.18 / 7.5.19
+# usr/local/lib/node_modules/npm/node_modules/tar — not application code.
+CVE-2026-59873
+CVE-2026-59874
 
 # ---------------------------------------------------------------------------
 # next.js — web-app framework present in workspace node_modules but NEVER

@@ -14,9 +14,9 @@ export const revalidate = 300;
 export default async function ContentIndex({
   searchParams,
 }: {
-  searchParams: { tag?: string };
+  searchParams: Promise<{ tag?: string }>;
 }) {
-  const tag = searchParams?.tag;
+  const { tag } = await searchParams;
   const articles = await listArticles({ tag, category: 'content' });
 
   return (
