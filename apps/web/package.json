@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@overlay/shared": "*",
-    "@supabase/supabase-js": "^2.110.4",
+    "@supabase/supabase-js": "^2.110.7",
     "flag-icons": "^7.5.0",
     "marked": "^18.0.6",
     "next": "^14.2.5",
