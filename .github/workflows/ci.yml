@@ -19,8 +19,8 @@ jobs:
     name: Lockfile in sync
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       # `npm ci` fails fast (EUSAGE) if package-lock.json is out of sync with
@@ -33,8 +33,8 @@ jobs:
     name: Shared engine (stats + integrity)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -54,8 +54,8 @@ jobs:
     name: Install & build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -86,8 +86,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://overlay:overlay@localhost:5432/overlay?schema=public
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -104,8 +104,8 @@ jobs:
     name: Dependency audit (high/critical gate)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       # Gate on new HIGH/CRITICAL advisories. Already-triaged advisories are
@@ -118,7 +118,7 @@ jobs:
     name: Container image scan (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Build the production image the same way we ship it, then scan it.
       - name: Build API image
         run: docker build -t overlay-api:${{ github.sha }} .
