@@ -80,20 +80,21 @@ function pageHref(base: MarketplaceParams, page: number): string {
 export default async function TipstersPage({
   searchParams,
 }: {
-  searchParams: MarketplaceParams;
+  searchParams: Promise<MarketplaceParams>;
 }) {
+  const resolvedParams = await searchParams;
   const params: MarketplaceParams = {
-    sport: searchParams.sport,
-    maxPrice: searchParams.maxPrice,
-    minSample: searchParams.minSample,
-    sort: searchParams.sort,
-    page: searchParams.page,
+    sport: resolvedParams.sport,
+    maxPrice: resolvedParams.maxPrice,
+    minSample: resolvedParams.minSample,
+    sort: resolvedParams.sort,
+    page: resolvedParams.page,
   };
   const [data, leaderboard] = await Promise.all([
     listMarketplace(params),
     getLeaderboard(),
   ]);
-  const activeSort = (searchParams.sort as MarketplaceSort) ?? 'yield';
+  const activeSort = (resolvedParams.sort as MarketplaceSort) ?? 'yield';
   const topTipsters = leaderboard.slice(0, 8);
 
   return (
@@ -121,7 +122,7 @@ export default async function TipstersPage({
           >
             <label style={labelStyle}>
               Sport
-              <select name="sport" defaultValue={searchParams.sport ?? ''} style={inputStyle}>
+              <select name="sport" defaultValue={resolvedParams.sport ?? ''} style={inputStyle}>
                 <option value="">All sports</option>
                 {SPORTS.map((s) => (
                   <option key={s} value={s}>
@@ -138,7 +139,7 @@ export default async function TipstersPage({
                 name="maxPrice"
                 min={0}
                 placeholder="Any"
-                defaultValue={searchParams.maxPrice ?? ''}
+                defaultValue={resolvedParams.maxPrice ?? ''}
                 style={{ ...inputStyle, width: 120 }}
               />
             </label>
@@ -150,7 +151,7 @@ export default async function TipstersPage({
                 name="minSample"
                 min={0}
                 placeholder="10"
-                defaultValue={searchParams.minSample ?? ''}
+                defaultValue={resolvedParams.minSample ?? ''}
                 style={{ ...inputStyle, width: 110 }}
               />
             </label>

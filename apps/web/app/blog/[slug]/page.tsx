@@ -16,9 +16,10 @@ export async function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const article = await getArticle(params.slug);
+  const { slug } = await params;
+  const article = await getArticle(slug);
   if (!article) return { title: 'Not found — Overlay Bets' };
 
   const title = article.seoTitle ?? article.title;
@@ -50,9 +51,10 @@ export async function generateMetadata({
 export default async function ArticlePage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const article = await getArticle(params.slug);
+  const { slug } = await params;
+  const article = await getArticle(slug);
   if (!article) notFound();
 
   const html = sanitizeHtml(await marked.parse(article.body));

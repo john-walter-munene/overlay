@@ -18,12 +18,13 @@ function selectedDate(raw?: string): string {
   return parseIsoDate(raw) ?? todayIsoDate();
 }
 
-export function generateMetadata({
+export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: { date?: string };
-}): Metadata {
-  const date = selectedDate(searchParams?.date);
+  searchParams: Promise<{ date?: string }>;
+}): Promise<Metadata> {
+  const { date: rawDate } = await searchParams;
+  const date = selectedDate(rawDate);
   const human = formatLongDate(date);
   const canonical =
     date === todayIsoDate() ? '/tips' : `/tips?date=${date}`;
@@ -85,9 +86,10 @@ function TipCard({ tip }: { tip: FreeTip }) {
 export default async function FreeTipsPage({
   searchParams,
 }: {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }) {
-  const date = selectedDate(searchParams?.date);
+  const { date: rawDate } = await searchParams;
+  const date = selectedDate(rawDate);
   const today = todayIsoDate();
   const strip = buildDateStrip(date, today);
   const prev = addDays(date, -1);
