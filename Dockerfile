@@ -48,7 +48,9 @@ ENV NODE_ENV=production
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openssl ca-certificates \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g npm@latest \
+ && npm cache clean --force
 
 # Bring over installed deps (incl. generated Prisma client + workspace symlink)
 # and the compiled output. Source TS is intentionally left out of the image.
