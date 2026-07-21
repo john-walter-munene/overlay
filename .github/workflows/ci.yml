@@ -19,7 +19,7 @@ jobs:
     name: Lockfile in sync
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -33,7 +33,7 @@ jobs:
     name: Shared engine (stats + integrity)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -54,7 +54,7 @@ jobs:
     name: Install & build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -86,7 +86,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://overlay:overlay@localhost:5432/overlay?schema=public
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -104,7 +104,7 @@ jobs:
     name: Dependency audit (high/critical gate)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -118,7 +118,7 @@ jobs:
     name: Container image scan (Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Build the production image the same way we ship it, then scan it.
       - name: Build API image
         run: docker build -t overlay-api:${{ github.sha }} .
