@@ -1,4 +1,4 @@
-# How to Run Overlay Bets
+# How to Run Overlay Picks
 
 A step-by-step guide to get the platform running locally, then push it to GitHub.
 Everything runs **offline with mock providers** — no Stripe or sports-data API
@@ -21,7 +21,7 @@ keys are required for a first test.
 
 ## 2. Install dependencies
 
-From the repository root (`overlay-bets/`):
+From the repository root (`overlay-picks/`):
 
 ```bash
 npm install
@@ -72,6 +72,31 @@ local + deployed origins under **Auth → URL Configuration → Redirect URLs**.
 For quick local testing, turn **"Confirm email" off** so signup logs you in
 immediately (otherwise you must confirm via the emailed link first).
 
+Include the auth-callback route in your redirect allow-list (one entry per
+origin), e.g. `http://localhost:3000/auth/callback` and
+`https://your-domain.com/auth/callback`.
+
+#### Google social sign-in (optional)
+
+The login and signup pages show a **Continue with Google** button
+(`signInWithOAuth('google')`). To enable it:
+
+1. **Google Cloud Console** → create/select a project → **APIs & Services →
+   OAuth consent screen**, configure it (External, add the app name, support
+   email, and your domain under Authorized domains).
+2. **APIs & Services → Credentials → Create Credentials → OAuth client ID** →
+   type **Web application**. Under **Authorized redirect URIs** add your
+   Supabase callback:
+   `https://<your-project-ref>.supabase.co/auth/v1/callback`
+   (copy the exact value from the Supabase provider page below).
+3. Copy the generated **Client ID** and **Client secret**.
+4. **Supabase dashboard → Auth → Providers → Google** → enable it, paste the
+   Client ID + secret, and save.
+
+No app env vars are needed — the OAuth secret lives in Supabase. New Google
+accounts are provisioned as bettors (role `user`) on first sign-in; promote to
+tipster later if required.
+
 ### Storage (Supabase — identity documents)
 
 Tipster identity documents (ID / passport / driver licence) uploaded during
@@ -101,6 +126,19 @@ npm run db:seed             # admin user, 3 blog articles + 3 upcoming events
 
 The seed prints the admin credentials (defaults: `admin@overlay.local` /
 `change-me-now` — override with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`).
+
+### Backups & disaster recovery
+
+`npm run db:backup` writes a compressed `pg_dump` archive, and
+`npm run db:restore-drill` proves a backup restores cleanly into a throwaway
+scratch database. Scheduled backups and the full recovery procedure live in
+[docs/DR-RUNBOOK.md](docs/DR-RUNBOOK.md).
+
+### Incidents & on-call
+
+When an alert fires, the on-call runbook covers the escalation path and
+step-by-step responses for the common incidents (settlement stuck, webhook
+backlog, vendor outage, payout failure): [docs/RUNBOOK-ONCALL.md](docs/RUNBOOK-ONCALL.md).
 
 ---
 
@@ -175,8 +213,8 @@ The project is already a git repo. To publish it:
 ```bash
 # 1. Create an EMPTY repo on GitHub (no README/license), copy its URL.
 
-# 2. From overlay-bets/:
-git remote add origin https://github.com/<you>/overlay-bets.git
+# 2. From overlay-picks/:
+git remote add origin https://github.com/<you>/overlay-picks.git
 git branch -M main
 git push -u origin main
 ```
@@ -208,7 +246,11 @@ git push -u origin main
   (see `docs/VENDOR-SPIKE.md`).
 - **Email / Web Push** — `RESEND_API_KEY`, `VAPID_*`. For email, set
   `NOTIFIER_PROVIDER=resend`, `RESEND_API_KEY`, and `EMAIL_FROM`; leave
-  `NOTIFIER_PROVIDER=mock` (default) to log instead of sending.
+  `NOTIFIER_PROVIDER=mock` (default) to log instead of sending. For browser web
+  push (new-pick alerts), generate a key pair with
+  `npx web-push generate-vapid-keys` and set `VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`); with the keys unset the
+  push channel is a no-op.
 
 See `docs/ARCHITECTURE.md` and `docs/ROADMAP.md` (Phase 4) for the hardening
 checklist before going live.

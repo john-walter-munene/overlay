@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Monorepo-aware image for the Overlay Bets API + settlement worker.
+# Monorepo-aware image for the Overlay Picks API + settlement worker.
 # Build context MUST be the repo root (it needs prisma/, packages/shared, apps/api).
 #
 #   docker build -t overlay-api .
@@ -9,7 +9,7 @@
 # See docs/PROD-READINESS-BACKLOG.md OB-100.
 
 # ---- Builder ----------------------------------------------------------------
-FROM node:22-bookworm-slim AS builder
+FROM node:26-bookworm-slim AS builder
 WORKDIR /app
 
 # Prisma engines need openssl at generate/runtime.
@@ -36,14 +36,21 @@ RUN npm run prisma:generate \
  && npm run build -w @overlay/shared \
  && npm run build -w @overlay/api
 
+# Strip dev-only packages from node_modules so they don't land in the runtime
+# image. This removes build tools (e.g. @nestjs/cli and its transitive deps
+# like glob, picomatch, tmp) that aren't needed at runtime.
+RUN npm prune --omit=dev
+
 # ---- Runtime ----------------------------------------------------------------
-FROM node:22-bookworm-slim AS runtime
+FROM node:26-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openssl ca-certificates \
- && rm -rf /var/lib/apt/lists/*
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g npm@latest \
+ && npm cache clean --force
 
 # Bring over installed deps (incl. generated Prisma client + workspace symlink)
 # and the compiled output. Source TS is intentionally left out of the image.

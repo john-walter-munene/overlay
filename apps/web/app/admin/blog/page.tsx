@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { marked } from 'marked';
 import { sanitizeHtml } from '@overlay/shared/markdown';
+import type { Role } from '@overlay/shared/rbac';
 import { authFetch, getProfile } from '../../../lib/auth';
 import { formStyles } from '../../formStyles';
 
@@ -83,7 +84,7 @@ function toDraft(a: ManagedArticle): Draft {
 export default function BlogAuthoringPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [role, setRole] = useState<'admin' | 'tipster' | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [articles, setArticles] = useState<ManagedArticle[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +113,11 @@ export default function BlogAuthoringPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin' && profile.role !== 'tipster') {
+      if (
+        profile.role !== 'admin' &&
+        profile.role !== 'staff' &&
+        profile.role !== 'tipster'
+      ) {
         router.replace('/account');
         return;
       }
@@ -303,7 +308,7 @@ export default function BlogAuthoringPage() {
                   onChange={(e) => update('status', e.target.value as Status)}
                 >
                   <option value="draft">Draft</option>
-                  {role === 'admin' ? (
+                  {role === 'admin' || role === 'staff' ? (
                     <>
                       <option value="pending">Pending review</option>
                       <option value="published">Published</option>

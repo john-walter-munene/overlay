@@ -5,14 +5,14 @@
 # Prereqs: `gh auth login` completed with scopes: repo, project (read:project).
 # Usage:
 #   pwsh scripts/create-issues.ps1 -Repo CognitronTechnologies/overlay `
-#        -ProjectOwner CognitronTechnologies -ProjectTitle "Ship Overlay Bets V1"
+#        -ProjectOwner CognitronTechnologies -ProjectTitle "Ship Overlay Picks V1"
 #   Add -DryRun to preview without creating anything.
 
 [CmdletBinding()]
 param(
   [string]$Repo = 'CognitronTechnologies/overlay',
   [string]$ProjectOwner = 'CognitronTechnologies',
-  [string]$ProjectTitle = 'Ship Overlay Bets V1',
+  [string]$ProjectTitle = 'Ship Overlay Picks V1',
   [string]$BacklogPath = "$PSScriptRoot/../docs/PROD-READINESS-BACKLOG.md",
   [switch]$DryRun
 )
@@ -27,7 +27,8 @@ $ExcludeIds = @(
   'OB-010','OB-011','OB-012','OB-013','OB-014','OB-015','OB-016',
   'OB-020','OB-021','OB-022','OB-023','OB-024',
   'OB-025','OB-026','OB-027','OB-028','OB-029',
-  'OB-035','OB-036','OB-037','OB-038',
+  'OB-034',
+  'OB-035','OB-036','OB-037','OB-038','OB-039',
   'OB-045','OB-046','OB-047','OB-048','OB-049',
   'OB-055','OB-056','OB-057',
   'OB-060','OB-061','OB-062','OB-063'

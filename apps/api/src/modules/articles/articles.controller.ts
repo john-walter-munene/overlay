@@ -13,7 +13,12 @@ import { ArticlesService } from './articles.service';
 import { CreateArticleDto } from './dto/create-article.dto';
 import { UpdateArticleDto } from './dto/update-article.dto';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/roles.guard';
+import {
+  RolesGuard,
+  Roles,
+  PermissionsGuard,
+  Permissions,
+} from '../../common/roles.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
 
@@ -29,13 +34,17 @@ export class ArticlesController {
     @Query('category') category?: string,
     @Query('take') take?: string,
     @Query('skip') skip?: string,
+    @Query('locale') locale?: string,
   ) {
-    return this.articles.listPublished({
-      tag,
-      category: category === 'news' ? 'news' : category === 'content' ? 'content' : undefined,
-      take: take ? Number(take) : undefined,
-      skip: skip ? Number(skip) : undefined,
-    });
+    return this.articles.listPublished(
+      {
+        tag,
+        category: category === 'news' ? 'news' : category === 'content' ? 'content' : undefined,
+        take: take ? Number(take) : undefined,
+        skip: skip ? Number(skip) : undefined,
+      },
+      locale ?? 'en',
+    );
   }
 
   @Get('tags')
@@ -49,23 +58,23 @@ export class ArticlesController {
   }
 
   @Get(':slug')
-  bySlug(@Param('slug') slug: string) {
-    return this.articles.getPublishedBySlug(slug);
+  bySlug(@Param('slug') slug: string, @Query('locale') locale?: string) {
+    return this.articles.getPublishedBySlug(slug, locale ?? 'en');
   }
 
   // ---- authoring (admin + approved tipsters) ----
 
   @Get('admin/all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('content:moderate')
   all() {
     return this.articles.listAll();
   }
 
-  /** Articles the caller may manage (admins: all, tipsters: their own). */
+  /** Articles the caller may manage (moderators: all, tipsters: their own). */
   @Get('manage/mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'tipster')
+  @Roles('admin', 'staff', 'tipster')
   mine(@CurrentUser() user: AuthUser) {
     return this.articles.listMine(user);
   }
@@ -79,7 +88,7 @@ export class ArticlesController {
 
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'tipster')
+  @Roles('admin', 'staff', 'tipster')
   update(
     @Param('id') id: string,
     @Body() dto: UpdateArticleDto,
@@ -90,7 +99,7 @@ export class ArticlesController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin', 'tipster')
+  @Roles('admin', 'staff', 'tipster')
   remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.articles.remove(id, user);
   }

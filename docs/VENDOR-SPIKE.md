@@ -142,3 +142,57 @@ and a computed CLV. Recorded-payload coverage for the mappers + grading lives in
 `the-odds-api.mapper.test.ts`, `api-football.mapper.test.ts` and
 `the-odds-api.e2e.test.ts`.
 
+---
+
+## Sports data platform — discovery, markets & config
+
+Beyond the settlement path, The Odds API v4 powers bettor/tipster discovery. The
+provider stays behind `SportsDataProvider`; raw vendor JSON never leaks into
+Prisma or the web app.
+
+### Market capability registry (`packages/shared/src/markets.ts`)
+
+The single source of truth for what a market may **do**, separate from how it
+grades. Three capabilities in increasing trust: `displayable` → `pickable` →
+`settleable`.
+
+- `CANONICAL_MARKETS` — the 10 gradeable markets, all displayable+pickable+settleable.
+- `classifyProviderMarket(key)` — maps a raw provider key to its group. Featured
+  (`h2h`→1X2/moneyline, `spreads`, `totals`) and gradeable derived markets are
+  pickable; **player props, period/quarter/half, alternate lines, outrights and
+  exchange lay markets are display-only** and can never lock a pick.
+- Drift guard (test): the pickable set is asserted equal to `SUPPORTED_MARKETS`,
+  so the grader and registry can't silently diverge. A defense-in-depth
+  `isPickableMarket` check also gates `picks.service.createLockedPick`.
+
+### Endpoints
+
+| Route | Auth | Cost | Purpose |
+|---|---|---|---|
+| `GET /api/events` | public | none (DB-only) | Filterable discovery: `sport`, `group` (provider sport group → sport keys), `league`, `status` (upcoming/live/completed/all), `startFrom`/`startTo`, `q`, `limit`/`offset`. Paginated. |
+| `GET /api/events/:id/detail` | public | cached | Event summary + featured markets (best price + per-bookmaker `offers`), `bookmaker`/`market` narrowing. |
+| `GET /api/events/:id/markets` | public | 1 credit (cached) | Full market inventory classified by the registry; props flagged `pickable:false`. |
+| `GET /api/events/sports` | public | none | In-season provider sport catalog (15-min cache), for group/sport filters. |
+| `GET /api/events/:id/odds` | tipster | cached | Odds-at-pick for the pick form (now includes `offers`). |
+
+Discovery is **DB-only** (quota-free, paginatable). Odds/props are **on-demand,
+per-event** and served from a 60s in-process cache so anonymous traffic can't
+multiply credit spend. The web surfaces are `/sports` (bettor) and the tipster
+dashboard pick form (bookmaker comparison on the selected line).
+
+### Config knobs (`integrations/sports/sports-config.ts`)
+
+Validated/clamped; defaults preserve historical behavior.
+
+| Env | Default | Notes |
+|---|---|---|
+| `SPORTS_ODDS_REGIONS` | `eu` | Comma list from `us,us2,uk,au,eu`; unknown dropped. More regions ⇒ more credits. |
+| `SPORTS_FEATURED_MARKETS` | `h2h,spreads,totals` | Restricted to featured keys so background refresh can't pull expensive props. |
+| `SPORTS_SCORES_DAYS_FROM` | `3` | Completed-result window (1–3); `daysFrom` doubles score cost to 2. |
+| `SPORTS_SCORE_STALE_MS` | `120000` | Freshness window; a stale score is visibly flagged and never shown as current. |
+
+**Score cost:** live-score polling omits `daysFrom` (1 credit); completed-result
+settlement uses `daysFrom` (2 credits). Live scores update ~every 30s upstream,
+but poll cadence follows the account quota — coverage is per-sport and expanding.
+
+

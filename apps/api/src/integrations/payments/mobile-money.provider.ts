@@ -7,12 +7,28 @@ import type {
   PaymentMethodId,
   PaymentProvider,
   PayoutDestination,
+  PayoutEvent,
   ProviderCapabilities,
   SubscriptionEvent,
   TransferResult,
 } from './payment-provider.interface';
+import { CurrencyService } from '../fx/currency.service';
 
 const FLW_API = 'https://api.flutterwave.com/v3';
+
+/**
+ * Flutterwave v3 mobile-money payout rails, keyed by our network id. The value
+ * is the network's transfer `account_bank` code. The charge/settlement currency
+ * comes from MOBILE_MONEY_CURRENCY (single-market deployments). Verify the code
+ * and currency for your target market in the Flutterwave dashboard before going
+ * live — mobile-money transfer codes are country-specific (e.g. MTN in Ghana vs
+ * Uganda) and can be overridden with FLUTTERWAVE_MOMO_BANKS if needed.
+ */
+const FLW_MOMO_BANK: Record<string, string> = {
+  mpesa: 'MPS', // Kenya M-Pesa (KES)
+  mtn_momo: 'MTN', // MTN Mobile Money
+  airtel_money: 'AIRTEL', // Airtel Money
+};
 
 /**
  * Mobile-money provider for African markets, backed by **Flutterwave** (OB-06x).
@@ -26,11 +42,18 @@ const FLW_API = 'https://api.flutterwave.com/v3';
  * so the journey is demoable. With keys set it creates a real hosted payment
  * link and verifies the webhook via the `verif-hash` header.
  *
+ * Payouts settle through the Flutterwave v3 Transfers API (mobile-money rail):
+ * the tipster's network is mapped to an `account_bank` code and the transfer is
+ * debited from the Flutterwave balance. Transfers complete asynchronously, so
+ * the accepted transfer id is recorded and the final state arrives on the
+ * `transfer.completed` webhook.
+ *
  * Env: FLUTTERWAVE_SECRET_KEY, FLUTTERWAVE_WEBHOOK_HASH, MOBILE_MONEY_CURRENCY
- * (default KES). Point the Flutterwave webhook at:
+ * (default KES), FLUTTERWAVE_MOMO_BANKS (optional payout account_bank overrides).
+ * Point the Flutterwave webhook at:
  *   {PUBLIC_API_URL}/api/subscriptions/webhook/mobile_money
  *
- * NOTE: prices are stored in USD cents; the charge is sent in
+ * NOTE: prices are stored in USD cents; the charge/payout is sent in
  * MOBILE_MONEY_CURRENCY without conversion — wire an FX step (TODO) before
  * charging a non-USD currency in production.
  */
@@ -45,7 +68,13 @@ export class MobileMoneyPaymentProvider implements PaymentProvider {
     methods: ['mpesa', 'mtn_momo', 'airtel_money'],
   };
 
+  isAvailable(): boolean {
+    return this.configured || this.devFallback;
+  }
+
   private readonly log = new Logger(MobileMoneyPaymentProvider.name);
+
+  constructor(private readonly fx: CurrencyService) {}
 
   private get secretKey(): string | undefined {
     return process.env.FLUTTERWAVE_SECRET_KEY;
@@ -116,7 +145,7 @@ export class MobileMoneyPaymentProvider implements PaymentProvider {
           email: params.customerEmail ?? `${params.userId}@users.overlay.bet`,
         },
         meta: { userId: params.userId, tipsterId: params.tipsterId },
-        customizations: { title: 'Overlay Bets subscription' },
+        customizations: { title: 'Overlay Picks subscription' },
       }),
     });
     if (!res.ok) {
@@ -192,10 +221,37 @@ export class MobileMoneyPaymentProvider implements PaymentProvider {
     }
   }
 
+  parseTransferWebhook(
+    rawBody: string,
+    headers: Record<string, string>,
+  ): PayoutEvent | null {
+    if (!this.configured) return null;
+    // Flutterwave signs webhooks with the same static `verif-hash` used for
+    // charge events; payout results arrive on the same URL.
+    const signature = headers['verif-hash'];
+    if (!signature || !this.webhookHash || signature !== this.webhookHash) {
+      return null;
+    }
+    try {
+      const body = JSON.parse(rawBody) as {
+        event?: string;
+        data?: { id?: number | string; reference?: string; status?: string };
+      };
+      if (body.event !== 'transfer.completed') return null;
+      const data = body.data ?? {};
+      const reference = String(data.reference ?? data.id ?? '');
+      if (!reference) return null;
+      // Flutterwave reports the terminal state as SUCCESSFUL / FAILED.
+      const status = data.status === 'SUCCESSFUL' ? 'paid' : 'failed';
+      return { status, reference, provider: this.name };
+    } catch {
+      return null;
+    }
+  }
+
   async createBillingPortalSession(): Promise<BillingPortalSession> {
     throw new Error('Mobile-money provider has no billing portal');
   }
-
   async transferToTipster(params: {
     destination: PayoutDestination;
     amountCents: number;
@@ -207,13 +263,86 @@ export class MobileMoneyPaymentProvider implements PaymentProvider {
       );
     }
     if (!this.configured) {
+      // Never fake a "paid" payout in production — that would mark money as sent
+      // without moving any. Only the dev/staging path records a synthetic id.
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Flutterwave is not configured');
+      }
       this.log.warn('FLUTTERWAVE_SECRET_KEY unset — recording a synthetic payout');
       return {
         reference: `momo_tr_${params.idempotencyKey}`,
         amountCents: params.amountCents,
       };
     }
-    // TODO: Flutterwave Transfers API (account_bank per network + phone).
-    throw new Error('Mobile-money payout integration not yet implemented');
+
+    const dest = params.destination;
+    const accountBank = this.momoBankFor(dest.network);
+    if (!accountBank) {
+      throw new Error(
+        `Unsupported mobile-money network for payout: ${dest.network}`,
+      );
+    }
+    // Convert the tipster's net balance (USD cents) into the settlement currency
+    // so the mobile-money transfer amount is correct for the recipient.
+    const quote = await this.fx.quote(params.amountCents, this.currency);
+    const currency = quote.currency;
+    // Idempotent, charset-safe reference so a retried payout is rejected as a
+    // duplicate by Flutterwave rather than paying the tipster twice.
+    const reference = `ob_payout_${params.idempotencyKey}`.replace(
+      /[^a-zA-Z0-9._-]/g,
+      '_',
+    );
+    const res = await fetch(`${FLW_API}/transfers`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${this.secretKey!}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        account_bank: accountBank,
+        account_number: dest.phone,
+        amount: quote.amountMinor / 10 ** currencyExponent(currency),
+        currency,
+        debit_currency: currency,
+        narration: 'Overlay Picks tipster payout',
+        reference,
+      }),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`Flutterwave transfer failed (${res.status}): ${detail}`);
+    }
+    const json = (await res.json()) as {
+      status: string;
+      message?: string;
+      data?: { id?: number | string; reference?: string; status?: string };
+    };
+    if (json.status !== 'success' || !json.data?.id) {
+      throw new Error(
+        `Flutterwave transfer was not accepted: ${json.message ?? 'unknown error'}`,
+      );
+    }
+    // Transfers settle asynchronously; the queued/accepted id is our reference.
+    // Final success/failure arrives later on the `transfer.completed` webhook.
+    return {
+      reference: String(json.data.reference ?? json.data.id),
+      amountCents: params.amountCents,
+    };
+  }
+
+  /**
+   * Resolve the Flutterwave `account_bank` code for a mobile-money network,
+   * honouring an optional FLUTTERWAVE_MOMO_BANKS override
+   * (`mpesa:MPS,mtn_momo:MTN,…`) before the built-in defaults.
+   */
+  private momoBankFor(network: string): string | undefined {
+    const overrides = process.env.FLUTTERWAVE_MOMO_BANKS;
+    if (overrides) {
+      for (const pair of overrides.split(',')) {
+        const [net, bank] = pair.split(':').map((s) => s.trim());
+        if (net === network && bank) return bank;
+      }
+    }
+    return FLW_MOMO_BANK[network];
   }
 }

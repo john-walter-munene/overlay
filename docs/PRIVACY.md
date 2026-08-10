@@ -1,4 +1,4 @@
-# Overlay Bets — Privacy, Data Retention & PII Audit (v1)
+# Overlay Picks — Privacy, Data Retention & PII Audit (v1)
 
 > **Status:** Draft v1
 > **Scope:** GDPR data-subject requests (export/erasure), retention policy, and

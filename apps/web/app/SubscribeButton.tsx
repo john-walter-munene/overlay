@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { CURRENCY_CODES } from '@overlay/shared/currencies';
 import { authFetch, getAccessToken, getProfile, type Profile } from '../lib/auth';
 import {
-  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHOD_EMOJI,
   detectCountry,
   getSubscriptionQuote,
   listPaymentMethods,
@@ -30,6 +31,7 @@ export default function SubscribeButton({
   billingInterval?: 'weekly' | 'monthly';
 }) {
   const router = useRouter();
+  const t = useTranslations('subscribe');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [methods, setMethods] = useState<PaymentMethodId[]>([]);
@@ -38,7 +40,7 @@ export default function SubscribeButton({
   const [quote, setQuote] = useState<SubscriptionQuote | null>(null);
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
 
-  const period = billingInterval === 'weekly' ? 'wk' : 'mo';
+  const period = t(billingInterval === 'weekly' ? 'perWeek' : 'perMonth');
   const baseDisplay = `$${(priceCents / 100).toFixed(2)}`;
 
   useEffect(() => {
@@ -64,28 +66,21 @@ export default function SubscribeButton({
 
   if (priceCents <= 0) {
     return (
-      <p style={{ color: 'var(--muted)' }}>
-        This tipster isn’t accepting subscriptions yet.
-      </p>
+      <p style={{ color: 'var(--muted)' }}>{t('notAccepting')}</p>
     );
   }
 
   // A tipster viewing their own profile can't subscribe to themselves.
   if (profile && profile.tipsterId === tipsterId) {
     return (
-      <p style={{ color: 'var(--muted)' }}>
-        This is your tipster profile — you can’t subscribe to your own account.
-      </p>
+      <p style={{ color: 'var(--muted)' }}>{t('ownProfile')}</p>
     );
   }
 
   // Tipster accounts can't subscribe at all; they need a bettor account.
   if (profile && profile.role === 'tipster') {
     return (
-      <p style={{ color: 'var(--muted)' }}>
-        Tipster accounts can’t subscribe. Sign up for a separate bettor account
-        to follow and subscribe to other tipsters.
-      </p>
+      <p style={{ color: 'var(--muted)' }}>{t('tipsterCantSubscribe')}</p>
     );
   }
 
@@ -118,16 +113,16 @@ export default function SubscribeButton({
         const msg = Array.isArray(body?.message)
           ? body?.message.join(', ')
           : body?.message;
-        throw new Error(msg || `Checkout failed (${res.status})`);
+        throw new Error(msg || t('checkoutFailed', { status: res.status }));
       }
       const data = (await res.json()) as { url?: string };
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError('Subscription started.');
+        setError(t('started'));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong.');
+      setError(e instanceof Error ? e.message : t('genericError'));
     } finally {
       setLoading(false);
     }
@@ -154,7 +149,7 @@ export default function SubscribeButton({
     <div>
       {methods.length > 1 ? (
         <label style={labelStyle}>
-          Pay with
+          {t('payWith')}
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value as PaymentMethodId)}
@@ -162,7 +157,7 @@ export default function SubscribeButton({
           >
             {methods.map((m) => (
               <option key={m} value={m}>
-                {PAYMENT_METHOD_LABELS[m] ?? m}
+                {`${PAYMENT_METHOD_EMOJI[m] ?? ''} ${t(`method_${m}`)}`.trim()}
               </option>
             ))}
           </select>
@@ -170,7 +165,7 @@ export default function SubscribeButton({
       ) : null}
 
       <label style={labelStyle}>
-        Currency
+        {t('currency')}
         <select
           value={currency}
           onChange={(e) => changeCurrency(e.target.value)}
@@ -189,13 +184,15 @@ export default function SubscribeButton({
         disabled={loading}
         className="btn btn--primary btn--lg"
       >
-        {loading ? 'Redirecting…' : `Subscribe · ${baseDisplay}/${period}`}
+        {loading
+          ? t('redirecting')
+          : t('cta', { price: baseDisplay, period })}
       </button>
 
       {/* Always show the original (USD) price; add the local estimate when it
           differs from the base currency. */}
       <p style={{ color: 'var(--muted)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-        Billed at {baseDisplay} USD/{period}
+        {t('billedAt', { price: baseDisplay, period })}
         {quote && quote.converted
           ? ` · ≈ ${quote.display}/${period}`
           : ''}

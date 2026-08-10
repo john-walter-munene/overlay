@@ -13,12 +13,12 @@ import { FreeTipsService } from './free-tips.service';
 import { CreateFreeTipDto } from './dto/create-free-tip.dto';
 import { UpdateFreeTipDto } from './dto/update-free-tip.dto';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
-import { RolesGuard, Roles } from '../../common/roles.guard';
+import { PermissionsGuard, Permissions } from '../../common/roles.guard';
 
 /**
  * Free "Daily Tips" hub (OB-150). The listing endpoints are public and ungated
  * — free "bets of the day" are visible without an account and are kept separate
- * from paid live picks. Management is admin-only.
+ * from paid live picks. Management is a content-moderation surface (admin/staff).
  */
 @Controller('free-tips')
 export class FreeTipsController {
@@ -39,29 +39,29 @@ export class FreeTipsController {
   // ---- admin management ----
 
   @Get('admin/all')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('content:moderate')
   all() {
     return this.freeTips.listAll();
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('content:moderate')
   create(@Body() dto: CreateFreeTipDto) {
     return this.freeTips.create(dto);
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('content:moderate')
   update(@Param('id') id: string, @Body() dto: UpdateFreeTipDto) {
     return this.freeTips.update(id, dto);
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('content:moderate')
   remove(@Param('id') id: string) {
     return this.freeTips.remove(id);
   }

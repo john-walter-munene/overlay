@@ -31,6 +31,11 @@ export class StripePaymentProvider implements PaymentProvider {
     methods: ['card', 'apple_pay', 'google_pay'],
   };
 
+  isAvailable(): boolean {
+    // Stripe has no dev fallback — it needs a real key to start checkout.
+    return Boolean(process.env.STRIPE_SECRET_KEY);
+  }
+
   private readonly log = new Logger(StripePaymentProvider.name);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private client: any;

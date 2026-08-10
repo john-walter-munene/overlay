@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
+import type { Role } from '@overlay/shared';
 import type { AuthUser } from '../../common/crypto';
 
 @Injectable()
@@ -72,7 +73,7 @@ export class AuthService {
   private provisionNewUser(
     supabaseUserId: string,
     email: string | undefined,
-    role: 'user' | 'tipster' | 'admin',
+    role: Role,
   ) {
     return this.prisma.user.create({
       data: {
@@ -83,16 +84,17 @@ export class AuthService {
     });
   }
 
-  /** Trusted role from app_metadata (admin-set); may be admin. */
-  private static trustedRole(
-    role?: string,
-  ): 'user' | 'tipster' | 'admin' | null {
-    return role === 'admin' || role === 'tipster' || role === 'user'
+  /** Trusted role from app_metadata (admin-set); may be admin or staff. */
+  private static trustedRole(role?: string): Role | null {
+    return role === 'admin' ||
+      role === 'staff' ||
+      role === 'tipster' ||
+      role === 'user'
       ? role
       : null;
   }
 
-  /** Self-selected role at signup — never privileged. */
+  /** Self-selected role at signup — never privileged (never staff/admin). */
   private static selfRole(role?: string): 'user' | 'tipster' {
     return role === 'tipster' ? 'tipster' : 'user';
   }

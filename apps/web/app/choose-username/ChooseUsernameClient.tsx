@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { getFullProfile, updateUsername, supabase } from '../../lib/auth';
 import { formStyles } from '../formStyles';
 import AvatarPicker from '../AvatarPicker';
@@ -15,6 +16,7 @@ const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
  * Supabase metadata captured at signup when available.
  */
 export default function ChooseUsernameClient() {
+  const t = useTranslations('chooseUsername');
   const router = useRouter();
   const params = useSearchParams();
   const [username, setUsername] = useState('');
@@ -56,9 +58,7 @@ export default function ChooseUsernameClient() {
     setError(null);
     const handle = username.trim().toLowerCase();
     if (!USERNAME_RE.test(handle)) {
-      setError(
-        'Username must be 3–20 characters: lowercase letters, numbers or underscores.',
-      );
+      setError(t('errFormat'));
       return;
     }
     setSaving(true);
@@ -66,7 +66,7 @@ export default function ChooseUsernameClient() {
       await updateUsername(handle);
       router.replace(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save username.');
+      setError(err instanceof Error ? err.message : t('errSave'));
       setSaving(false);
     }
   }
@@ -74,23 +74,22 @@ export default function ChooseUsernameClient() {
   if (!ready) {
     return (
       <main style={formStyles.wrap}>
-        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>{t('loading')}</p>
       </main>
     );
   }
 
   return (
     <main style={formStyles.wrap}>
-      <h1>Choose your username</h1>
+      <h1>{t('title')}</h1>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        Pick a public handle to finish setting up your account. You’ll appear as
-        this across Overlay Bets.
+        {t('subtitle')}
       </p>
       <form onSubmit={save} style={formStyles.form}>
         <input
           style={formStyles.input}
           type="text"
-          placeholder="Username (3–20: a–z, 0–9, _)"
+          placeholder={t('placeholder')}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
@@ -99,19 +98,19 @@ export default function ChooseUsernameClient() {
         />
         {error ? <p style={formStyles.error}>{error}</p> : null}
         <button className="btn btn--primary" disabled={saving} type="submit">
-          {saving ? 'Saving…' : 'Continue'}
+          {saving ? t('saving') : t('continue')}
         </button>
       </form>
 
       <section style={{ marginTop: '2rem' }}>
         <h2 style={{ fontSize: '1.1rem', marginBottom: '0.25rem' }}>
-          Profile picture{' '}
+          {t('profilePicture')}{' '}
           <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: '0.9rem' }}>
-            (optional)
+            {t('optional')}
           </span>
         </h2>
         <p style={{ color: 'var(--muted)', marginTop: 0, fontSize: '0.9rem' }}>
-          Upload a photo or pick an avatar — you can change it any time.
+          {t('avatarHelp')}
         </p>
         <AvatarPicker
           seed={username || 'you'}

@@ -43,13 +43,39 @@ export class PaymentProviderRegistry {
     return [...this.byName.values()];
   }
 
-  /** The provider that settles a given method, or undefined if none does. */
+  /**
+   * The provider that settles a given method, or undefined if none does. When
+   * several providers settle the same method (e.g. both Stripe and Paystack
+   * settle `card`), the configured **default** provider wins, so the operator's
+   * chosen processor is used for its markets. Unavailable providers (missing
+   * keys, no dev fallback) are skipped so a routed method can actually be paid.
+   */
   forMethod(method: PaymentMethodId): PaymentProvider | undefined {
-    return this.all().find((p) => p.capabilities.methods.includes(method));
+    const def = this.byName.get(this.defaultName);
+    if (
+      def?.capabilities.methods.includes(method) &&
+      isAvailable(def)
+    ) {
+      return def;
+    }
+    return this.all().find(
+      (p) => p.capabilities.methods.includes(method) && isAvailable(p),
+    );
   }
 
-  /** Every payment method enabled across all registered providers. */
+  /** Every payment method enabled across all *available* registered providers. */
   methods(): PaymentMethodId[] {
-    return [...new Set(this.all().flatMap((p) => [...p.capabilities.methods]))];
+    return [
+      ...new Set(
+        this.all()
+          .filter(isAvailable)
+          .flatMap((p) => [...p.capabilities.methods]),
+      ),
+    ];
   }
+}
+
+/** A provider is usable when it reports availability (or doesn't implement it). */
+function isAvailable(p: PaymentProvider): boolean {
+  return p.isAvailable?.() ?? true;
 }

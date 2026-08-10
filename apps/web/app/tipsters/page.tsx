@@ -1,8 +1,12 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import Flag from '../Flag';
 import Avatar from '../Avatar';
 import FollowButton from '../FollowButton';
+import CompareToggle from './CompareToggle';
+import CompareTray from './CompareTray';
+import { SportChipLinks } from '../SportChips';
 import {
   listMarketplace,
   SITE_URL,
@@ -11,22 +15,18 @@ import {
   type MarketplaceSort,
 } from '../../lib/api';
 
-export const metadata: Metadata = {
-  title: 'Tipsters — Verified edge, ranked · Overlay Bets',
-  description:
-    'Browse verified sports tipsters and see the leaderboard. Filter by sport, price and settled sample; sort by yield, closing line value or win rate. Every record is cryptographically locked before kickoff.',
-  alternates: { canonical: `${SITE_URL}/tipsters` },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('tipsters');
+  return {
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+    alternates: { canonical: `${SITE_URL}/tipsters` },
+  };
+}
 
 export const revalidate = 60;
 
 const SPORTS = ['soccer', 'basketball', 'tennis', 'baseball', 'hockey'];
-
-const SORTS: { value: MarketplaceSort; label: string }[] = [
-  { value: 'yield', label: 'Yield' },
-  { value: 'clv', label: 'CLV' },
-  { value: 'winRate', label: 'Win rate' },
-];
 
 interface LeaderboardRow {
   tipsterId: string;
@@ -80,32 +80,55 @@ function pageHref(base: MarketplaceParams, page: number): string {
 export default async function TipstersPage({
   searchParams,
 }: {
-  searchParams: MarketplaceParams;
+  searchParams: Promise<MarketplaceParams>;
 }) {
+  const resolvedParams = await searchParams;
   const params: MarketplaceParams = {
-    sport: searchParams.sport,
-    maxPrice: searchParams.maxPrice,
-    minSample: searchParams.minSample,
-    sort: searchParams.sort,
-    page: searchParams.page,
+    sport: resolvedParams.sport,
+    maxPrice: resolvedParams.maxPrice,
+    minSample: resolvedParams.minSample,
+    sort: resolvedParams.sort,
+    page: resolvedParams.page,
   };
   const [data, leaderboard] = await Promise.all([
     listMarketplace(params),
     getLeaderboard(),
   ]);
-  const activeSort = (searchParams.sort as MarketplaceSort) ?? 'yield';
+  const activeSort = (resolvedParams.sort as MarketplaceSort) ?? 'yield';
   const topTipsters = leaderboard.slice(0, 8);
+  const t = await getTranslations('tipsters');
+  const sorts: { value: MarketplaceSort; label: string }[] = [
+    { value: 'yield', label: t('sortYield') },
+    { value: 'clv', label: t('sortClv') },
+    { value: 'winRate', label: t('sortWinRate') },
+  ];
+
+  const chipHref = (sport?: string) => {
+    const qs = new URLSearchParams();
+    if (sport) qs.set('sport', sport);
+    if (params.maxPrice) qs.set('maxPrice', params.maxPrice);
+    if (params.minSample) qs.set('minSample', params.minSample);
+    if (params.sort) qs.set('sort', params.sort);
+    const s = qs.toString();
+    return s ? `/tipsters?${s}` : '/tipsters';
+  };
 
   return (
     <main style={{ maxWidth: 1080, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1 style={{ fontSize: '2.2rem', marginBottom: '0.25rem' }}>Tipsters</h1>
+      <h1 style={{ fontSize: '2.2rem', marginBottom: '0.25rem' }}>{t('title')}</h1>
       <p style={{ color: 'var(--muted)', marginTop: 0, maxWidth: 640 }}>
-        Verified tipsters only. Filter and sort by the metrics that matter —
-        every record is locked before kickoff.
+        {t('subtitle')}
       </p>
 
       <div className="tipsters-layout">
         <div>
+          <SportChipLinks
+            items={SPORTS.map((s) => ({ key: s, label: s[0].toUpperCase() + s.slice(1) }))}
+            activeKey={resolvedParams.sport ?? null}
+            hrefFor={(s) => chipHref(s)}
+            allHref={chipHref()}
+            ariaLabel={t('filterBySport')}
+          />
           <form
             method="get"
             style={{
@@ -119,46 +142,36 @@ export default async function TipstersPage({
               borderRadius: 12,
             }}
           >
-            <label style={labelStyle}>
-              Sport
-              <select name="sport" defaultValue={searchParams.sport ?? ''} style={inputStyle}>
-                <option value="">All sports</option>
-                {SPORTS.map((s) => (
-                  <option key={s} value={s}>
-                    {s[0].toUpperCase() + s.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <input type="hidden" name="sport" value={resolvedParams.sport ?? ''} />
 
             <label style={labelStyle}>
-              Max price (¢/mo)
+              {t('maxPrice')}
               <input
                 type="number"
                 name="maxPrice"
                 min={0}
-                placeholder="Any"
-                defaultValue={searchParams.maxPrice ?? ''}
+                placeholder={t('priceAny')}
+                defaultValue={resolvedParams.maxPrice ?? ''}
                 style={{ ...inputStyle, width: 120 }}
               />
             </label>
 
             <label style={labelStyle}>
-              Min sample
+              {t('minSample')}
               <input
                 type="number"
                 name="minSample"
                 min={0}
                 placeholder="10"
-                defaultValue={searchParams.minSample ?? ''}
+                defaultValue={resolvedParams.minSample ?? ''}
                 style={{ ...inputStyle, width: 110 }}
               />
             </label>
 
             <label style={labelStyle}>
-              Sort by
+              {t('sortBy')}
               <select name="sort" defaultValue={activeSort} style={inputStyle}>
-                {SORTS.map((s) => (
+                {sorts.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>
@@ -167,32 +180,32 @@ export default async function TipstersPage({
             </label>
 
             <button type="submit" className="btn btn--primary">
-              Apply
+              {t('apply')}
             </button>
           </form>
 
           {data.items.length === 0 ? (
-            <p style={{ color: 'var(--muted)' }}>
-              No verified tipsters match these filters yet. Try widening your
-              filters — tipsters appear here once they reach the minimum settled
-              sample, ranked by verified yield and closing line value.
-            </p>
+            <p style={{ color: 'var(--muted)' }}>{t('noMatch')}</p>
           ) : (
             <>
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-                {data.total} verified tipster{data.total === 1 ? '' : 's'} · page{' '}
-                {data.page} of {data.totalPages}
+                {t('countLine', {
+                  total: data.total,
+                  page: data.page,
+                  totalPages: data.totalPages,
+                })}
               </p>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
-                    <th style={{ padding: '0.5rem 0' }}>Tipster</th>
-                    <th>Sports</th>
-                    <th>Yield</th>
-                    <th>CLV</th>
-                    <th>Win %</th>
-                    <th>Picks</th>
-                    <th>Price/mo</th>
+                    <th style={{ padding: '0.5rem 0' }}>{t('thTipster')}</th>
+                    <th>{t('thSports')}</th>
+                    <th>{t('thYield')}</th>
+                    <th>{t('thClv')}</th>
+                    <th>{t('thWin')}</th>
+                    <th>{t('thPicks')}</th>
+                    <th>{t('thPrice')}</th>
+                    <th></th>
                     <th></th>
                   </tr>
                 </thead>
@@ -223,10 +236,34 @@ export default async function TipstersPage({
                       <td>
                         {r.subscriptionPriceCents > 0
                           ? `$${(r.subscriptionPriceCents / 100).toFixed(2)}`
-                          : 'Free'}
+                          : t('free')}
+                      </td>
+                      <td>
+                        <CompareToggle
+                          id={r.tipsterId}
+                          name={r.name ?? r.tipsterId}
+                        />
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <FollowButton tipsterId={r.tipsterId} size="sm" />
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            gap: '0.4rem',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          {r.subscriptionPriceCents > 0 ? (
+                            <Link
+                              href={`/tipsters/${r.tipsterId}#subscribe`}
+                              className="btn btn--primary btn--sm"
+                              title={t('subscribeTitle')}
+                            >
+                              {t('subscribe')}
+                            </Link>
+                          ) : null}
+                          <FollowButton tipsterId={r.tipsterId} iconOnly />
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -243,14 +280,14 @@ export default async function TipstersPage({
                 >
                   {data.page > 1 ? (
                     <Link href={pageHref(params, data.page - 1)} className="btn btn--secondary btn--sm">
-                      ← Previous
+                      {t('prevPage')}
                     </Link>
                   ) : (
                     <span />
                   )}
                   {data.page < data.totalPages ? (
                     <Link href={pageHref(params, data.page + 1)} className="btn btn--secondary btn--sm">
-                      Next →
+                      {t('nextPage')}
                     </Link>
                   ) : (
                     <span />
@@ -263,14 +300,13 @@ export default async function TipstersPage({
 
         <aside className="tipsters-aside">
           <div className="panel">
-            <h2>Leaderboard</h2>
+            <h2>{t('leaderboard')}</h2>
             <p style={{ color: 'var(--muted)', fontSize: '0.8rem', margin: '0 0 0.9rem' }}>
-              Top verified tipsters by yield.
+              {t('leaderboardSub')}
             </p>
             {topTipsters.length === 0 ? (
               <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: 0 }}>
-                No ranked tipsters yet. Records appear once tipsters reach the
-                minimum settled sample.
+                {t('noRanked')}
               </p>
             ) : (
               <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -317,6 +353,7 @@ export default async function TipstersPage({
           </div>
         </aside>
       </div>
+      <CompareTray />
     </main>
   );
 }

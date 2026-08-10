@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { getLocale } from 'next-intl/server';
 import { listArticles } from '../../lib/api';
 
 export const metadata: Metadata = {
-  title: 'Sports & Betting News — Overlay Bets',
+  title: 'Sports & Betting News — Overlay Picks',
   description:
     'The latest happenings across sport and betting — market moves, results, industry updates and what they mean for your edge.',
   alternates: { canonical: '/news' },
@@ -14,16 +15,17 @@ export const revalidate = 300;
 export default async function NewsIndex({
   searchParams,
 }: {
-  searchParams: { tag?: string };
+  searchParams: Promise<{ tag?: string }>;
 }) {
-  const tag = searchParams?.tag;
-  const articles = await listArticles({ tag, category: 'news' });
+  const { tag } = await searchParams;
+  const locale = await getLocale();
+  const articles = await listArticles({ tag, category: 'news', locale });
 
   return (
     <main style={{ maxWidth: 860, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
         <Link href="/" style={{ color: 'var(--accent)' }}>
-          ← Overlay Bets
+          ← Overlay Picks
         </Link>
       </p>
       <h1 style={{ fontSize: '2.2rem', marginBottom: '0.25rem' }}>

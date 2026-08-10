@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { search, type SearchResults } from '../../lib/api';
 import Avatar from '../Avatar';
 import Flag from '../Flag';
@@ -10,6 +11,7 @@ import Flag from '../Flag';
 const MUTED = 'var(--muted)';
 
 export default function SearchClient() {
+  const tr = useTranslations('search');
   const router = useRouter();
   const params = useSearchParams();
   const initial = params.get('q') ?? '';
@@ -51,15 +53,15 @@ export default function SearchClient() {
 
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Search</h1>
+      <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>{tr('title')}</h1>
 
       <input
         ref={inputRef}
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search tipsters, guides and news…"
-        aria-label="Search"
+        placeholder={tr('placeholder')}
+        aria-label={tr('title')}
         style={{
           width: '100%',
           padding: '0.8rem 1rem',
@@ -73,24 +75,23 @@ export default function SearchClient() {
 
       {query.trim().length > 0 && query.trim().length < 2 ? (
         <p style={{ color: MUTED, marginTop: '1rem' }}>
-          Keep typing — enter at least 2 characters.
+          {tr('minChars')}
         </p>
       ) : null}
 
       {loading && !results ? (
-        <p style={{ color: MUTED, marginTop: '1.5rem' }}>Searching…</p>
+        <p style={{ color: MUTED, marginTop: '1.5rem' }}>{tr('searching')}</p>
       ) : null}
 
       {results && !hasResults && query.trim().length >= 2 ? (
         <p style={{ color: MUTED, marginTop: '1.5rem' }}>
-          No matches for “{results.query}”. Try a tipster name, a sport, or a
-          topic like “CLV” or “bankroll”.
+          {tr('noMatches', { query: results.query })}
         </p>
       ) : null}
 
       {results && results.tipsters.length > 0 ? (
         <section style={{ marginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Tipsters</h2>
+          <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>{tr('tipsters')}</h2>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {results.tipsters.map((t) => (
               <li
@@ -116,15 +117,17 @@ export default function SearchClient() {
                   ) : null}
                   <div style={{ color: MUTED, fontSize: '0.85rem' }}>
                     {t.yield != null
-                      ? `${t.yield.toFixed(1)}% yield`
-                      : 'New tipster'}
-                    {t.sampleSize ? ` · ${t.sampleSize} picks` : ''}
+                      ? tr('yieldLabel', { value: t.yield.toFixed(1) })
+                      : tr('newTipster')}
+                    {t.sampleSize ? tr('picksSuffix', { count: t.sampleSize }) : ''}
                   </div>
                 </div>
                 <span style={{ color: MUTED, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                   {t.subscriptionPriceCents > 0
-                    ? `$${(t.subscriptionPriceCents / 100).toFixed(2)}/mo`
-                    : 'Free'}
+                    ? tr('pricePerMonth', {
+                        price: `$${(t.subscriptionPriceCents / 100).toFixed(2)}`,
+                      })
+                    : tr('free')}
                 </span>
               </li>
             ))}
@@ -135,7 +138,7 @@ export default function SearchClient() {
       {results && results.articles.length > 0 ? (
         <section style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-            Content &amp; News
+            {tr('contentNews')}
           </h2>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {results.articles.map((a) => (
@@ -159,7 +162,7 @@ export default function SearchClient() {
                       padding: '0.1rem 0.5rem',
                     }}
                   >
-                    {a.category === 'news' ? 'News' : 'Content'}
+                    {a.category === 'news' ? tr('badgeNews') : tr('badgeContent')}
                   </span>
                   <Link
                     href={`/blog/${a.slug}`}

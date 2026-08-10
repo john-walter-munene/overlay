@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { authFetch, getProfile } from '../../lib/auth';
 import type { FeedPick } from '../../lib/api';
+import { EmptyState } from '../EmptyState';
 
 /** How often we poll for settlement status updates (ms). */
 const POLL_MS = 30_000;
@@ -14,23 +16,6 @@ function statusColor(status: string): string {
   if (status === 'lost' || status === 'half_lost') return 'var(--danger)';
   if (status === 'void') return 'var(--muted)';
   return 'var(--accent)'; // pending / live
-}
-
-function statusLabel(status: string): string {
-  if (status === 'pending') return 'Live';
-  if (status === 'half_won') return '½ won';
-  if (status === 'half_lost') return '½ lost';
-  return status;
-}
-
-function timeAgo(ms: number): string {
-  const diff = Date.now() - ms;
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 type StatusFilter = 'live' | 'settled' | 'all';
@@ -67,6 +52,7 @@ const selectStyle: React.CSSProperties = {
 };
 
 export default function FeedPage() {
+  const t = useTranslations('feed');
   const router = useRouter();
   const [picks, setPicks] = useState<FeedPick[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +60,26 @@ export default function FeedPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>('all');
   const active = useRef(true);
+
+  const statusLabel = (status: string): string => {
+    if (status === 'pending') return t('statusLive');
+    if (status === 'won') return t('statusWon');
+    if (status === 'lost') return t('statusLost');
+    if (status === 'void') return t('statusVoid');
+    if (status === 'half_won') return t('halfWon');
+    if (status === 'half_lost') return t('halfLost');
+    return status;
+  };
+
+  const timeAgo = (ms: number): string => {
+    const diff = Date.now() - ms;
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return t('justNow');
+    if (mins < 60) return t('minsAgo', { mins });
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return t('hrsAgo', { hrs });
+    return t('daysAgo', { days: Math.floor(hrs / 24) });
+  };
 
   const loadFeed = useCallback(async () => {
     try {
@@ -85,9 +91,9 @@ export default function FeedPage() {
         setError(null);
       }
     } catch {
-      if (active.current) setError('Could not refresh your feed.');
+      if (active.current) setError(t('refreshError'));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     active.current = true;
@@ -127,10 +133,9 @@ export default function FeedPage() {
 
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1>My feed</h1>
+      <h1>{t('title')}</h1>
       <p style={{ color: 'var(--muted)' }}>
-        Live and settled picks from every tipster you subscribe to, newest
-        first. Updates automatically.
+        {t('subtitle')}
       </p>
 
       {error ? (
@@ -138,15 +143,16 @@ export default function FeedPage() {
       ) : null}
 
       {picks === null ? (
-        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>{t('loading')}</p>
       ) : list.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>
-          No picks yet.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Find a tipster to subscribe to
-          </Link>{' '}
-          and their live picks will show up here.
-        </p>
+        <div style={{ marginTop: '2rem' }}>
+          <EmptyState
+            icon="📭"
+            title={t('emptyTitle')}
+            description={t('emptyBody')}
+            actions={[{ href: '/tipsters', label: t('findTipster') }]}
+          />
+        </div>
       ) : (
         <>
           {/* Filters: by tipster (for multiple subscriptions) + by status. */}
@@ -161,16 +167,16 @@ export default function FeedPage() {
           >
             {tipsters.length > 1 ? (
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--muted)', fontSize: '0.85rem' }}>
-                Tipster
+                {t('filterTipster')}
                 <select
                   value={tipsterFilter}
                   onChange={(e) => setTipsterFilter(e.target.value)}
                   style={selectStyle}
                 >
-                  <option value="">All tipsters</option>
-                  {tipsters.map((t) => (
-                    <option key={t} value={t}>
-                      {tipsterNames.get(t) ?? t}
+                  <option value="">{t('allTipsters')}</option>
+                  {tipsters.map((t2) => (
+                    <option key={t2} value={t2}>
+                      {tipsterNames.get(t2) ?? t2}
                     </option>
                   ))}
                 </select>
@@ -185,7 +191,11 @@ export default function FeedPage() {
                   onClick={() => setStatusFilter(s)}
                   style={pillStyle(statusFilter === s)}
                 >
-                  {s === 'live' ? 'Live' : s === 'settled' ? 'Settled' : 'All'}
+                  {s === 'live'
+                    ? t('statusLive')
+                    : s === 'settled'
+                      ? t('statusSettled')
+                      : t('statusAll')}
                 </button>
               ))}
             </div>
@@ -199,7 +209,13 @@ export default function FeedPage() {
                     onClick={() => setOutcomeFilter(o)}
                     style={pillStyle(outcomeFilter === o)}
                   >
-                    {o === 'all' ? 'All' : o[0].toUpperCase() + o.slice(1)}
+                    {o === 'all'
+                      ? t('statusAll')
+                      : o === 'won'
+                        ? t('outcomeWon')
+                        : o === 'lost'
+                          ? t('outcomeLost')
+                          : t('outcomeVoid')}
                   </button>
                 ))}
               </div>
@@ -208,7 +224,7 @@ export default function FeedPage() {
 
           {filtered.length === 0 ? (
             <p style={{ color: 'var(--muted)', marginTop: '1rem' }}>
-              No picks match these filters.
+              {t('noMatch')}
             </p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0' }}>
@@ -244,6 +260,22 @@ export default function FeedPage() {
 
               <div style={{ margin: '0.4rem 0 0.2rem' }}>
                 <strong>{p.selection}</strong>{' '}
+                {p.pickType === 'live' ? (
+                  <span
+                    title={t('liveTitle')}
+                    style={{
+                      padding: '0.05rem 0.4rem',
+                      borderRadius: 999,
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      color: 'var(--danger)',
+                      border: '1px solid var(--danger)',
+                    }}
+                  >
+                    ● {t('statusLive')}
+                  </span>
+                ) : null}{' '}
                 <span style={{ color: 'var(--muted)' }}>
                   ({p.market} @ {p.oddsAtPick.toFixed(2)} · {p.stakeUnits}u)
                 </span>
@@ -277,7 +309,7 @@ export default function FeedPage() {
                   marginTop: '0.35rem',
                 }}
               >
-                Locked {timeAgo(p.lockedAt)}
+                {t('locked', { ago: timeAgo(p.lockedAt) })}
                 {p.clv != null ? ` · CLV ${(p.clv * 100).toFixed(1)}%` : ''}
                 {p.result ? ` · ${p.result}` : ''}
               </div>

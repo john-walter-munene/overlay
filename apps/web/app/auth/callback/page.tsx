@@ -2,7 +2,12 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, getProfile } from '../../../lib/auth';
+import {
+  supabase,
+  getFullProfile,
+  takePendingOAuthRole,
+  setSelfRole,
+} from '../../../lib/auth';
 
 /**
  * Auth callback landing (OB-145). Supabase email-confirmation / OAuth links
@@ -26,16 +31,39 @@ export default function AuthCallbackPage() {
     const finish = async () => {
       if (done) return;
       done = true;
-      const profile = await getProfile();
+
+      // Social sign-up: apply the role picked before the redirect. Supabase
+      // only reads user_metadata.role when the API first provisions the
+      // account, so this must happen before getFullProfile() below. It's a
+      // no-op for the role of existing users.
+      const pendingRole = takePendingOAuthRole();
+      if (pendingRole) {
+        try {
+          await setSelfRole(pendingRole);
+        } catch {
+          /* non-fatal — new account falls back to bettor */
+        }
+      }
+
+      const profile = await getFullProfile();
       let dest = '/login';
       if (profile) {
-        if (profile.role === 'tipster') {
-          dest = linkType === 'signup' ? '/onboarding' : '/dashboard';
-        } else if (profile.role === 'admin') {
-          dest = '/admin';
-        } else {
-          dest = '/account';
-        }
+        // Fresh accounts (email signup link or a brand-new social login) have
+        // no handle yet and route to onboarding first.
+        const isNewSignup = linkType === 'signup' || !profile.username;
+        const roleDest =
+          profile.role === 'tipster'
+            ? isNewSignup
+              ? '/onboarding'
+              : '/dashboard'
+            : profile.role === 'admin' || profile.role === 'staff'
+              ? '/admin'
+              : '/account';
+        // Any account without a username must pick one first (matches the
+        // UsernameGate and the email-signup flow).
+        dest = profile.username
+          ? roleDest
+          : `/choose-username?next=${encodeURIComponent(roleDest)}`;
       }
       router.replace(dest);
     };

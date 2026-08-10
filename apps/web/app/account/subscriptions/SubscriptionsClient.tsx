@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   toSubscriptionView,
   sortSubscriptions,
@@ -18,6 +19,8 @@ import {
   NEGATIVE_REASON_LABELS,
   type FeedbackSentiment,
 } from '../../../lib/auth';
+import { EmptyState } from '../../EmptyState';
+import { getBillingPortalAvailable } from '../../../lib/api';
 
 const MUTED = 'var(--muted)';
 
@@ -27,9 +30,11 @@ const MUTED = 'var(--muted)';
  * links out to the Stripe billing portal to cancel/resume.
  */
 export default function SubscriptionsClient() {
+  const t = useTranslations('subscriptions');
   const router = useRouter();
   const [subs, setSubs] = useState<SubscriptionRecord[] | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [portalAvailable, setPortalAvailable] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
 
@@ -56,6 +61,9 @@ export default function SubscriptionsClient() {
       } catch {
         setSubs([]);
       }
+      // Only Stripe offers a hosted billing portal; pay-per-period providers
+      // (Paystack, crypto, mobile money) don't, so the button is hidden.
+      setPortalAvailable(await getBillingPortalAvailable());
     })();
   }, [router]);
 
@@ -67,16 +75,16 @@ export default function SubscriptionsClient() {
         method: 'POST',
       });
       if (!res.ok) {
-        throw new Error(`Could not open billing portal (${res.status})`);
+        throw new Error(t('portalError'));
       }
       const data = (await res.json()) as { url?: string };
       if (data.url) {
         window.location.href = data.url;
       } else {
-        throw new Error('Billing portal is unavailable right now.');
+        throw new Error(t('portalUnavailable'));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong.');
+      setError(e instanceof Error ? e.message : t('genericError'));
       setPortalLoading(false);
     }
   }
@@ -112,12 +120,12 @@ export default function SubscriptionsClient() {
       setFeedbackFor(null);
       setFeedbackMsg(
         sentiment === 'positive'
-          ? 'Thanks for the kind words — shared with our team.'
-          : 'Feedback submitted — our team will review it. Thank you.',
+          ? t('thanksPositive')
+          : t('thanksNegative'),
       );
     } catch (e) {
       setFeedbackMsg(
-        e instanceof Error ? e.message : 'Could not submit feedback.',
+        e instanceof Error ? e.message : t('feedbackError'),
       );
     } finally {
       setFeedbackBusy(false);
@@ -133,13 +141,12 @@ export default function SubscriptionsClient() {
     <main style={{ maxWidth: 640, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p>
         <Link href="/account" style={{ color: 'var(--accent)' }}>
-          ← Back to account
+          {t('back')}
         </Link>
       </p>
-      <h1>Your subscriptions</h1>
+      <h1>{t('title')}</h1>
       <p style={{ color: MUTED }}>
-        Manage your tipster subscriptions. Cancel or resume any subscription
-        through the secure billing portal.
+        {t('intro')}
       </p>
 
       {expiring.length > 0 ? (
@@ -155,9 +162,7 @@ export default function SubscriptionsClient() {
           }}
         >
           <strong style={{ color: 'var(--warning)' }}>
-            {expiring.length === 1
-              ? 'A subscription is expiring soon'
-              : `${expiring.length} subscriptions are expiring soon`}
+            {t('expiringTitle', { count: expiring.length })}
           </strong>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {expiring.map((s) => {
@@ -170,8 +175,9 @@ export default function SubscriptionsClient() {
                   >
                     {s.tipsterName ?? s.tipsterId}
                   </Link>{' '}
-                  — ends in {hrs <= 0 ? 'under an hour' : `~${hrs}h`}. Renew to
-                  keep getting their picks.
+                  {t('expiringLine', {
+                    when: hrs <= 0 ? t('endsUnderHour') : t('endsHours', { hrs }),
+                  })}
                 </li>
               );
             })}
@@ -180,15 +186,16 @@ export default function SubscriptionsClient() {
       ) : null}
 
       {subs === null ? (
-        <p style={{ color: MUTED }}>Loading…</p>
+        <p style={{ color: MUTED }}>{t('loading')}</p>
       ) : views.length === 0 ? (
-        <p style={{ color: MUTED }}>
-          No subscriptions yet.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Browse tipsters
-          </Link>{' '}
-          to get started.
-        </p>
+        <div style={{ marginTop: '1.5rem' }}>
+          <EmptyState
+            icon="🎟️"
+            title={t('emptyTitle')}
+            description={t('emptyDescription')}
+            actions={[{ href: '/tipsters', label: t('browseTipsters') }]}
+          />
+        </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
           {views.map((v) => (
@@ -238,7 +245,7 @@ export default function SubscriptionsClient() {
                     style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}
                   >
                     <strong style={{ fontSize: '0.95rem' }}>
-                      Feedback on this tipster
+                      {t('feedbackTitle')}
                     </strong>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
                       {(['positive', 'negative'] as FeedbackSentiment[]).map((s) => (
@@ -257,12 +264,12 @@ export default function SubscriptionsClient() {
                             cursor: 'pointer',
                           }}
                         >
-                          {s === 'positive' ? '👍 Positive' : '👎 Report an issue'}
+                          {s === 'positive' ? t('positive') : t('reportIssue')}
                         </button>
                       ))}
                     </div>
                     <label style={{ color: MUTED, fontSize: '0.85rem' }}>
-                      {sentiment === 'positive' ? 'What went well' : 'Reason'}
+                      {sentiment === 'positive' ? t('whatWentWell') : t('reason')}
                       <select
                         value={reason}
                         onChange={(e) => setReason(e.target.value)}
@@ -291,8 +298,8 @@ export default function SubscriptionsClient() {
                     <textarea
                       placeholder={
                         sentiment === 'positive'
-                          ? 'Share what you liked (optional)'
-                          : 'Add any details that will help us review (optional)'
+                          ? t('positivePlaceholder')
+                          : t('negativePlaceholder')
                       }
                       value={details}
                       maxLength={1000}
@@ -316,14 +323,14 @@ export default function SubscriptionsClient() {
                         disabled={feedbackBusy}
                         onClick={() => submitFeedback(v.tipsterId)}
                       >
-                        {feedbackBusy ? 'Submitting…' : 'Submit feedback'}
+                        {feedbackBusy ? t('submitting') : t('submitFeedback')}
                       </button>
                       <button
                         type="button"
                         className="btn btn--ghost btn--sm"
                         onClick={() => setFeedbackFor(null)}
                       >
-                        Cancel
+                        {t('cancel')}
                       </button>
                     </div>
                   </div>
@@ -334,7 +341,7 @@ export default function SubscriptionsClient() {
                     style={{ marginTop: '0.5rem', color: 'var(--muted)' }}
                     onClick={() => openFeedback(v.tipsterId)}
                   >
-                    Give feedback
+                    {t('giveFeedback')}
                   </button>
                 )
               ) : null}
@@ -350,16 +357,22 @@ export default function SubscriptionsClient() {
       ) : null}
 
       {subs && views.length > 0 ? (
-        <button
-          onClick={openPortal}
-          disabled={portalLoading}
-          className="btn btn--primary"
-          style={{ marginTop: '1.5rem' }}
-        >
-          {portalLoading
-            ? 'Opening billing portal…'
-            : 'Manage billing (cancel / resume)'}
-        </button>
+        portalAvailable ? (
+          <button
+            onClick={openPortal}
+            disabled={portalLoading}
+            className="btn btn--primary"
+            style={{ marginTop: '1.5rem' }}
+          >
+            {portalLoading
+              ? t('openingPortal')
+              : t('manageBilling')}
+          </button>
+        ) : (
+          <p style={{ color: MUTED, marginTop: '1.5rem', fontSize: '0.9rem' }}>
+            {t('payPerPeriodNote')}
+          </p>
+        )
       ) : null}
       {error ? (
         <p style={{ color: 'var(--danger)', marginTop: '0.75rem' }}>{error}</p>

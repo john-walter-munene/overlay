@@ -3,16 +3,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signUp, updateUsername, checkUsername } from '../../lib/auth';
+import { useTranslations } from 'next-intl';
+import { signUp } from '../../lib/auth';
 import { formStyles } from '../formStyles';
-
-const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+import GoogleSignInButton, { SocialSignIn } from '../GoogleSignInButton';
 
 export default function SignupPage() {
+  const t = useTranslations('auth');
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
   const [role, setRole] = useState<'user' | 'tipster'>('user');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -23,51 +23,25 @@ export default function SignupPage() {
     setError(null);
     setInfo(null);
 
-    const handle = username.trim().toLowerCase();
-    if (!USERNAME_RE.test(handle)) {
-      setError(
-        'Username must be 3–20 characters: lowercase letters, numbers or underscores.',
-      );
-      return;
-    }
-
     setLoading(true);
     try {
-      // Best-effort pre-check so a taken handle fails before we create the auth
-      // user (the API still enforces uniqueness when the username is saved).
-      const { available, valid } = await checkUsername(handle);
-      if (!valid || !available) {
-        setError('That username is taken or invalid. Try another.');
-        return;
-      }
-
-      const { needsConfirmation } = await signUp(
-        email,
-        password,
-        role,
-        handle,
-      );
+      const { needsConfirmation } = await signUp(email, password, role);
       if (needsConfirmation) {
-        setInfo(
-          'Check your email to confirm your account, then sign in to finish setting up.',
-        );
+        setInfo(t('confirmEmail'));
         return;
       }
 
-      // Session is live — persist the username to our profile immediately.
-      try {
-        await updateUsername(handle);
-      } catch {
-        /* the username gate will prompt again if this didn't stick */
-      }
-
+      // Session is live — send the user to pick their handle, then on to their
+      // destination. The UsernameGate also enforces this for any account
+      // without a username.
       const next =
         typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search).get('next')
           : null;
-      router.push(role === 'tipster' ? '/onboarding' : next || '/account');
+      const dest = role === 'tipster' ? '/onboarding' : next || '/account';
+      router.push(`/choose-username?next=${encodeURIComponent(dest)}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : t('registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -75,56 +49,48 @@ export default function SignupPage() {
 
   return (
     <main style={formStyles.wrap}>
-      <h1>Create your account</h1>
+      <h1>{t('createAccountTitle')}</h1>
       <form onSubmit={onSubmit} style={formStyles.form}>
         <input
           style={formStyles.input}
           type="email"
-          placeholder="Email"
+          placeholder={t('email')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
         />
         <input
           style={formStyles.input}
-          type="text"
-          placeholder="Username (3–20: a–z, 0–9, _)"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
-          required
-        />
-        <input
-          style={formStyles.input}
           type="password"
-          placeholder="Password (min 8 chars)"
+          placeholder={t('passwordMin')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
         <label style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-          Account type
+          {t('accountType')}
           <select
             style={{ ...formStyles.input, marginTop: '0.35rem' }}
             value={role}
             onChange={(e) => setRole(e.target.value as 'user' | 'tipster')}
           >
-            <option value="user">
-              Bettor — follow &amp; subscribe to tipsters
-            </option>
-            <option value="tipster">Tipster — publish verified picks</option>
+            <option value="user">{t('roleBettor')}</option>
+            <option value="tipster">{t('roleTipster')}</option>
           </select>
         </label>
         {error ? <p style={formStyles.error}>{error}</p> : null}
         {info ? <p style={{ color: 'var(--success)' }}>{info}</p> : null}
         <button style={formStyles.button} disabled={loading}>
-          {loading ? 'Creating…' : 'Create account'}
+          {loading ? t('creating') : t('createAccount')}
         </button>
       </form>
+      <SocialSignIn label={t('orContinueWith')}>
+        <GoogleSignInButton label={t('signUpWithGoogle')} role={role} />
+      </SocialSignIn>
       <p style={{ color: 'var(--muted)' }}>
-        Already have an account?{' '}
+        {t('alreadyHaveAccount')}{' '}
         <Link href="/login" style={{ color: 'var(--accent)' }}>
-          Sign in
+          {t('signIn')}
         </Link>
       </p>
     </main>

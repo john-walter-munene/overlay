@@ -1,14 +1,18 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import Flag from './Flag';
 import Avatar from './Avatar';
-import { API_URL } from '../lib/api';
+import SportsDiscovery from './sports/SportsDiscovery';
+import { API_URL, listFreeTips } from '../lib/api';
 
-export const metadata: Metadata = {
-  title: 'Overlay Bets — Verified tipsters, ranked by real edge',
-  description:
-    'Hunt real edge. Every pick is hashed and locked before kickoff, then settled automatically from the results — ranked by verified yield and closing line value. No edits, no fake records.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('home');
+  return {
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+  };
+}
 
 export const revalidate = 60;
 
@@ -35,116 +39,229 @@ async function getLeaderboard(): Promise<LeaderboardRow[]> {
   }
 }
 
-const STEPS: { n: string; title: string; body: string }[] = [
-  { n: '01', title: 'Post', body: 'A tipster submits a pick with the odds they took.' },
-  { n: '02', title: 'Locked', body: 'It’s hashed and timestamped before kickoff. No edits, ever.' },
-  { n: '03', title: 'Settled', body: 'Graded automatically from the official result.' },
-  { n: '04', title: 'Ranked', body: 'Verified yield and closing line value move them up the board.' },
-];
-
 export default async function Home() {
-  const top = (await getLeaderboard()).slice(0, 5);
+  const t = await getTranslations('home');
+  const tFixtures = await getTranslations('fixtures');
+  const [leaderboard, freeTips] = await Promise.all([
+    getLeaderboard(),
+    listFreeTips(),
+  ]);
+  const top = leaderboard.slice(0, 5);
+  const topPick = freeTips.tips[0] ?? null;
+  const steps = [
+    { n: '01', title: t('stepPostTitle'), body: t('stepPostBody') },
+    { n: '02', title: t('stepLockedTitle'), body: t('stepLockedBody') },
+    { n: '03', title: t('stepSettledTitle'), body: t('stepSettledBody') },
+    { n: '04', title: t('stepRankedTitle'), body: t('stepRankedBody') },
+  ];
 
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: '3.5rem 1.5rem' }}>
-      {/* Hero */}
-      <section style={{ maxWidth: 700 }}>
-        <h1 style={{ fontSize: '2.3rem', lineHeight: 1.15, margin: '0 0 1.1rem', fontWeight: 600 }}>
-          Hunt real edge. Not screenshots.
-        </h1>
-        <p style={{ fontSize: '1.1rem', lineHeight: 1.65, margin: '0 0 1.5rem' }}>
-          Every pick is hashed and locked <strong style={{ color: 'var(--fg)' }}>before kickoff</strong>,
-          then settled automatically from the result. What you see is the real
-          record — closing line value, drawdowns and all. No edits. No fake wins.
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <Link href="/tipsters" className="btn btn--primary btn--lg">
-            Browse tipsters
-          </Link>
-          <Link href="/tips" className="btn btn--secondary btn--lg">
-            Today’s free tips
-          </Link>
+      {/* Hero + clickable leaderboard preview */}
+      <section
+        style={{
+          display: 'flex',
+          gap: '2.5rem',
+          flexWrap: 'wrap',
+          alignItems: 'flex-start',
+        }}
+      >
+        <div style={{ flex: '1 1 360px', minWidth: 0 }}>
+          <h1 style={{ fontSize: '2.3rem', lineHeight: 1.15, margin: '0 0 1.1rem', fontWeight: 600 }}>
+            {t('heroTitle')}
+          </h1>
+          <p style={{ fontSize: '1.1rem', lineHeight: 1.65, margin: '0 0 1.5rem' }}>
+            {t.rich('heroBody', {
+              b: (chunks) => (
+                <strong style={{ color: 'var(--fg)' }}>{chunks}</strong>
+              ),
+            })}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <Link href="/tipsters" className="btn btn--primary btn--lg">
+              {t('browseTipsters')}
+            </Link>
+            <Link href="/tips" className="btn btn--secondary btn--lg">
+              {t('todaysFreePicks')}
+            </Link>
+          </div>
         </div>
+
+        {top.length > 0 ? (
+          <Link
+            href="/tipsters"
+            aria-label="View the full leaderboard of verified tipsters"
+            style={{
+              flex: '1 1 300px',
+              minWidth: 0,
+              display: 'block',
+              textDecoration: 'none',
+              color: 'inherit',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: '1.1rem 1.2rem',
+              background: 'var(--surface)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+                marginBottom: '0.5rem',
+              }}
+            >
+              <h2 style={{ fontSize: '1.05rem', margin: 0 }}>{t('topTipsters')}</h2>
+              <span style={{ color: 'var(--accent)', fontSize: '0.85rem' }}>{t('viewAll')}</span>
+            </div>
+            <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {top.map((r, i) => (
+                <li
+                  key={r.tipsterId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.7rem',
+                    padding: '0.55rem 0',
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      width: 18,
+                      textAlign: 'right',
+                      color: 'var(--muted)',
+                      fontVariantNumeric: 'tabular-nums',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <Avatar src={r.avatarUrl} seed={r.name ?? r.tipsterId} size={30} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span
+                      style={{
+                        display: 'block',
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {r.name ?? r.tipsterId}
+                      {r.country ? (
+                        <Flag code={r.country} style={{ marginLeft: '0.4rem', verticalAlign: 'middle' }} />
+                      ) : null}
+                    </span>
+                    <span style={{ display: 'block', color: 'var(--muted)', fontSize: '0.75rem' }}>
+                      {t('clvPicks', {
+                        clv: (r.clvAvg * 100).toFixed(1),
+                        count: r.sampleSize,
+                      })}
+                    </span>
+                  </span>
+                  <span
+                    style={{
+                      color: r.yield >= 0 ? 'var(--success)' : 'var(--danger)',
+                      fontWeight: 700,
+                      textAlign: 'right',
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    {r.yield >= 0 ? '+' : ''}
+                    {r.yield.toFixed(1)}%
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Link>
+        ) : null}
       </section>
 
-      {/* Live proof: real top tipsters from the leaderboard */}
-      {top.length > 0 ? (
-        <section style={{ marginTop: '3.5rem' }}>
+      {/* Free pick of the day — a public taster that funnels to the newsletter */}
+      {topPick ? (
+        <section
+          style={{
+            marginTop: '3.5rem',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '1.4rem 1.5rem',
+            background: 'var(--surface)',
+          }}
+        >
           <div
             style={{
               display: 'flex',
               alignItems: 'baseline',
               justifyContent: 'space-between',
-              gap: '1rem',
+              gap: '0.75rem',
               flexWrap: 'wrap',
+              marginBottom: '0.35rem',
             }}
           >
-            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>Top verified tipsters</h2>
-            <Link href="/tipsters" style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>
-              Full leaderboard →
+            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>{t('freePickTitle')}</h2>
+            <Link href="/tips" style={{ color: 'var(--accent)', fontSize: '0.9rem' }}>
+              {t('freePickSeeAll')}
             </Link>
           </div>
-          <ol style={{ listStyle: 'none', padding: 0, margin: '1rem 0 0' }}>
-            {top.map((r, i) => (
-              <li
-                key={r.tipsterId}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.9rem',
-                  padding: '0.7rem 0',
-                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                }}
-              >
-                <span
-                  aria-hidden
-                  style={{
-                    width: 24,
-                    textAlign: 'right',
-                    color: 'var(--muted)',
-                    fontVariantNumeric: 'tabular-nums',
-                    fontWeight: 700,
-                  }}
-                >
-                  {i + 1}
+          <p style={{ color: 'var(--muted)', margin: '0 0 1rem', fontSize: '0.9rem' }}>
+            {t('freePickTagline')}
+          </p>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              flexWrap: 'wrap',
+              alignItems: 'flex-start',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: '1.05rem' }}>{topPick.match}</div>
+              <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+                {topPick.sport}
+                {topPick.league ? ` · ${topPick.league}` : ''}
+              </div>
+              <div style={{ marginTop: '0.6rem' }}>
+                <span style={{ color: 'var(--muted)' }}>{topPick.market}: </span>
+                <span style={{ fontWeight: 700, color: 'var(--accent)' }}>
+                  {topPick.selection}
                 </span>
-                <Avatar src={r.avatarUrl} seed={r.name ?? r.tipsterId} size={32} />
-                <Link
-                  href={`/tipsters/${r.tipsterId}`}
-                  style={{ color: 'var(--fg)', textDecoration: 'none', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}
-                >
-                  {r.name ?? r.tipsterId}
-                  {r.country ? (
-                    <Flag code={r.country} style={{ marginLeft: '0.4rem', verticalAlign: 'middle' }} />
-                  ) : null}
-                </Link>
-                <span style={{ color: 'var(--muted)', fontSize: '0.85rem', width: 90, textAlign: 'right' }}>
-                  {(r.clvAvg * 100).toFixed(1)}% CLV
-                </span>
-                <span style={{ color: 'var(--muted)', fontSize: '0.85rem', width: 70, textAlign: 'right' }}>
-                  {r.sampleSize} picks
-                </span>
-                <span
-                  style={{
-                    color: r.yield >= 0 ? 'var(--success)' : 'var(--danger)',
-                    fontWeight: 700,
-                    width: 70,
-                    textAlign: 'right',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {r.yield >= 0 ? '+' : ''}
-                  {r.yield.toFixed(1)}%
-                </span>
-              </li>
-            ))}
-          </ol>
+              </div>
+            </div>
+            {topPick.odds != null ? (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ color: 'var(--muted)', fontSize: '0.75rem' }}>
+                  {t('freePickOddsLabel')}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>
+                  {topPick.odds.toFixed(2)}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          {topPick.analysis ? (
+            <p style={{ margin: '0.9rem 0 0', color: 'var(--muted)', lineHeight: 1.5 }}>
+              {topPick.analysis}
+            </p>
+          ) : null}
+
+          <div style={{ marginTop: '1.1rem' }}>
+            <Link href="/newsletter" className="btn btn--secondary">
+              {t('freePickEmailCta')}
+            </Link>
+          </div>
         </section>
       ) : null}
 
       {/* How it works */}
       <section style={{ marginTop: '3.5rem' }}>
-        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.25rem' }}>How it works</h2>
+        <h2 style={{ fontSize: '1.3rem', margin: '0 0 1.25rem' }}>{t('howItWorks')}</h2>
         <ol
           style={{
             listStyle: 'none',
@@ -155,7 +272,7 @@ export default async function Home() {
             gap: '1.5rem',
           }}
         >
-          {STEPS.map((s) => (
+          {steps.map((s) => (
             <li key={s.n}>
               <div style={{ color: 'var(--accent)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                 {s.n}
@@ -169,11 +286,35 @@ export default async function Home() {
         </ol>
       </section>
 
+      <section style={{ marginTop: '3.5rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+            gap: '1rem',
+            flexWrap: 'wrap',
+            marginBottom: '1rem',
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: '1.3rem', margin: 0 }}>{t('browseEvents')}</h2>
+            <p style={{ color: 'var(--muted)', margin: '0.25rem 0 0', fontSize: '0.9rem' }}>
+              {t('browseEventsBody')}
+            </p>
+          </div>
+          <Link href="/fixtures" style={{ color: 'var(--accent)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+            {tFixtures('title')} →
+          </Link>
+        </div>
+        <SportsDiscovery showTitle={false} />
+      </section>
+
       <section style={{ marginTop: '3rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
         <p style={{ color: 'var(--muted)', margin: 0 }}>
-          Run your own picks?{' '}
+          {t('ctaQuestion')}{' '}
           <Link href="/signup" style={{ color: 'var(--accent)' }}>
-            Get verified and start earning →
+            {t('ctaLink')}
           </Link>
         </p>
       </section>

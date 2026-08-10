@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authFetch, getProfile } from '../../lib/auth';
+import { roleHasPermission, type Role } from '@overlay/shared/rbac';
+import { downloadExport, type ExportFormat } from '../../lib/export';
+import { listProviderSports, type ProviderSport } from '../../lib/events';
 
 interface DashboardMetrics {
   users: number;
@@ -15,6 +18,7 @@ interface DashboardMetrics {
   grossPendingPayoutCents: number;
   publishedArticles: number;
   draftArticles: number;
+  graduationReviews: number;
 }
 
 function formatCents(cents: number): string {
@@ -53,12 +57,14 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 
 export default function AdminPage() {
   const router = useRouter();
+  const [role, setRole] = useState<Role | null>(null);
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const [period, setPeriod] = useState(currentMonth);
   const [sport, setSport] = useState('');
+  const [sportsCatalog, setSportsCatalog] = useState<ProviderSport[]>([]);
   const [opMsg, setOpMsg] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
 
@@ -69,10 +75,11 @@ export default function AdminPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'audit:read')) {
         router.replace('/account');
         return;
       }
+      setRole(profile.role);
       const res = await authFetch('/api/admin/dashboard');
       if (!res.ok) {
         setError('Failed to load metrics.');
@@ -81,6 +88,13 @@ export default function AdminPage() {
       setMetrics((await res.json()) as DashboardMetrics);
     })();
   }, [router]);
+
+  // Provider sport catalog for the ingest picker (data:ingest only).
+  useEffect(() => {
+    if (role && roleHasPermission(role, 'data:ingest')) {
+      listProviderSports().then(setSportsCatalog);
+    }
+  }, [role]);
 
   async function runPayouts(e: React.FormEvent) {
     e.preventDefault();
@@ -144,6 +158,37 @@ export default function AdminPage() {
     }
   }
 
+  async function ingestAllEvents() {
+    setOpMsg(null);
+    setRunning(true);
+    try {
+      const res = await authFetch('/api/events/ingest-all', { method: 'POST' });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          message?: string | string[];
+        };
+        throw new Error(
+          (Array.isArray(body.message) ? body.message[0] : body.message) ??
+            `Failed (${res.status})`,
+        );
+      }
+      const data = (await res.json()) as {
+        sports?: number;
+        ingested?: number;
+        errors?: number;
+      };
+      setOpMsg(
+        `Ingested ${data.ingested ?? 0} fixture(s) across ${data.sports ?? 0} sport(s)` +
+          (data.errors ? ` · ${data.errors} sport(s) failed` : '') +
+          ' ✓',
+      );
+    } catch (err) {
+      setOpMsg(err instanceof Error ? err.message : 'Failed to ingest all sports');
+    } finally {
+      setRunning(false);
+    }
+  }
+
   return (
     <main style={{ maxWidth: 980, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1>Admin dashboard</h1>
@@ -159,31 +204,70 @@ export default function AdminPage() {
           margin: '0 0 1rem',
         }}
       >
-        {[
-          { href: '/admin/users', label: 'Users & roles' },
-          { href: '/admin/settlements', label: 'Settlements' },
-          { href: '/admin/reports', label: 'Tipster feedback' },
-          { href: '/admin/feedback', label: 'Support & feedback' },
-          { href: '/admin/payouts', label: 'Payout approvals' },
-          { href: '/admin/audit-log', label: 'Audit log' },
-          { href: '/admin/blog', label: 'Blog authoring' },
-        ].map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 10,
-              padding: '0.55rem 0.95rem',
-              color: 'var(--accent)',
-              textDecoration: 'none',
-              fontSize: '0.95rem',
-            }}
-          >
-            {item.label} →
-          </Link>
-        ))}
+        {(
+          [
+            { href: '/admin/users', label: 'Users & roles', perm: 'user:manage' },
+            {
+              href: '/admin/settlements',
+              label: 'Settlements',
+              perm: 'finance:manage',
+            },
+            {
+              href: '/admin/reports',
+              label: 'Tipster feedback',
+              perm: 'content:moderate',
+            },
+            {
+              href: '/admin/feedback',
+              label: 'Support & feedback',
+              perm: 'content:moderate',
+            },
+            {
+              href: '/admin/newsletter',
+              label: 'Newsletter subscribers',
+              perm: 'content:moderate',
+            },
+            {
+              href: '/admin/payouts',
+              label: 'Payout approvals',
+              perm: 'finance:manage',
+            },
+            { href: '/admin/audit-log', label: 'Audit log', perm: 'audit:read' },
+            {
+              href: '/admin/blog',
+              label: 'Blog authoring',
+              perm: 'content:moderate',
+            },
+            {
+              href: '/admin/tips',
+              label: 'Daily Picks',
+              perm: 'content:moderate',
+            },
+            {
+              href: '/admin/events',
+              label: 'Event inventory',
+              perm: 'data:ingest',
+            },
+          ] as const
+        )
+          .filter((item) => role && roleHasPermission(role, item.perm))
+          .map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '0.55rem 0.95rem',
+                color: 'var(--accent)',
+                textDecoration: 'none',
+                fontSize: '0.95rem',
+              }}
+            >
+              {item.label} →
+            </Link>
+          ))}
       </nav>
 
       {error ? (
@@ -213,33 +297,44 @@ export default function AdminPage() {
             label="Settled"
             value={metrics.settledPicks.toLocaleString()}
           />
-          <MetricCard
-            label="Pending payouts"
-            value={metrics.pendingPayouts.toLocaleString()}
-          />
-          <MetricCard
-            label="Pending payout total"
-            value={formatCents(metrics.grossPendingPayoutCents)}
-          />
+          {role && roleHasPermission(role, 'finance:manage') ? (
+            <>
+              <MetricCard
+                label="Pending payouts"
+                value={metrics.pendingPayouts.toLocaleString()}
+              />
+              <MetricCard
+                label="Pending payout total"
+                value={formatCents(metrics.grossPendingPayoutCents)}
+              />
+            </>
+          ) : null}
           <MetricCard
             label="Articles"
             value={(
               metrics.publishedArticles + metrics.draftArticles
             ).toLocaleString()}
           />
+          <MetricCard
+            label="Rising tipster reviews"
+            value={(metrics.graduationReviews ?? 0).toLocaleString()}
+          />
         </div>
       )}
 
-      <section
-        style={{
-          marginTop: '2.5rem',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 12,
-          padding: '1.5rem',
-        }}
-      >
-        <h2 style={{ marginTop: 0, fontSize: '1.2rem' }}>Operations</h2>
+      {role &&
+      (roleHasPermission(role, 'finance:manage') ||
+        roleHasPermission(role, 'data:ingest')) ? (
+        <section
+          style={{
+            marginTop: '2.5rem',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: '1.5rem',
+          }}
+        >
+          <h2 style={{ marginTop: 0, fontSize: '1.2rem' }}>Operations</h2>
         <p style={{ color: 'var(--muted)', marginTop: 0 }}>
           Run monthly tipster payouts and ingest fixtures from the sports
           provider.
@@ -251,6 +346,7 @@ export default function AdminPage() {
             gap: '1.5rem',
           }}
         >
+          {roleHasPermission(role, 'finance:manage') ? (
           <form onSubmit={runPayouts} style={{ display: 'grid', gap: '0.5rem' }}>
             <label style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
               Payout period (YYYY-MM)
@@ -261,7 +357,7 @@ export default function AdminPage() {
               placeholder="2026-07"
               pattern="\d{4}-\d{2}"
               style={{
-                background: '#0d1117',
+                background: 'var(--surface)',
                 border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '0.5rem 0.7rem',
@@ -272,18 +368,20 @@ export default function AdminPage() {
               type="submit"
               disabled={running}
               style={{
-                background: '#238636',
+                background: 'var(--accent)',
                 border: 'none',
                 borderRadius: 8,
                 padding: '0.55rem 0.95rem',
-                color: '#fff',
+                color: 'var(--on-accent)',
                 cursor: running ? 'default' : 'pointer',
               }}
             >
               {running ? 'Working…' : 'Run payouts'}
             </button>
           </form>
+          ) : null}
 
+          {roleHasPermission(role, 'data:ingest') ? (
           <form
             onSubmit={ingestEvents}
             style={{ display: 'grid', gap: '0.5rem' }}
@@ -291,37 +389,156 @@ export default function AdminPage() {
             <label style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
               Ingest events (sport)
             </label>
-            <input
-              value={sport}
-              onChange={(e) => setSport(e.target.value)}
-              placeholder="soccer_epl"
-              style={{
-                background: '#0d1117',
-                border: '1px solid var(--border)',
-                borderRadius: 8,
-                padding: '0.5rem 0.7rem',
-                color: 'inherit',
-              }}
-            />
+            {sportsCatalog.length > 0 ? (
+              <select
+                value={sport}
+                onChange={(e) => setSport(e.target.value)}
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '0.5rem 0.7rem',
+                  color: 'inherit',
+                }}
+              >
+                <option value="">Choose a sport…</option>
+                {[...new Set(sportsCatalog.filter((s) => s.active).map((s) => s.group))]
+                  .sort()
+                  .map((group) => (
+                    <optgroup key={group} label={group}>
+                      {sportsCatalog
+                        .filter((s) => s.active && s.group === group)
+                        .map((s) => (
+                          <option key={s.key} value={s.key}>
+                            {s.title} ({s.key})
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+              </select>
+            ) : (
+              <input
+                value={sport}
+                onChange={(e) => setSport(e.target.value)}
+                placeholder="soccer_epl"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  padding: '0.5rem 0.7rem',
+                  color: 'inherit',
+                }}
+              />
+            )}
             <button
               type="submit"
               disabled={running}
               style={{
-                background: '#1f6feb',
+                background: 'var(--accent)',
                 border: 'none',
                 borderRadius: 8,
                 padding: '0.55rem 0.95rem',
-                color: '#fff',
+                color: 'var(--on-accent)',
                 cursor: running ? 'default' : 'pointer',
               }}
             >
               {running ? 'Working…' : 'Ingest events'}
             </button>
+            <button
+              type="button"
+              onClick={ingestAllEvents}
+              disabled={running}
+              title="Pull fixtures for every in-season sport (quota-free)"
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '0.55rem 0.95rem',
+                color: 'var(--fg)',
+                cursor: running ? 'default' : 'pointer',
+              }}
+            >
+              {running ? 'Working…' : 'Ingest all sports'}
+            </button>
           </form>
+          ) : null}
         </div>
         {opMsg ? (
           <p style={{ marginTop: '1rem', color: 'var(--muted)' }}>{opMsg}</p>
         ) : null}
+        </section>
+      ) : null}
+
+      <section
+        style={{
+          marginTop: '2.5rem',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 12,
+          padding: '1.5rem',
+        }}
+      >
+        <h2 style={{ marginTop: 0, fontSize: '1.2rem' }}>Data exports</h2>
+        <p style={{ color: 'var(--muted)', marginTop: 0 }}>
+          Generate platform reports in XLSX, CSV or PDF format.
+        </p>
+        {(
+          [
+            { title: 'Users', path: '/api/exports/admin/users', perm: 'user:manage' },
+            {
+              title: 'Audit log',
+              path: '/api/exports/admin/audit-log',
+              perm: 'audit:read',
+            },
+            {
+              title: 'Settlements',
+              path: '/api/exports/admin/settlements',
+              perm: 'finance:manage',
+            },
+            {
+              title: 'Reports',
+              path: '/api/exports/admin/reports',
+              perm: 'content:moderate',
+            },
+            {
+              title: 'Payouts',
+              path: '/api/exports/admin/payouts',
+              perm: 'finance:manage',
+            },
+          ] as const
+        )
+          .filter((item) => role && roleHasPermission(role, item.perm))
+          .map((item) => (
+          <div
+            key={item.path}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '1rem',
+              padding: '0.75rem 0',
+              borderTop: '1px solid var(--border)',
+            }}
+          >
+            <strong>{item.title}</strong>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {(['xlsx', 'csv', 'pdf'] as ExportFormat[]).map((fmt) => (
+                <button
+                  key={fmt}
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={() =>
+                    downloadExport(item.path, fmt).catch((e) =>
+                      alert(e instanceof Error ? e.message : 'Export failed'),
+                    )
+                  }
+                >
+                  {fmt.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
     </main>
   );

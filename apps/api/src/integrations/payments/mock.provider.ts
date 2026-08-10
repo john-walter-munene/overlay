@@ -36,6 +36,10 @@ export class MockPaymentProvider implements PaymentProvider {
     ],
   };
 
+  isAvailable(): boolean {
+    return true;
+  }
+
   async createSubscriptionCheckout(params: {
     userId: string;
     tipsterId: string;

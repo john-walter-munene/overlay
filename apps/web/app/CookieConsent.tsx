@@ -70,7 +70,7 @@ export default function CookieConsent() {
         }}
       >
         <p style={{ color: 'var(--fg)', margin: 0, flex: '1 1 320px' }}>
-          We use strictly necessary cookies to run Overlay Bets and, with your
+          We use strictly necessary cookies to run Overlay Picks and, with your
           consent, optional cookies for analytics. See our{' '}
           <Link href="/legal/privacy" style={{ color: 'var(--accent)' }}>
             Privacy Policy

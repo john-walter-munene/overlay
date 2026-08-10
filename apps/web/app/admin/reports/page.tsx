@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { roleHasPermission } from '@overlay/shared/rbac';
 import {
   getProfile,
   adminListReports,
@@ -55,7 +56,7 @@ export default function AdminReportsPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'content:moderate')) {
         router.replace('/account');
         return;
       }

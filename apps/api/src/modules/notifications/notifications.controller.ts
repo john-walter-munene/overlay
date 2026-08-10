@@ -1,14 +1,25 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Post,
   Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { NotificationsService } from './notifications.service';
+import { PushService } from './push.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
@@ -20,9 +31,29 @@ class UpdatePreferencesDto {
   @IsOptional() @IsIn(['instant', 'daily']) frequency?: DigestFrequency;
 }
 
+class PushSubscriptionKeysDto {
+  @IsString() @IsNotEmpty() p256dh!: string;
+  @IsString() @IsNotEmpty() auth!: string;
+}
+
+class PushSubscribeDto {
+  @IsString() @IsNotEmpty() endpoint!: string;
+  @IsObject()
+  @ValidateNested()
+  @Type(() => PushSubscriptionKeysDto)
+  keys!: PushSubscriptionKeysDto;
+}
+
+class PushUnsubscribeDto {
+  @IsString() @IsNotEmpty() endpoint!: string;
+}
+
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(
+    private readonly notifications: NotificationsService,
+    private readonly push: PushService,
+  ) {}
 
   /** Read the current user's notification preferences. */
   @Get('preferences')
@@ -39,6 +70,33 @@ export class NotificationsController {
     @Body() dto: UpdatePreferencesDto,
   ) {
     return this.notifications.updatePreferences(user.userId, dto);
+  }
+
+  /**
+   * Public VAPID key the browser needs to create a push subscription (OB-031).
+   * Returns `{ publicKey: null }` when web push isn't configured so clients can
+   * hide the opt-in cleanly.
+   */
+  @Get('push/public-key')
+  getPushPublicKey() {
+    return { publicKey: this.push.publicKey() };
+  }
+
+  /** Register (or refresh) the caller's browser push subscription. */
+  @Post('push/subscribe')
+  @UseGuards(JwtAuthGuard)
+  subscribePush(@CurrentUser() user: AuthUser, @Body() dto: PushSubscribeDto) {
+    return this.push.saveSubscription(user.userId, dto);
+  }
+
+  /** Remove the caller's browser push subscription (opt-out from a device). */
+  @Delete('push/subscribe')
+  @UseGuards(JwtAuthGuard)
+  unsubscribePush(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: PushUnsubscribeDto,
+  ) {
+    return this.push.removeSubscription(user.userId, dto.endpoint);
   }
 
   // CAN-SPAM one-click unsubscribe. Public (the token authenticates the

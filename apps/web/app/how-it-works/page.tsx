@@ -2,9 +2,9 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'How it works · Overlay Bets',
+  title: 'How it works · Overlay Picks',
   description:
-    'How Overlay Bets keeps tipster records honest: every pick is hashed and locked before kickoff, settled automatically from the result, and ranked by verified yield and closing line value.',
+    'How Overlay Picks keeps tipster records honest: every pick is hashed and locked before kickoff, settled automatically from the result, and ranked by verified yield and closing line value.',
 };
 
 const STEPS: { n: string; title: string; body: string }[] = [
@@ -35,7 +35,7 @@ export default function HowItWorksPage() {
     <main style={{ maxWidth: 720, margin: '0 auto', padding: '3.5rem 1.5rem' }}>
       <h1 style={{ marginBottom: '0.5rem' }}>How it works</h1>
       <p style={{ color: 'var(--muted)', marginTop: 0, fontSize: '1.05rem', lineHeight: 1.6 }}>
-        Overlay Bets exists to make a tipster’s track record impossible to fake.
+        Overlay Picks exists to make a tipster’s track record impossible to fake.
         Here’s the loop that keeps everyone honest.
       </p>
 
@@ -62,6 +62,25 @@ export default function HowItWorksPage() {
           </li>
         ))}
       </ol>
+
+      <section style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+        <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>
+          Judged on more than a win rate
+        </h2>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+          A high strike rate is easy to cherry-pick over a short run. Overlay
+          Bets judges tipsters on the numbers that survive variance — verified
+          ROI and yield, closing line value, sample size and drawdowns —
+          calculated only from settled, locked picks, never from screenshots or
+          self-reported results.
+        </p>
+        <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: '1rem 0 0' }}>
+          Because every pick is recorded before kickoff and can’t be edited,
+          removed or selectively hidden afterwards, losing runs stay visible
+          too. The record you see is the complete one — which is exactly what
+          makes it worth trusting.
+        </p>
+      </section>
 
       <section style={{ marginTop: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
         <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>

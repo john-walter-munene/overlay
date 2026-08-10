@@ -45,6 +45,10 @@ export class CryptoPaymentProvider implements PaymentProvider {
     methods: ['usdc', 'usdt'],
   };
 
+  isAvailable(): boolean {
+    return this.configured || this.devFallback;
+  }
+
   private readonly log = new Logger(CryptoPaymentProvider.name);
 
   private get apiKey(): string | undefined {
@@ -91,7 +95,7 @@ export class CryptoPaymentProvider implements PaymentProvider {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        name: 'Overlay Bets subscription',
+        name: 'Overlay Picks subscription',
         description: `Subscription to tipster ${params.tipsterId}`,
         pricing_type: 'fixed_price',
         local_price: {

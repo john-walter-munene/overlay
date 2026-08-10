@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   toSubscriptionView,
   sortSubscriptions,
@@ -20,6 +21,7 @@ const MUTED = 'var(--muted)';
  * same webhook Stripe would send — proving the status change end-to-end.
  */
 export default function PortalClient() {
+  const t = useTranslations('portal');
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [subs, setSubs] = useState<SubscriptionRecord[] | null>(null);
@@ -69,15 +71,15 @@ export default function PortalClient() {
 
   return (
     <main style={{ maxWidth: 640, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1>Billing portal</h1>
+      <h1>{t('title')}</h1>
       <p style={{ color: MUTED }}>
-        Cancel or resume your subscriptions. Changes take effect immediately.
+        {t('intro')}
       </p>
 
       {subs === null ? (
-        <p style={{ color: MUTED }}>Loading…</p>
+        <p style={{ color: MUTED }}>{t('loading')}</p>
       ) : views.length === 0 ? (
-        <p style={{ color: MUTED }}>You have no subscriptions to manage.</p>
+        <p style={{ color: MUTED }}>{t('empty')}</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, marginTop: '1.5rem' }}>
           {views.map((v) => (
@@ -115,7 +117,7 @@ export default function PortalClient() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {busy === v.tipsterId ? 'Working…' : v.actionLabel}
+                {busy === v.tipsterId ? t('working') : v.actionLabel}
               </button>
             </li>
           ))}
@@ -124,7 +126,7 @@ export default function PortalClient() {
 
       <p style={{ marginTop: '2rem' }}>
         <Link href="/account/subscriptions" style={{ color: 'var(--accent)' }}>
-          ← Done
+          {t('done')}
         </Link>
       </p>
     </main>

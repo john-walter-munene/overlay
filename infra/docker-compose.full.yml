@@ -37,7 +37,7 @@ services:
       SPORTS_API_PROVIDER: ${SPORTS_API_PROVIDER:-mock}
       NOTIFIER_PROVIDER: ${NOTIFIER_PROVIDER:-mock}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
-      EMAIL_FROM: ${EMAIL_FROM:-Overlay Bets <no-reply@overlay.bet>}
+      EMAIL_FROM: ${EMAIL_FROM:-Overlay Picks <no-reply@overlaypicks.com>}
     ports:
       - "4000:4000"
 

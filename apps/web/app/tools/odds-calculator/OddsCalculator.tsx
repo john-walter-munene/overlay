@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   computeReturns,
   convertOdds,
@@ -11,11 +12,11 @@ import {
 } from '@overlay/shared/odds';
 import { CURRENCY_CODES } from '@overlay/shared/currencies';
 
-const FORMATS: { value: OddsFormat; label: string; placeholder: string }[] = [
-  { value: 'decimal', label: 'Decimal', placeholder: '2.50' },
-  { value: 'fractional', label: 'Fractional', placeholder: '3/2' },
-  { value: 'american', label: 'American', placeholder: '+150' },
-  { value: 'probability', label: 'Implied %', placeholder: '40' },
+const FORMATS: { value: OddsFormat; placeholder: string }[] = [
+  { value: 'decimal', placeholder: '2.50' },
+  { value: 'fractional', placeholder: '3/2' },
+  { value: 'american', placeholder: '+150' },
+  { value: 'probability', placeholder: '40' },
 ];
 
 const card = {
@@ -54,6 +55,8 @@ function param(
 }
 
 function OddsConverter({ params }: { params: URLSearchParams }) {
+  const t = useTranslations('oddsCalculator');
+  const formatLabel = (f: OddsFormat) => t(`format_${f}`);
   const initialFormat = FORMATS.some((f) => f.value === params.get('cf'))
     ? (params.get('cf') as OddsFormat)
     : 'decimal';
@@ -74,16 +77,16 @@ function OddsConverter({ params }: { params: URLSearchParams }) {
   return (
     <section style={card} aria-labelledby="converter-heading">
       <h2 id="converter-heading" style={{ marginTop: 0 }}>
-        Odds converter
+        {t('converterHeading')}
       </h2>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        Convert between decimal, fractional, American and implied probability.
+        {t('converterIntro')}
       </p>
 
       <div style={{ display: 'grid', gap: '1rem' }}>
         <div>
           <label htmlFor="converter-format" style={label}>
-            Input format
+            {t('inputFormat')}
           </label>
           <select
             id="converter-format"
@@ -93,7 +96,7 @@ function OddsConverter({ params }: { params: URLSearchParams }) {
           >
             {FORMATS.map((f) => (
               <option key={f.value} value={f.value}>
-                {f.label}
+                {formatLabel(f.value)}
               </option>
             ))}
           </select>
@@ -101,7 +104,7 @@ function OddsConverter({ params }: { params: URLSearchParams }) {
 
         <div>
           <label htmlFor="converter-value" style={label}>
-            {active.label} odds
+            {t('oddsLabel', { format: formatLabel(format) })}
           </label>
           <input
             id="converter-value"
@@ -125,26 +128,26 @@ function OddsConverter({ params }: { params: URLSearchParams }) {
               margin: 0,
             }}
           >
-            <dt style={{ color: 'var(--muted)' }}>Decimal</dt>
+            <dt style={{ color: 'var(--muted)' }}>{t('decimal')}</dt>
             <dd style={{ margin: 0, fontWeight: 600 }}>{conversion.decimal}</dd>
-            <dt style={{ color: 'var(--muted)' }}>Fractional</dt>
+            <dt style={{ color: 'var(--muted)' }}>{t('fractional')}</dt>
             <dd style={{ margin: 0, fontWeight: 600 }}>
               {conversion.fractional}
             </dd>
-            <dt style={{ color: 'var(--muted)' }}>American</dt>
+            <dt style={{ color: 'var(--muted)' }}>{t('american')}</dt>
             <dd style={{ margin: 0, fontWeight: 600 }}>
               {conversion.american > 0
                 ? `+${conversion.american}`
                 : conversion.american}
             </dd>
-            <dt style={{ color: 'var(--muted)' }}>Implied probability</dt>
+            <dt style={{ color: 'var(--muted)' }}>{t('impliedProbability')}</dt>
             <dd style={{ margin: 0, fontWeight: 600 }}>
               {(conversion.impliedProbability * 100).toFixed(2)}%
             </dd>
           </dl>
         ) : (
           <p style={{ color: 'var(--muted)', margin: 0 }}>
-            Enter valid {active.label.toLowerCase()} odds to see conversions.
+            {t('enterValid', { format: formatLabel(format).toLowerCase() })}
           </p>
         )}
       </div>
@@ -153,6 +156,7 @@ function OddsConverter({ params }: { params: URLSearchParams }) {
 }
 
 function ReturnsCalculator({ params }: { params: URLSearchParams }) {
+  const t = useTranslations('oddsCalculator');
   const [stake, setStake] = useState(param(params, 'stake', '10'));
   const [odds, setOdds] = useState(param(params, 'odds', '2.50'));
   const initialCurrency = CURRENCY_CODES.includes(
@@ -172,16 +176,16 @@ function ReturnsCalculator({ params }: { params: URLSearchParams }) {
   return (
     <section style={card} aria-labelledby="returns-heading">
       <h2 id="returns-heading" style={{ marginTop: 0 }}>
-        Bet returns calculator
+        {t('returnsHeading')}
       </h2>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        Potential returns and profit from your stake at decimal odds.
+        {t('returnsIntro')}
       </p>
 
       <div style={{ display: 'grid', gap: '1rem' }}>
         <div>
           <label htmlFor="returns-stake" style={label}>
-            Stake
+            {t('stake')}
           </label>
           <input
             id="returns-stake"
@@ -197,7 +201,7 @@ function ReturnsCalculator({ params }: { params: URLSearchParams }) {
 
         <div>
           <label htmlFor="returns-odds" style={label}>
-            Decimal odds
+            {t('decimalOdds')}
           </label>
           <input
             id="returns-odds"
@@ -213,7 +217,7 @@ function ReturnsCalculator({ params }: { params: URLSearchParams }) {
 
         <div>
           <label htmlFor="returns-currency" style={label}>
-            Currency
+            {t('currency')}
           </label>
           <select
             id="returns-currency"
@@ -240,18 +244,18 @@ function ReturnsCalculator({ params }: { params: URLSearchParams }) {
               margin: 0,
             }}
           >
-            <dt style={{ color: 'var(--muted)' }}>Total returns</dt>
+            <dt style={{ color: 'var(--muted)' }}>{t('totalReturns')}</dt>
             <dd style={{ margin: 0, fontWeight: 600 }}>
               {formatMoney(result.returns, currency)}
             </dd>
-            <dt style={{ color: 'var(--muted)' }}>Profit</dt>
+            <dt style={{ color: 'var(--muted)' }}>{t('profit')}</dt>
             <dd style={{ margin: 0, fontWeight: 600, color: 'var(--success)' }}>
               {formatMoney(result.profit, currency)}
             </dd>
           </dl>
         ) : (
           <p style={{ color: 'var(--muted)', margin: 0 }}>
-            Enter a stake and decimal odds (greater than 1) to calculate.
+            {t('enterStake')}
           </p>
         )}
       </div>

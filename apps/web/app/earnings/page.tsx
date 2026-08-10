@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { authFetch, getProfile } from '../../lib/auth';
 
 interface PayoutBreakdown {
@@ -61,6 +62,7 @@ function Card({ label, value, hint }: { label: string; value: string; hint?: str
 }
 
 export default function EarningsPage() {
+  const t = useTranslations('earnings');
   const router = useRouter();
   const [data, setData] = useState<Earnings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -78,31 +80,33 @@ export default function EarningsPage() {
       }
       try {
         const res = await authFetch('/api/payouts/me');
-        if (!res.ok) throw new Error(`Failed to load earnings (${res.status})`);
+        if (!res.ok) throw new Error(t('loadError'));
         setData((await res.json()) as Earnings);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load earnings');
+        setError(err instanceof Error ? err.message : t('loadError'));
       }
     })();
-  }, [router]);
+  }, [router, t]);
+
+  const statusLabel = (s: string) =>
+    ['paid', 'pending', 'failed'].includes(s) ? t(`status_${s}`) : s;
 
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
         <Link href="/dashboard" style={{ color: 'var(--accent)' }}>
-          ← Dashboard
+          {t('backDashboard')}
         </Link>
       </p>
-      <h1>Earnings &amp; payouts</h1>
+      <h1>{t('title')}</h1>
       <p style={{ color: 'var(--muted)' }}>
-        Projected earnings update with your active subscribers and the platform
-        fee. Payouts are transferred monthly.
+        {t('intro')}
       </p>
 
       {error ? (
         <p style={{ color: 'var(--danger)' }}>{error}</p>
       ) : data === null ? (
-        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>{t('loading')}</p>
       ) : (
         <>
           <section
@@ -114,39 +118,42 @@ export default function EarningsPage() {
             }}
           >
             <Card
-              label="Projected net (this month)"
+              label={t('projectedNet')}
               value={money(data.projected.netCents)}
-              hint={`Gross ${money(data.projected.grossCents)} − fee ${money(
-                data.projected.feeCents,
-              )}`}
+              hint={t('projectedNetHint', {
+                gross: money(data.projected.grossCents),
+                fee: money(data.projected.feeCents),
+              })}
             />
             <Card
-              label="Platform fee"
+              label={t('platformFee')}
               value={`${(data.feeRate * 100).toFixed(0)}%`}
-              hint={`${money(data.projected.feeCents)} this month`}
+              hint={t('platformFeeHint', { fee: money(data.projected.feeCents) })}
             />
             <Card
-              label="Active subscribers"
+              label={t('activeSubscribers')}
               value={`${data.activeSubscribers}`}
-              hint={`@ ${money(data.subscriptionPriceCents)} / mo`}
+              hint={t('activeSubscribersHint', {
+                price: money(data.subscriptionPriceCents),
+              })}
             />
             <Card
-              label="Paid to date"
+              label={t('paidToDate')}
               value={money(data.paidCents)}
-              hint={`${money(data.pendingCents)} pending`}
+              hint={t('paidToDateHint', { pending: money(data.pendingCents) })}
             />
           </section>
 
-          <h2 style={{ marginTop: '2rem' }}>Payout history</h2>
+          <h2 style={{ marginTop: '2rem' }}>{t('payoutHistory')}</h2>
           {data.payouts.length === 0 ? (
-            <p style={{ color: 'var(--muted)' }}>No payouts yet.</p>
+            <p style={{ color: 'var(--muted)' }}>{t('noPayouts')}</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
-                  <th style={{ padding: '0.5rem 0' }}>Period</th>
-                  <th>Amount</th>
-                  <th>Status</th>
+                  <th style={{ padding: '0.5rem 0' }}>{t('period')}</th>
+                  <th>{t('amount')}</th>
+                  <th>{t('status')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -155,7 +162,7 @@ export default function EarningsPage() {
                     <td style={{ padding: '0.5rem 0' }}>{p.period}</td>
                     <td>{money(p.amountCents)}</td>
                     <td style={{ color: STATUS_COLORS[p.status] ?? 'var(--muted)' }}>
-                      {p.status}
+                      {statusLabel(p.status)}
                     </td>
                   </tr>
                 ))}
@@ -170,18 +177,22 @@ export default function EarningsPage() {
   );
 }
 
-type PayoutMethod = 'stripe' | 'crypto' | 'mobile_money';
+type PayoutMethod = 'stripe' | 'paystack' | 'crypto' | 'mobile_money';
 
 const CHAINS = ['ethereum', 'polygon', 'tron', 'bsc', 'solana'];
 const NETWORKS = ['mpesa', 'mtn_momo', 'airtel_money'];
 
 /** Tipster payout-destination settings (OB-06x): pick the rail + its details. */
 function PayoutSettings() {
+  const t = useTranslations('earnings');
   const [method, setMethod] = useState<PayoutMethod | ''>('');
   const [walletAddress, setWalletAddress] = useState('');
   const [walletChain, setWalletChain] = useState('ethereum');
   const [mobileNumber, setMobileNumber] = useState('');
   const [mobileNetwork, setMobileNetwork] = useState('mpesa');
+  const [bankAccount, setBankAccount] = useState('');
+  const [bankCode, setBankCode] = useState('');
+  const [accountName, setAccountName] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -195,12 +206,18 @@ function PayoutSettings() {
         payoutWalletChain: string | null;
         payoutMobileNumber: string | null;
         payoutMobileNetwork: string | null;
+        payoutBankAccount: string | null;
+        payoutBankCode: string | null;
+        payoutAccountName: string | null;
       };
       setMethod(p.payoutMethod ?? '');
       setWalletAddress(p.payoutWalletAddress ?? '');
       if (p.payoutWalletChain) setWalletChain(p.payoutWalletChain);
       setMobileNumber(p.payoutMobileNumber ?? '');
       if (p.payoutMobileNetwork) setMobileNetwork(p.payoutMobileNetwork);
+      setBankAccount(p.payoutBankAccount ?? '');
+      setBankCode(p.payoutBankCode ?? '');
+      setAccountName(p.payoutAccountName ?? '');
     })();
   }, []);
 
@@ -218,14 +235,19 @@ function PayoutSettings() {
         body.payoutMobileNumber = mobileNumber.trim();
         body.payoutMobileNetwork = mobileNetwork;
       }
+      if (method === 'paystack') {
+        body.payoutBankAccount = bankAccount.trim();
+        body.payoutBankCode = bankCode.trim();
+        body.payoutAccountName = accountName.trim();
+      }
       const res = await authFetch('/api/tipsters/me', {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(`Failed (${res.status})`);
-      setMsg('Payout settings saved ✓');
+      setMsg(t('settingsSaved'));
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : 'Failed to save');
+      setMsg(err instanceof Error ? err.message : t('saveError'));
     } finally {
       setBusy(false);
     }
@@ -257,45 +279,80 @@ function PayoutSettings() {
         borderRadius: 12,
       }}
     >
-      <h2 style={{ marginTop: 0 }}>Payout settings</h2>
+      <h2 style={{ marginTop: 0 }}>{t('settingsTitle')}</h2>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        Choose how you’d like to be paid. We route your monthly payout to this
-        destination.
+        {t('settingsIntro')}
       </p>
       <form onSubmit={save}>
         <label style={labelStyle}>
-          Payout method
+          {t('payoutMethod')}
           <select
             style={inputStyle}
             value={method}
             onChange={(e) => setMethod(e.target.value as PayoutMethod)}
           >
-            <option value="">Select…</option>
-            <option value="stripe">Bank / card (Stripe)</option>
-            <option value="crypto">Crypto (stablecoin)</option>
-            <option value="mobile_money">Mobile money</option>
+            <option value="">{t('select')}</option>
+            <option value="stripe">{t('methodStripe')}</option>
+            <option value="paystack">{t('methodPaystack')}</option>
+            <option value="crypto">{t('methodCrypto')}</option>
+            <option value="mobile_money">{t('methodMobile')}</option>
           </select>
         </label>
 
         {method === 'stripe' ? (
           <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
-            Connect your Stripe payout account from the onboarding wizard.
+            {t('stripeNote')}
           </p>
+        ) : null}
+
+        {method === 'paystack' ? (
+          <>
+            <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+              {t('paystackNote')}
+            </p>
+            <label style={labelStyle}>
+              {t('accountName')}
+              <input
+                style={inputStyle}
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+              />
+            </label>
+            <label style={labelStyle}>
+              {t('bankAccount')}
+              <input
+                style={inputStyle}
+                placeholder={t('bankAccountPlaceholder')}
+                inputMode="numeric"
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value)}
+              />
+            </label>
+            <label style={labelStyle}>
+              {t('bankCode')}
+              <input
+                style={inputStyle}
+                placeholder={t('bankCodePlaceholder')}
+                value={bankCode}
+                onChange={(e) => setBankCode(e.target.value)}
+              />
+            </label>
+          </>
         ) : null}
 
         {method === 'crypto' ? (
           <>
             <label style={labelStyle}>
-              Wallet address
+              {t('walletAddress')}
               <input
                 style={inputStyle}
-                placeholder="0x… / T… / wallet address"
+                placeholder={t('walletPlaceholder')}
                 value={walletAddress}
                 onChange={(e) => setWalletAddress(e.target.value)}
               />
             </label>
             <label style={labelStyle}>
-              Chain
+              {t('chain')}
               <select
                 style={inputStyle}
                 value={walletChain}
@@ -314,7 +371,7 @@ function PayoutSettings() {
         {method === 'mobile_money' ? (
           <>
             <label style={labelStyle}>
-              Mobile number
+              {t('mobileNumber')}
               <input
                 style={inputStyle}
                 placeholder="+254700000000"
@@ -324,7 +381,7 @@ function PayoutSettings() {
               />
             </label>
             <label style={labelStyle}>
-              Network
+              {t('network')}
               <select
                 style={inputStyle}
                 value={mobileNetwork}
@@ -353,7 +410,7 @@ function PayoutSettings() {
             cursor: busy || !method ? 'default' : 'pointer',
           }}
         >
-          {busy ? 'Saving…' : 'Save payout settings'}
+          {busy ? t('saving') : t('saveSettings')}
         </button>
         {msg ? (
           <p style={{ color: 'var(--accent)', marginTop: '0.75rem' }}>{msg}</p>

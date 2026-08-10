@@ -1,4 +1,4 @@
-# Overlay Bets — Prometheus config (OB-093).
+# Overlay Picks — Prometheus config (OB-093).
 #
 # Scrapes the API's /metrics endpoint and evaluates the SLO alert rules in
 # alerts.yml, firing to Alertmanager (which pages on-call). Point `targets` at

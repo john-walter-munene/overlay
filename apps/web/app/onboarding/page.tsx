@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { authFetch, getAccessToken, getProfile } from '../../lib/auth';
 import { API_URL } from '../../lib/api';
 import type {
@@ -65,23 +66,13 @@ const STEP_ORDER: OnboardingStepKey[] = [
   'verification',
 ];
 
-const STEP_TITLES: Record<OnboardingStepKey, string> = {
-  profile: 'Your details',
-  sports: 'Your sports',
-  bio: 'Your bio',
-  pricing: 'Pricing',
-  stripe: 'Payouts',
-  verification: 'Verification',
-};
-
-const CONTACT_LABELS: Record<ContactMethod, string> = {
-  phone: 'Mobile number',
-  telegram: 'Telegram',
-  whatsapp: 'WhatsApp',
-};
+const CONTACT_METHODS: ContactMethod[] = ['phone', 'telegram', 'whatsapp'];
 
 export default function OnboardingPage() {
+  const t = useTranslations('onboarding');
   const router = useRouter();
+  const stepTitle = (key: OnboardingStepKey) => t(`step_${key}`);
+  const contactLabel = (m: ContactMethod) => t(`contact_${m}`);
   const [status, setStatus] = useState<OnboardingStatus | null>(null);
   const [fields, setFields] = useState<WizardFields>(EMPTY_FIELDS);
   const [docName, setDocName] = useState<string | null>(null);
@@ -183,10 +174,10 @@ export default function OnboardingPage() {
       switch (stepKey) {
         case 'profile': {
           if (!fields.displayName.trim() || !fields.country.trim()) {
-            throw new Error('Add your name and country to continue.');
+            throw new Error(t('errNameCountry'));
           }
           if (!fields.contactValue.trim()) {
-            throw new Error('Add a contact so subscribers can reach you.');
+            throw new Error(t('errContact'));
           }
           // For phone contacts, prefix the chosen dialling code.
           const contactValue =
@@ -206,18 +197,18 @@ export default function OnboardingPage() {
             .split(',')
             .map((s) => s.trim())
             .filter(Boolean);
-          if (sports.length === 0) throw new Error('Add at least one sport.');
+          if (sports.length === 0) throw new Error(t('errSport'));
           await patchProfile({ sports });
           break;
         }
         case 'bio':
-          if (!fields.bio.trim()) throw new Error('Add a short bio.');
+          if (!fields.bio.trim()) throw new Error(t('errBio'));
           await patchProfile({ bio: fields.bio.trim() });
           break;
         case 'pricing': {
           const price = Number(fields.price);
           if (!Number.isFinite(price) || price <= 0) {
-            throw new Error('Set a price greater than zero.');
+            throw new Error(t('errPrice'));
           }
           await patchProfile({
             billingInterval: fields.billingInterval,
@@ -238,10 +229,10 @@ export default function OnboardingPage() {
           await submitVerification();
           break;
       }
-      setMsg('Saved ✓');
+      setMsg(t('saved'));
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : t('errGeneric'));
       return false;
     } finally {
       setBusy(false);
@@ -250,7 +241,7 @@ export default function OnboardingPage() {
 
   async function submitVerification() {
     if (!docFile) {
-      throw new Error('Choose an ID, passport or driver licence to upload.');
+      throw new Error(t('errDocument'));
     }
     const form = new FormData();
     form.append('document', docFile);
@@ -300,18 +291,17 @@ export default function OnboardingPage() {
   if (!status) {
     return (
       <main style={{ maxWidth: 680, margin: '0 auto', padding: '3rem 1.5rem' }}>
-        <h1>Tipster onboarding</h1>
-        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        <h1>{t('title')}</h1>
+        <p style={{ color: 'var(--muted)' }}>{t('loading')}</p>
       </main>
     );
   }
 
   return (
     <main style={{ maxWidth: 680, margin: '0 auto', padding: '3rem 1.5rem' }}>
-      <h1>Tipster onboarding</h1>
+      <h1>{t('title')}</h1>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        A few quick steps unlock pick publishing. Progress saves as you go — you
-        can leave and pick up where you left off.
+        {t('intro')}
       </p>
 
       {/* Progress bar + step chips */}
@@ -334,12 +324,15 @@ export default function OnboardingPage() {
           />
         </div>
         <p style={{ color: 'var(--muted)', margin: '0.5rem 0 0', fontSize: '0.9rem' }}>
-          {status.completedSteps}/{status.totalSteps} required steps complete
+          {t('stepsComplete', {
+            completed: status.completedSteps,
+            total: status.totalSteps,
+          })}
           {status.canPublish ? (
             <>
-              {' — you’re ready! '}
+              {t('ready')}
               <Link href="/dashboard" style={{ color: 'var(--accent)' }}>
-                Go to dashboard →
+                {t('goToDashboard')}
               </Link>
             </>
           ) : null}
@@ -380,8 +373,8 @@ export default function OnboardingPage() {
                 }}
               >
                 {isDone ? '✓ ' : `${i + 1}. `}
-                {STEP_TITLES[key]}
-                {optional ? ' (optional)' : ''}
+                {stepTitle(key)}
+                {optional ? t('optional') : ''}
               </button>
             </li>
           );
@@ -389,7 +382,7 @@ export default function OnboardingPage() {
       </ol>
 
       <section
-        aria-label={STEP_TITLES[stepKey]}
+        aria-label={stepTitle(stepKey)}
         style={{
           border: '1px solid var(--border)',
           borderRadius: 12,
@@ -399,21 +392,21 @@ export default function OnboardingPage() {
       >
         {stepKey === 'profile' ? (
           <div style={formStyles.form}>
-            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>Your details</h2>
+            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>{t('profileHeading')}</h2>
             <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-              Tell subscribers who you are and how to reach you.
+              {t('profileHelp')}
             </p>
             <label style={labelStyle}>
-              Name
+              {t('name')}
               <input
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
-                placeholder="e.g. Alex Morgan"
+                placeholder={t('namePlaceholder')}
                 value={fields.displayName}
                 onChange={(e) => set('displayName', e.target.value)}
               />
             </label>
             <label style={labelStyle}>
-              Country
+              {t('country')}
               <select
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
                 value={fields.country}
@@ -429,7 +422,7 @@ export default function OnboardingPage() {
                   }));
                 }}
               >
-                <option value="">Select your country…</option>
+                <option value="">{t('countryPlaceholder')}</option>
                 {COUNTRIES.map((c) => (
                   <option key={c.code} value={c.code}>
                     {flagEmoji(c.code)} {c.name}
@@ -438,7 +431,7 @@ export default function OnboardingPage() {
               </select>
             </label>
             <label style={labelStyle}>
-              Preferred contact
+              {t('preferredContact')}
               <select
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
                 value={fields.contactMethod}
@@ -446,9 +439,9 @@ export default function OnboardingPage() {
                   set('contactMethod', e.target.value as ContactMethod)
                 }
               >
-                {(Object.keys(CONTACT_LABELS) as ContactMethod[]).map((m) => (
+                {CONTACT_METHODS.map((m) => (
                   <option key={m} value={m}>
-                    {CONTACT_LABELS[m]}
+                    {contactLabel(m)}
                   </option>
                 ))}
               </select>
@@ -456,12 +449,12 @@ export default function OnboardingPage() {
             {fields.contactMethod === 'phone' ? (
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <select
-                  aria-label="Country dialling code"
+                  aria-label={t('diallingCode')}
                   style={{ ...formStyles.input, width: 'auto', flex: '0 0 auto' }}
                   value={fields.phoneDial}
                   onChange={(e) => set('phoneDial', e.target.value)}
                 >
-                  <option value="">Code</option>
+                  <option value="">{t('code')}</option>
                   {COUNTRIES.map((c) => (
                     <option key={c.code} value={c.dial}>
                       {flagEmoji(c.code)} {c.dial}
@@ -489,9 +482,9 @@ export default function OnboardingPage() {
 
         {stepKey === 'sports' ? (
           <div style={formStyles.form}>
-            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>Your sports</h2>
+            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>{t('sportsHeading')}</h2>
             <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-              Which sports do you post picks for most? Comma-separate them.
+              {t('sportsHelp')}
             </p>
             <input
               style={formStyles.input}
@@ -504,13 +497,13 @@ export default function OnboardingPage() {
 
         {stepKey === 'bio' ? (
           <div style={formStyles.form}>
-            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>Your bio</h2>
+            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>{t('bioHeading')}</h2>
             <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-              Tell subscribers who you are and what edge you bring.
+              {t('bioHelp')}
             </p>
             <textarea
               style={{ ...formStyles.input, minHeight: 120, resize: 'vertical' }}
-              placeholder="Data-driven soccer analyst with a focus on Asian handicaps…"
+              placeholder={t('bioPlaceholder')}
               value={fields.bio}
               onChange={(e) => set('bio', e.target.value)}
             />
@@ -519,12 +512,12 @@ export default function OnboardingPage() {
 
         {stepKey === 'pricing' ? (
           <div style={formStyles.form}>
-            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>Pricing</h2>
+            <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>{t('pricingHeading')}</h2>
             <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-              Choose how often subscribers are billed and set your price.
+              {t('pricingHelp')}
             </p>
             <label style={labelStyle}>
-              Billing cadence
+              {t('billingCadence')}
               <select
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
                 value={fields.billingInterval}
@@ -535,12 +528,14 @@ export default function OnboardingPage() {
                   )
                 }
               >
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
+                <option value="weekly">{t('weekly')}</option>
+                <option value="monthly">{t('monthly')}</option>
               </select>
             </label>
             <label style={labelStyle}>
-              Price per {fields.billingInterval === 'weekly' ? 'week' : 'month'}
+              {fields.billingInterval === 'weekly'
+                ? t('pricePerWeek')
+                : t('pricePerMonth')}
               <input
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
                 type="number"
@@ -557,14 +552,14 @@ export default function OnboardingPage() {
         {stepKey === 'stripe' ? (
           <div style={formStyles.form}>
             <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>
-              Connect Stripe payouts
+              {t('stripeHeading')}
             </h2>
             <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-              Connect Stripe so we can pay out your earnings securely.
+              {t('stripeHelp')}
             </p>
             {done('stripe') ? (
               <p style={{ color: 'var(--accent)', margin: 0 }}>
-                Stripe connected ✓
+                {t('stripeConnected')}
               </p>
             ) : (
               <button
@@ -573,7 +568,7 @@ export default function OnboardingPage() {
                 disabled={busy}
                 onClick={() => saveCurrentStep()}
               >
-                {busy ? 'Connecting…' : 'Connect Stripe'}
+                {busy ? t('connecting') : t('connectStripe')}
               </button>
             )}
           </div>
@@ -582,51 +577,49 @@ export default function OnboardingPage() {
         {stepKey === 'verification' ? (
           <div style={formStyles.form}>
             <h2 style={{ marginTop: 0, fontSize: '1.15rem' }}>
-              Verify your identity{' '}
+              {t('verifyHeading')}{' '}
               <span style={{ color: 'var(--muted)', fontWeight: 400 }}>
-                (optional)
+                {t('verifyOptional')}
               </span>
             </h2>
             <p style={{ color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-              Verified tipsters earn a trust badge and rank higher in the
-              marketplace. Add your socials and upload an official document
-              (ID, passport or driver licence).
+              {t('verifyHelp')}
             </p>
             {done('verification') ? (
               <p style={{ color: 'var(--accent)', margin: '0 0 0.5rem' }}>
-                Verified ✓{docName ? ` — ${docName}` : ''}
+                {docName ? t('verifiedWithDoc', { doc: docName }) : t('verified')}
               </p>
             ) : null}
 
             <label style={labelStyle}>
-              X / Twitter
+              {t('xTwitter')}
               <input
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
-                placeholder="@handle"
+                placeholder={t('handlePlaceholder')}
                 value={fields.socialX}
                 onChange={(e) => set('socialX', e.target.value)}
               />
             </label>
             <label style={labelStyle}>
-              Instagram
+              {t('instagram')}
               <input
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
-                placeholder="@handle"
+                placeholder={t('handlePlaceholder')}
                 value={fields.socialInstagram}
                 onChange={(e) => set('socialInstagram', e.target.value)}
               />
             </label>
             <label style={labelStyle}>
-              Telegram
+              {t('telegram')}
               <input
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
-                placeholder="@handle"
+                placeholder={t('handlePlaceholder')}
                 value={fields.socialTelegram}
                 onChange={(e) => set('socialTelegram', e.target.value)}
               />
             </label>
             <label style={labelStyle}>
-              Official document (JPG, PNG, WEBP or PDF, max 5 MB)
+              {t('officialDocument')}
               <input
                 style={{ ...formStyles.input, marginTop: '0.35rem' }}
                 type="file"
@@ -663,7 +656,7 @@ export default function OnboardingPage() {
               cursor: current === 0 ? 'default' : 'pointer',
             }}
           >
-            ← Back
+            {t('back')}
           </button>
 
           {stepKey === 'verification' && !done('verification') ? (
@@ -680,7 +673,7 @@ export default function OnboardingPage() {
                 cursor: 'pointer',
               }}
             >
-              Skip for now
+              {t('skipForNow')}
             </button>
           ) : null}
 
@@ -691,7 +684,7 @@ export default function OnboardingPage() {
               disabled={busy}
               style={formStyles.button}
             >
-              {busy ? 'Saving…' : 'Save & continue'}
+              {busy ? t('saving') : t('saveContinue')}
             </button>
           ) : (
             <button
@@ -700,7 +693,7 @@ export default function OnboardingPage() {
               disabled={busy}
               style={formStyles.button}
             >
-              {busy ? 'Saving…' : done('verification') ? 'Update' : 'Verify identity'}
+              {busy ? t('saving') : done('verification') ? t('update') : t('verifyIdentity')}
             </button>
           )}
 
@@ -713,7 +706,7 @@ export default function OnboardingPage() {
                 color: 'var(--accent)',
               }}
             >
-              Finish →
+              {t('finish')}
             </Link>
           ) : null}
         </div>

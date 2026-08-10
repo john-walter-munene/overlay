@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { roleHasPermission } from '@overlay/shared/rbac';
 import {
   getProfile,
   adminListAwaitingPayouts,
@@ -38,7 +39,7 @@ export default function AdminPayoutsPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'finance:manage')) {
         router.replace('/account');
         return;
       }

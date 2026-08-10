@@ -2,10 +2,14 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { getProfile } from '../lib/auth';
 import ThemeToggle from './ThemeToggle';
+import NotificationBell from './NotificationBell';
+import LanguageSwitcher from './LanguageSwitcher';
 
 export default function SiteHeader() {
+  const t = useTranslations('nav');
   const [role, setRole] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -22,7 +26,19 @@ export default function SiteHeader() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link href="/" className="site-header__brand" onClick={closeMenu}>
-          Overlay Bets
+          <img
+            src="/logo-mark.png"
+            alt=""
+            width={30}
+            height={30}
+            className="site-header__mark"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+          <span className="site-header__wordmark">
+            <span className="site-header__wordmark-accent">Overlay</span> Picks
+          </span>
         </Link>
 
         <button
@@ -30,7 +46,7 @@ export default function SiteHeader() {
           className="nav-toggle"
           aria-expanded={menuOpen}
           aria-controls="primary-navigation"
-          aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-label={menuOpen ? t('closeMenu') : t('openMenu')}
           onClick={() => setMenuOpen((open) => !open)}
         >
           <span aria-hidden="true">{menuOpen ? '\u2715' : '\u2630'}</span>
@@ -42,13 +58,13 @@ export default function SiteHeader() {
           className={menuOpen ? 'site-nav is-open' : 'site-nav'}
         >
           <Link href="/tipsters" onClick={closeMenu}>
-            Tipsters
+            {t('tipsters')}
           </Link>
           <Link href="/tips" onClick={closeMenu}>
-            Free tips
+            {t('dailyPicks')}
           </Link>
           <Link href="/tools/odds-calculator" onClick={closeMenu}>
-            Betting Calculator
+            {t('calculator')}
           </Link>
           <div className="nav-dropdown">
             <button
@@ -56,14 +72,14 @@ export default function SiteHeader() {
               className="nav-dropdown__trigger"
               aria-haspopup="true"
             >
-              Content &amp; News <span aria-hidden="true">▾</span>
+              {t('contentHub')} <span aria-hidden="true">▾</span>
             </button>
             <div className="nav-dropdown__menu" role="menu">
               <Link href="/content" onClick={closeMenu} role="menuitem">
-                Content
+                {t('content')}
               </Link>
               <Link href="/news" onClick={closeMenu} role="menuitem">
-                News
+                {t('news')}
               </Link>
             </div>
           </div>
@@ -73,30 +89,30 @@ export default function SiteHeader() {
               className="nav-dropdown__trigger"
               aria-haspopup="true"
             >
-              About <span aria-hidden="true">▾</span>
+              {t('about')} <span aria-hidden="true">▾</span>
             </button>
             <div className="nav-dropdown__menu" role="menu">
               <Link href="/about" onClick={closeMenu} role="menuitem">
-                How it works
+                {t('howItWorks')}
               </Link>
               <Link href="/support" onClick={closeMenu} role="menuitem">
-                Support Center
+                {t('supportCenter')}
               </Link>
             </div>
           </div>
           {role === 'user' ? (
             <Link href="/dashboard" onClick={closeMenu}>
-              Dashboard
+              {t('dashboard')}
             </Link>
           ) : null}
           {role === 'tipster' ? (
             <Link href="/dashboard" onClick={closeMenu}>
-              Dashboard
+              {t('dashboard')}
             </Link>
           ) : null}
-          {role === 'admin' ? (
+          {role === 'admin' || role === 'staff' ? (
             <Link href="/admin" onClick={closeMenu}>
-              Admin
+              {t('admin')}
             </Link>
           ) : null}
         </nav>
@@ -105,8 +121,8 @@ export default function SiteHeader() {
           <Link
             href="/search"
             onClick={closeMenu}
-            aria-label="Search"
-            title="Search"
+            aria-label={t('search')}
+            title={t('search')}
             className="header-search-link"
           >
             <svg
@@ -124,17 +140,24 @@ export default function SiteHeader() {
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </Link>
+          {ready && role ? <NotificationBell /> : null}
           {ready ? (
             role ? (
               <Link href="/account" onClick={closeMenu}>
-                My Account
+                {t('myAccount')}
               </Link>
             ) : (
-              <Link href="/login" onClick={closeMenu}>
-                Sign in
-              </Link>
+              <>
+                <Link href="/login" onClick={closeMenu}>
+                  {t('signIn')}
+                </Link>
+                <Link href="/signup" onClick={closeMenu}>
+                  {t('getStarted')}
+                </Link>
+              </>
             )
           ) : null}
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
       </div>

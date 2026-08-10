@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import {
   authFetch,
   signOut,
@@ -10,11 +11,19 @@ import {
   updateUsername,
   changePassword,
   changeEmail,
+  exportMyData,
   getNotificationPreferences,
   updateNotificationPreferences,
   type FullProfile,
   type NotificationPreferences,
 } from '../../lib/auth';
+import {
+  isPushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../../lib/push';
+import { roleHasPermission } from '@overlay/shared/rbac';
+import { validateNewPassword } from '../../lib/account';
 import { formStyles } from '../formStyles';
 import AvatarPicker from '../AvatarPicker';
 
@@ -38,6 +47,7 @@ const dividerStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = { color: 'var(--muted)', fontSize: '0.9rem' };
 
 export default function AccountPage() {
+  const t = useTranslations('account');
   const router = useRouter();
   const [profile, setProfile] = useState<FullProfile | null>(null);
   const [subs, setSubs] = useState<Subscription[] | null>(null);
@@ -54,9 +64,17 @@ export default function AccountPage() {
 
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const [prefsMsg, setPrefsMsg] = useState<string | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushSupported, setPushSupported] = useState(true);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState(false);
+
+  useEffect(() => {
+    setPushSupported(isPushSupported());
+  }, []);
   useEffect(() => {
     (async () => {
       const p = await getFullProfile();
@@ -82,9 +100,9 @@ export default function AccountPage() {
     try {
       const updated = await updateUsername(username);
       setProfile(updated);
-      setUsernameMsg('Username saved ✓');
+      setUsernameMsg(t('usernameSaved'));
     } catch (err) {
-      setUsernameMsg(err instanceof Error ? err.message : 'Failed');
+      setUsernameMsg(err instanceof Error ? err.message : t('failed'));
     } finally {
       setSavingUsername(false);
     }
@@ -95,28 +113,46 @@ export default function AccountPage() {
     setEmailMsg(null);
     try {
       await changeEmail(newEmail);
-      setEmailMsg('Confirmation sent — check your new inbox to finish.');
+      setEmailMsg(t('emailSent'));
       setNewEmail('');
     } catch (err) {
-      setEmailMsg(err instanceof Error ? err.message : 'Failed');
+      setEmailMsg(err instanceof Error ? err.message : t('failed'));
     }
   }
 
   async function savePassword(e: React.FormEvent) {
     e.preventDefault();
     setPasswordMsg(null);
+    const invalid = validateNewPassword(newPassword);
+    if (invalid) {
+      setPasswordMsg(invalid);
+      return;
+    }
     try {
       await changePassword(newPassword);
-      setPasswordMsg('Password updated ✓');
+      setPasswordMsg(t('passwordUpdated'));
       setNewPassword('');
     } catch (err) {
-      setPasswordMsg(err instanceof Error ? err.message : 'Failed');
+      setPasswordMsg(err instanceof Error ? err.message : t('failed'));
     }
   }
 
   async function logout() {
     await signOut();
     router.push('/');
+  }
+
+  async function downloadData() {
+    setExportMsg(null);
+    setExportBusy(true);
+    try {
+      await exportMyData();
+      setExportMsg(t('downloadStarted'));
+    } catch (err) {
+      setExportMsg(err instanceof Error ? err.message : t('exportFailed'));
+    } finally {
+      setExportBusy(false);
+    }
   }
 
   async function savePrefs(patch: Partial<NotificationPreferences>) {
@@ -126,17 +162,41 @@ export default function AccountPage() {
     try {
       const updated = await updateNotificationPreferences(patch);
       setPrefs(updated);
-      setPrefsMsg('Saved \u2713');
+      setPrefsMsg(t('saved'));
     } catch (err) {
       setPrefs(previous);
-      setPrefsMsg(err instanceof Error ? err.message : 'Failed');
+      setPrefsMsg(err instanceof Error ? err.message : t('failed'));
+    }
+  }
+
+  /**
+   * Toggling push both saves the preference and (de)registers this browser with
+   * the Push API so alerts actually reach the device. If the browser opt-in
+   * fails (unsupported / permission denied) we surface the reason and leave the
+   * preference off.
+   */
+  async function togglePush(enabled: boolean) {
+    setPrefsMsg(null);
+    setPushBusy(true);
+    try {
+      if (enabled) {
+        await subscribeToPush();
+        await savePrefs({ pushEnabled: true });
+      } else {
+        await unsubscribeFromPush();
+        await savePrefs({ pushEnabled: false });
+      }
+    } catch (err) {
+      setPrefsMsg(err instanceof Error ? err.message : t('pushFailed'));
+    } finally {
+      setPushBusy(false);
     }
   }
 
   if (!profile) {
     return (
       <main style={{ maxWidth: 920, margin: '0 auto', padding: '3rem 1.5rem' }}>
-        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>{t('loading')}</p>
       </main>
     );
   }
@@ -144,10 +204,10 @@ export default function AccountPage() {
   return (
     <main style={{ maxWidth: 920, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1 style={{ marginBottom: '0.25rem' }}>
-        Welcome, {profile.username ?? 'there'}
+        {t('welcome', { name: profile.username ?? t('there') })}
       </h1>
       <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-        Manage your account and activity.
+        {t('subtitle')}
       </p>
 
       {/* Key actions up top so they're reachable without scrolling. */}
@@ -162,32 +222,32 @@ export default function AccountPage() {
         {profile.role === 'user' ? (
           <>
             <Link href="/feed" className="btn btn--primary btn--sm">
-              My feed
+              {t('myFeed')}
             </Link>
             <Link
               href="/account/subscriptions"
               className="btn btn--secondary btn--sm"
             >
-              My subscriptions
+              {t('mySubscriptions')}
             </Link>
           </>
         ) : null}
         {profile.role === 'tipster' ? (
           <>
             <Link href="/dashboard" className="btn btn--primary btn--sm">
-              Tipster dashboard
+              {t('tipsterDashboard')}
             </Link>
             <Link
               href="/account/subscriptions"
               className="btn btn--secondary btn--sm"
             >
-              My subscriptions
+              {t('mySubscriptions')}
             </Link>
           </>
         ) : null}
-        {profile.role === 'admin' ? (
+        {roleHasPermission(profile.role, 'audit:read') ? (
           <Link href="/admin" className="btn btn--primary btn--sm">
-            Admin dashboard
+            {t('adminDashboard')}
           </Link>
         ) : null}
       </div>
@@ -208,18 +268,18 @@ export default function AccountPage() {
             gap: '0.85rem 1.5rem',
           }}
         >
-          <Fact label="Username" value={profile.username ?? '— not set —'} />
-          <Fact label="Email" value={profile.email} />
-          <Fact label="Account type" value={profile.role} />
+          <Fact label={t('factUsername')} value={profile.username ?? t('notSet')} />
+          <Fact label={t('factEmail')} value={profile.email} />
+          <Fact label={t('factAccountType')} value={profile.role} />
           <Fact
-            label="Member since"
+            label={t('factMemberSince')}
             value={new Date(profile.createdAt).toLocaleDateString()}
           />
           {profile.role === 'tipster' ? (
-            <Fact label="Role" value="Verified tipster" />
+            <Fact label={t('factRole')} value={t('verifiedTipster')} />
           ) : (
             <Fact
-              label="Subscriptions"
+              label={t('factSubscriptions')}
               value={String(profile.subscriptionCount)}
             />
           )}
@@ -227,15 +287,15 @@ export default function AccountPage() {
         {profile.role === 'tipster' ? (
           <p style={{ margin: '1rem 0 0' }}>
             <Link href="/dashboard" style={{ color: 'var(--accent)' }}>
-              → Tipster dashboard
+              {t('linkTipsterDashboard')}
             </Link>
             {' · '}
             <Link href="/onboarding" style={{ color: 'var(--accent)' }}>
-              Onboarding
+              {t('linkOnboarding')}
             </Link>
             {' · '}
             <Link href="/earnings" style={{ color: 'var(--accent)' }}>
-              Earnings
+              {t('linkEarnings')}
             </Link>
           </p>
         ) : null}
@@ -253,13 +313,13 @@ export default function AccountPage() {
       >
         {/* Login & security — username, email and password in one card */}
         <section style={cardStyle}>
-          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Login &amp; security</h2>
+          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>{t('loginSecurity')}</h2>
 
           <form onSubmit={saveUsername} style={{ ...formStyles.form, gap: '0.5rem' }}>
-            <span style={labelStyle}>Username</span>
+            <span style={labelStyle}>{t('username')}</span>
             <input
               style={formStyles.input}
-              placeholder="your_handle"
+              placeholder={t('usernamePlaceholder')}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               minLength={3}
@@ -268,49 +328,49 @@ export default function AccountPage() {
             />
             {usernameMsg ? <p style={labelStyle}>{usernameMsg}</p> : null}
             <button style={formStyles.button} disabled={savingUsername}>
-              {savingUsername ? 'Saving…' : 'Save username'}
+              {savingUsername ? t('saving') : t('saveUsername')}
             </button>
           </form>
 
           <div style={dividerStyle} />
 
           <form onSubmit={saveEmail} style={{ ...formStyles.form, gap: '0.5rem' }}>
-            <span style={labelStyle}>Change email</span>
+            <span style={labelStyle}>{t('changeEmail')}</span>
             <input
               style={formStyles.input}
               type="email"
-              placeholder="new@email.com"
+              placeholder={t('emailPlaceholder')}
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
               required
             />
             {emailMsg ? <p style={labelStyle}>{emailMsg}</p> : null}
-            <button style={formStyles.button}>Send confirmation</button>
+            <button style={formStyles.button}>{t('sendConfirmation')}</button>
           </form>
 
           <div style={dividerStyle} />
 
           <form onSubmit={savePassword} style={{ ...formStyles.form, gap: '0.5rem' }}>
-            <span style={labelStyle}>Change password</span>
+            <span style={labelStyle}>{t('changePassword')}</span>
             <input
               style={formStyles.input}
               type="password"
-              placeholder="New password"
+              placeholder={t('newPasswordPlaceholder')}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               minLength={6}
               required
             />
             {passwordMsg ? <p style={labelStyle}>{passwordMsg}</p> : null}
-            <button style={formStyles.button}>Update password</button>
+            <button style={formStyles.button}>{t('updatePassword')}</button>
           </form>
         </section>
 
         {/* --- Notification preferences --- */}
         <section style={cardStyle}>
-          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>Notifications</h2>
+          <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>{t('notifications')}</h2>
           {prefs === null ? (
-            <p style={labelStyle}>Loading…</p>
+            <p style={labelStyle}>{t('loading')}</p>
           ) : (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <label
@@ -321,7 +381,7 @@ export default function AccountPage() {
                   checked={prefs.emailEnabled}
                   onChange={(e) => savePrefs({ emailEnabled: e.target.checked })}
                 />
-                Email notifications
+                {t('emailNotifications')}
               </label>
               <label
                 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}
@@ -329,12 +389,18 @@ export default function AccountPage() {
                 <input
                   type="checkbox"
                   checked={prefs.pushEnabled}
-                  onChange={(e) => savePrefs({ pushEnabled: e.target.checked })}
+                  disabled={pushBusy}
+                  onChange={(e) => togglePush(e.target.checked)}
                 />
-                Push notifications
+                {t('pushNotifications')}
               </label>
+              {!pushSupported ? (
+                <p style={labelStyle}>
+                  {t('pushUnsupported')}
+                </p>
+              ) : null}
               <label style={{ display: 'grid', gap: '0.3rem' }}>
-                <span style={labelStyle}>New-pick delivery</span>
+                <span style={labelStyle}>{t('newPickDelivery')}</span>
                 <select
                   style={formStyles.input}
                   value={prefs.frequency}
@@ -344,8 +410,8 @@ export default function AccountPage() {
                     })
                   }
                 >
-                  <option value="instant">Instant — every pick</option>
-                  <option value="daily">Daily digest</option>
+                  <option value="instant">{t('instant')}</option>
+                  <option value="daily">{t('dailyDigest')}</option>
                 </select>
               </label>
               {prefsMsg ? <p style={labelStyle}>{prefsMsg}</p> : null}
@@ -355,31 +421,33 @@ export default function AccountPage() {
       </div>
 
       {/* --- Subscriptions --- */}
-      {profile.role === 'admin' ? (
+      {roleHasPermission(profile.role, 'user:manage') ? (
         <p>
           <Link href="/admin/users" style={{ color: 'var(--accent)' }}>
-            → Manage users
+            {t('manageUsers')}
           </Link>
         </p>
       ) : null}
 
       {profile.role !== 'tipster' ? (
         <>
-          <h2 style={{ marginTop: '2rem' }}>Your subscriptions</h2>
+          <h2 style={{ marginTop: '2rem' }}>{t('yourSubscriptions')}</h2>
       <p>
         <Link href="/account/subscriptions" style={{ color: 'var(--accent)' }}>
-          → Manage subscriptions
+          {t('manageSubscriptions')}
         </Link>
       </p>
       {subs === null ? (
-        <p style={{ color: 'var(--muted)' }}>Loading…</p>
+        <p style={{ color: 'var(--muted)' }}>{t('loading')}</p>
       ) : subs.length === 0 ? (
         <p style={{ color: 'var(--muted)' }}>
-          No active subscriptions.{' '}
-          <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
-            Browse tipsters
-          </Link>{' '}
-          to find a tipster.
+          {t.rich('noActiveSubs', {
+            link: (chunks) => (
+              <Link href="/tipsters" style={{ color: 'var(--accent)' }}>
+                {chunks}
+              </Link>
+            ),
+          })}
         </p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0 }}>
@@ -407,6 +475,33 @@ export default function AccountPage() {
         </>
       ) : null}
 
+      {/* --- Data & privacy (GDPR self-service) --- */}
+      <section style={{ ...cardStyle, marginTop: '2rem' }}>
+        <h2 style={{ marginTop: 0, fontSize: '1.1rem' }}>{t('dataPrivacy')}</h2>
+        <p style={labelStyle}>
+          {t('dataPrivacyBody')}
+        </p>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.6rem',
+            alignItems: 'center',
+            marginTop: '0.75rem',
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={downloadData}
+            disabled={exportBusy}
+          >
+            {exportBusy ? t('preparing') : t('exportMyData')}
+          </button>
+          {exportMsg ? <span style={labelStyle}>{exportMsg}</span> : null}
+        </div>
+      </section>
+
       <button
         onClick={logout}
         style={{
@@ -419,7 +514,7 @@ export default function AccountPage() {
           cursor: 'pointer',
         }}
       >
-        Sign out
+        {t('signOut')}
       </button>
     </main>
   );

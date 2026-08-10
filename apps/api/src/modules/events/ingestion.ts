@@ -18,6 +18,48 @@ export function parseIngestSports(raw: string | undefined): string[] {
 }
 
 /**
+ * Whether INGEST_SPORTS requests *every* in-season sport (`all` or `*`) rather
+ * than an explicit list. Fixtures (`/events`) are quota-free, so ingesting the
+ * whole catalog costs no vendor credits — odds/scores are only fetched later
+ * for events that actually have picks or are opened in detail.
+ */
+export function isIngestAll(raw: string | undefined): boolean {
+  const v = raw?.trim().toLowerCase();
+  return v === 'all' || v === '*';
+}
+
+/** Minimal provider-sport shape the resolver needs. */
+export interface IngestCatalogSport {
+  key: string;
+  active: boolean;
+  hasOutrights: boolean;
+}
+
+/**
+ * Resolve which sport keys to ingest. When INGEST_SPORTS is `all`/`*`, derive
+ * the list from the provider catalog (in-season sports only); outright/futures
+ * sports are excluded by default since they carry no head-to-head fixtures for
+ * grading (opt in with `includeOutrights`). Otherwise use the explicit list.
+ */
+export function resolveIngestSports(
+  raw: string | undefined,
+  catalog: readonly IngestCatalogSport[],
+  opts: { includeOutrights?: boolean } = {},
+): string[] {
+  if (isIngestAll(raw)) {
+    return [
+      ...new Set(
+        catalog
+          .filter((s) => s.active && (opts.includeOutrights || !s.hasOutrights))
+          .map((s) => s.key.trim())
+          .filter(Boolean),
+      ),
+    ];
+  }
+  return parseIngestSports(raw);
+}
+
+/**
  * Validate a provider event before it's persisted. Guards against missing ids,
  * blank team names and invalid/absent start times — the common shapes of bad
  * vendor data — so ingestion is resilient to partial upstream responses.

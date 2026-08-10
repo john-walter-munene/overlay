@@ -1,12 +1,12 @@
-import { Controller, Delete, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { PrivacyService } from './privacy.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import type { AuthUser } from '../../common/crypto';
 
 /**
- * GDPR data-subject-request endpoints (OB-085). Both routes act on the
- * authenticated caller only — a user can export or erase their own data.
+ * GDPR data-subject-request endpoint (OB-085). Acts on the authenticated
+ * caller only — a user can export their own data.
  */
 @Controller('privacy')
 @UseGuards(JwtAuthGuard)
@@ -17,11 +17,5 @@ export class PrivacyController {
   @Get('export')
   export(@CurrentUser() user: AuthUser) {
     return this.privacy.exportUser(user.userId);
-  }
-
-  /** Right to erasure: anonymize PII (append-only picks are preserved). */
-  @Delete('me')
-  erase(@CurrentUser() user: AuthUser) {
-    return this.privacy.eraseUser(user.userId);
   }
 }

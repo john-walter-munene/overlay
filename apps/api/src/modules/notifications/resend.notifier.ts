@@ -33,7 +33,7 @@ export class ResendNotifier implements Notifier {
   async sendEmail(msg: EmailMessage): Promise<void> {
     const resend = await this.resend();
     const from =
-      process.env.EMAIL_FROM ?? 'Overlay Bets <no-reply@overlay.bet>';
+      process.env.EMAIL_FROM ?? 'Overlay Picks <no-reply@overlaypicks.com>';
     const { error } = await resend.emails.send({
       from,
       to: msg.to,

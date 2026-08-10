@@ -17,6 +17,9 @@ export interface TipsterPayoutFields {
   payoutWalletChain: string | null;
   payoutMobileNumber: string | null;
   payoutMobileNetwork: string | null;
+  payoutBankAccount: string | null;
+  payoutBankCode: string | null;
+  payoutAccountName: string | null;
 }
 
 export interface ResolvedPayout {
@@ -67,6 +70,20 @@ export function resolvePayoutTarget(
               kind: 'mobile_money',
               phone: t.payoutMobileNumber,
               network: t.payoutMobileNetwork,
+            },
+          }
+        : null;
+    case 'paystack':
+      return nonEmpty(t.payoutBankAccount) &&
+        nonEmpty(t.payoutBankCode) &&
+        nonEmpty(t.payoutAccountName)
+        ? {
+            provider: 'paystack',
+            destination: {
+              kind: 'paystack',
+              accountNumber: t.payoutBankAccount,
+              bankCode: t.payoutBankCode,
+              accountName: t.payoutAccountName,
             },
           }
         : null;

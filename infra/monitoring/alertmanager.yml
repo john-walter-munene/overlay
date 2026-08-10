@@ -1,4 +1,4 @@
-# Overlay Bets — Alertmanager routing (OB-093).
+# Overlay Picks — Alertmanager routing (OB-093).
 #
 # Routes SLO alerts to the on-call so a breach pages a human (acceptance
 # criterion: "on-call notified on breach"). severity=page -> PagerDuty (24/7

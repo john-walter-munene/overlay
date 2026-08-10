@@ -1,6 +1,6 @@
 # Verified Tipster Marketplace — Product Spec & Path to Production
 
-> **Working name:** Overlay Bets
+> **Working name:** Overlay Picks
 > **Status:** Walking skeleton implemented end-to-end; hardening for production (see `PROD-READINESS-BACKLOG.md`).
 > **Last updated:** 2026-07-16
 

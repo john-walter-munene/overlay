@@ -1,8 +1,14 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  type MiddlewareConsumer,
+  type NestModule,
+} from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaService } from './prisma.service';
 import { globalThrottleRule } from './common/throttling';
+import { CacheModule } from './common/cache/cache.module';
+import { CorrelationMiddleware } from './common/logging/correlation.middleware';
 import { AuthModule } from './modules/auth/auth.module';
 import { HealthModule } from './modules/health/health.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
@@ -13,11 +19,14 @@ import { EventsModule } from './modules/events/events.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { ArticlesModule } from './modules/articles/articles.module';
 import { FreeTipsModule } from './modules/free-tips/free-tips.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { ExportsModule } from './modules/exports/exports.module';
+import { NewsletterModule } from './modules/newsletter/newsletter.module';
 import { FollowModule } from './modules/follows/follow.module';
 import { SearchModule } from './modules/search/search.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
@@ -34,6 +43,8 @@ import { SettlementModule } from './workers/settlement.module';
     // Sensitive routes (auth, pick submission, checkout, payout runs) tighten
     // this further via @Throttle overrides. All limits are env-configurable.
     ThrottlerModule.forRoot([globalThrottleRule()]),
+    // OB-130: process-wide Redis caching layer for hot reads (global).
+    CacheModule,
     AuthModule,
     HealthModule,
     MetricsModule,
@@ -44,11 +55,14 @@ import { SettlementModule } from './workers/settlement.module';
     SubscriptionsModule,
     PayoutsModule,
     NotificationsModule,
+    AnnouncementsModule,
     ArticlesModule,
     FreeTipsModule,
     AdminModule,
     ReportsModule,
     FeedbackModule,
+    ExportsModule,
+    NewsletterModule,
     FollowModule,
     SearchModule,
     PrivacyModule,
@@ -61,4 +75,10 @@ import { SettlementModule } from './workers/settlement.module';
   ],
   exports: [PrismaService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // Tag every request with a correlation id (OB-091) before any other handler
+  // runs, so all downstream log lines share the request's `x-request-id`.
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CorrelationMiddleware).forRoutes('*');
+  }
+}

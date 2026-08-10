@@ -232,3 +232,63 @@ export function gradeMarket(
       return 'void';
   }
 }
+
+/**
+ * Is a market/selection *already irreversibly decided* by the current in-play
+ * score? (OB-039 — live picks.)
+ *
+ * A live pick may only be placed on an outcome that is still genuinely open.
+ * Since goals only ever accumulate, some markets become a foregone conclusion
+ * mid-game — you can't bet Over 2.5 once 3 goals are already in, BTTS once both
+ * sides have scored, or a correct score the game has already run past. Placing a
+ * pick on such a market is a settled bet, not a wager, so the timing gate
+ * rejects it.
+ *
+ * Returns `true` only when the final outcome is fixed regardless of the rest of
+ * the game (won *or* lost). Winner-based markets (1X2, moneyline, dnb,
+ * double_chance, spreads) and parity (odd_even) can always still flip while the
+ * game is live, so they are never treated as decided in-play. Half-time /
+ * period markets are not currently gradeable (not in {@link SUPPORTED_MARKETS})
+ * and so are out of scope here.
+ */
+export function isMarketDecidedInPlay(
+  market: string,
+  selection: string,
+  homeScore: number,
+  awayScore: number,
+): boolean {
+  if (Number.isNaN(homeScore) || Number.isNaN(awayScore)) return false;
+
+  switch (market) {
+    case 'totals': {
+      const p = parseTotalSelection(selection);
+      if (!p) return false;
+      // Goals only accumulate: OVER can no longer lose once it has cleanly won;
+      // UNDER can no longer win once the line has already been passed.
+      const current = gradeMarket(market, selection, homeScore, awayScore);
+      return p.side === 'over' ? current === 'won' : current === 'lost';
+    }
+
+    case 'team_totals': {
+      const p = parseTeamTotalSelection(selection);
+      if (!p) return false;
+      const current = gradeMarket(market, selection, homeScore, awayScore);
+      return p.side === 'over' ? current === 'won' : current === 'lost';
+    }
+
+    case 'btts': {
+      // Once both teams have scored, both 'yes' (won) and 'no' (lost) are fixed.
+      return homeScore > 0 && awayScore > 0;
+    }
+
+    case 'correct_score': {
+      const cs = parseCorrectScore(selection);
+      if (!cs) return false;
+      // The exact final score is unreachable once either side has passed it.
+      return homeScore > cs.home || awayScore > cs.away;
+    }
+
+    default:
+      return false;
+  }
+}

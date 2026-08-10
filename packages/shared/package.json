@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./rbac": {
+      "types": "./src/rbac.ts",
+      "default": "./src/rbac.ts"
+    },
     "./tipster-profile": {
       "types": "./src/tipster-profile.ts",
       "default": "./src/tipster-profile.ts"

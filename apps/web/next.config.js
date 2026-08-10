@@ -1,3 +1,8 @@
+const createNextIntlPlugin = require('next-intl/plugin');
+
+// Enable next-intl with cookie-based locale selection (no i18n URL routing).
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -16,4 +21,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withNextIntl(nextConfig);

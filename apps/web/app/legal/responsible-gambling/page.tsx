@@ -2,9 +2,9 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Responsible Gambling — Overlay Bets',
+  title: 'Responsible Gambling — Overlay Picks',
   description:
-    'Responsible-gambling guidance and support resources. Overlay Bets is an information and analytics service only — we take no bets and accept no wagers.',
+    'Responsible-gambling guidance and support resources. Overlay Picks is an information and analytics service only — we take no bets and accept no wagers.',
   alternates: { canonical: '/legal/responsible-gambling' },
 };
 
@@ -44,7 +44,7 @@ export default function ResponsibleGamblingPage() {
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
         <Link href="/" style={{ color: 'var(--accent)' }}>
-          ← Overlay Bets
+          ← Overlay Picks
         </Link>
       </p>
       <h1 style={{ fontSize: '2.1rem', marginBottom: '0.25rem' }}>
@@ -67,7 +67,7 @@ export default function ResponsibleGamblingPage() {
           18+. Gambling can be addictive — please play responsibly.
         </strong>
         <p style={{ color: 'var(--fg)', margin: '0.5rem 0 0' }}>
-          Overlay Bets is an information, analytics and tipster-marketplace
+          Overlay Picks is an information, analytics and tipster-platform
           service. We do not accept, place, broker or settle wagers of any kind.
           If you choose to bet with a third-party operator, only stake what you
           can afford to lose.

@@ -17,6 +17,7 @@ import { CurrencyService } from '../../integrations/fx/currency.service';
 import type { PaymentProviderRegistry } from '../../integrations/payments/payment-provider.registry';
 import type {
   PaymentMethodId,
+  PayoutEvent,
   SubscriptionEvent,
 } from '../../integrations/payments/payment-provider.interface';
 import {
@@ -37,8 +38,14 @@ export class SubscriptionsService {
   ) {}
 
   /** Payment methods enabled across all wired providers (for the UI picker). */
-  listPaymentMethods(): { methods: PaymentMethodId[] } {
-    return { methods: this.registry.methods() };
+  listPaymentMethods(): { methods: PaymentMethodId[]; billingPortal: boolean } {
+    return {
+      methods: this.registry.methods(),
+      // Whether the subscriber can manage/cancel via a hosted billing portal
+      // (Stripe). Pay-per-period providers (Paystack, crypto, mobile money) have
+      // none — access simply lapses — so the UI hides the “manage billing” button.
+      billingPortal: this.registry.default.capabilities.billingPortal,
+    };
   }
 
   /**
@@ -159,13 +166,37 @@ export class SubscriptionsService {
     // OB-093: a null event means the signature/payload failed verification —
     // the webhook-failure SLI. Successful applies are counted as "handled".
     const evt = provider.parseWebhook(rawBody, headers);
-    if (!evt) {
-      webhookEventsTotal.inc({ result: 'failed' });
-      return { handled: false };
+    if (evt) {
+      await this.upsertFromEvent(evt);
+      webhookEventsTotal.inc({ result: 'handled' });
+      return { handled: true };
     }
-    await this.upsertFromEvent(evt);
-    webhookEventsTotal.inc({ result: 'handled' });
-    return { handled: true };
+
+    // Providers post async payout results to the *same* webhook URL as charges,
+    // so fall through to transfer reconciliation before counting a failure.
+    const payoutEvt = provider.parseTransferWebhook?.(rawBody, headers);
+    if (payoutEvt) {
+      await this.applyTransferEvent(payoutEvt);
+      webhookEventsTotal.inc({ result: 'handled' });
+      return { handled: true };
+    }
+
+    webhookEventsTotal.inc({ result: 'failed' });
+    return { handled: false };
+  }
+
+  /**
+   * Reconcile a payout with a provider's async transfer outcome. A payout is
+   * marked 'paid' optimistically when the transfer is accepted; a terminal
+   * failure flips it to 'failed', which releases the reserved balance (failed
+   * payouts don't count against a tipster's available revenue). Correlated by
+   * the provider transfer id stored on the payout (`Payout.stripeTransferId`).
+   */
+  private async applyTransferEvent(evt: PayoutEvent) {
+    await this.prisma.payout.updateMany({
+      where: { stripeTransferId: evt.reference },
+      data: { status: evt.status },
+    });
   }
 
   private async upsertFromEvent(evt: SubscriptionEvent) {
@@ -260,16 +291,46 @@ export class SubscriptionsService {
       where: { userId },
       include: {
         tipster: {
-          select: { displayName: true, user: { select: { username: true } } },
+          select: {
+            userId: true,
+            displayName: true,
+            country: true,
+            subscriptionPriceCents: true,
+            billingInterval: true,
+            user: { select: { username: true, avatarUrl: true } },
+            stats: true,
+          },
         },
       },
     });
+
+    // Which of these the user also follows for free — so the UI can offer a
+    // follow toggle alongside the paid relationship.
+    const follows = await this.prisma.follow.findMany({
+      where: { userId },
+      select: { tipsterId: true },
+    });
+    const following = new Set(follows.map((f) => f.tipsterId));
+
     return subs.map((s) => ({
       id: s.id,
       tipsterId: s.tipsterId,
       tipsterName: s.tipster?.displayName ?? s.tipster?.user?.username ?? null,
+      avatarUrl: s.tipster?.user?.avatarUrl ?? null,
+      country: s.tipster?.country ?? null,
+      subscriptionPriceCents: s.tipster?.subscriptionPriceCents ?? 0,
+      billingInterval: s.tipster?.billingInterval ?? 'monthly',
       status: s.status,
       currentPeriodEnd: s.currentPeriodEnd,
+      isFollowing: following.has(s.tipsterId),
+      stats: s.tipster?.stats
+        ? {
+            yield: s.tipster.stats.yield,
+            clvAvg: s.tipster.stats.clvAvg,
+            winRate: s.tipster.stats.winRate,
+            sampleSize: s.tipster.stats.sampleSize,
+          }
+        : null,
     }));
   }
 

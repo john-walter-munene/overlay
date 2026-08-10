@@ -4,7 +4,7 @@
 param(
   [string]$Repo = 'CognitronTechnologies/overlay',
   [string]$ProjectOwner = 'CognitronTechnologies',
-  [string]$ProjectTitle = 'Ship Overlay Bets V1',
+  [string]$ProjectTitle = 'Ship Overlay Picks V1',
   [string]$BacklogPath = "$PSScriptRoot/../docs/PROD-READINESS-BACKLOG.md",
   [int]$MinId = 150,
   [int]$MaxId = 159,

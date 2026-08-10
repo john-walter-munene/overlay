@@ -1,18 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
-import {
-  buildUserExport,
-  tipsterErasureData,
-  userErasureData,
-  type UserExport,
-} from './privacy';
+import { buildUserExport, type UserExport } from './privacy';
 
 /**
- * Data-subject-request flows for GDPR compliance (OB-085): self-service export
- * (right of access / portability) and erasure (right to be forgotten).
- *
- * Erasure anonymizes PII in place rather than hard-deleting, so the append-only
- * `picks` store and financial records stay intact (docs/PRIVACY.md).
+ * Data-subject-request flow for GDPR compliance (OB-085): self-service export
+ * (right of access / portability).
  */
 @Injectable()
 export class PrivacyService {
@@ -85,43 +77,5 @@ export class PrivacyService {
       : [];
 
     return buildUserExport({ user, tipster, picks, subscriptions, articles });
-  }
-
-  /**
-   * Erase (anonymize) the requesting user's PII. The append-only `picks` rows —
-   * including their hash/nonce/timestamp integrity fields — are intentionally
-   * left untouched; only the mutable `User`/`Tipster` PII is scrubbed. The
-   * action is recorded in the audit log for accountability.
-   */
-  async eraseUser(userId: string): Promise<{ erased: true; userId: string }> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
-
-    await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: userErasureData(userId),
-      });
-
-      const tipster = await tx.tipster.findUnique({ where: { userId } });
-      if (tipster) {
-        await tx.tipster.update({
-          where: { userId },
-          data: tipsterErasureData(),
-        });
-      }
-
-      await tx.auditLog.create({
-        data: {
-          actor: `user:${userId}`,
-          action: 'user.erased',
-          entity: 'User',
-          entityId: userId,
-          payload: { tipster: Boolean(tipster) },
-        },
-      });
-    });
-
-    return { erased: true, userId };
   }
 }

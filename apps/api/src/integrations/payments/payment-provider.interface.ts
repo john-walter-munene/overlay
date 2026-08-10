@@ -53,12 +53,21 @@ export interface TransferResult {
 /**
  * Where a tipster is paid out, tagged by rail. Each provider accepts only the
  * destination kind(s) it settles (Stripe → connected account, crypto → wallet,
- * mobile money → phone + network).
+ * mobile money → phone + network, Paystack → bank account).
  */
 export type PayoutDestination =
   | { kind: 'stripe'; accountId: string }
   | { kind: 'crypto'; address: string; chain: string }
-  | { kind: 'mobile_money'; phone: string; network: string };
+  | { kind: 'mobile_money'; phone: string; network: string }
+  | {
+      kind: 'paystack';
+      /** Local bank account number (NUBAN for Nigeria). */
+      accountNumber: string;
+      /** Paystack bank code for the account's bank. */
+      bankCode: string;
+      /** Account holder name, as registered with the bank. */
+      accountName: string;
+    };
 
 /** A normalized subscription lifecycle event from a provider webhook. */
 export interface SubscriptionEvent {
@@ -86,11 +95,33 @@ export interface SubscriptionEvent {
   occurredAt?: Date;
 }
 
+/** A normalized payout/transfer lifecycle event from a provider webhook. */
+export interface PayoutEvent {
+  /** Terminal outcome of the transfer. */
+  status: 'paid' | 'failed';
+  /**
+   * Provider transfer identifier stored on the Payout when the transfer was
+   * initiated (Payout.stripeTransferId) — Paystack `transfer_code`, Flutterwave
+   * transfer reference — used to correlate this event back to the payout row.
+   */
+  reference: string;
+  /** Name of the provider that produced this event. */
+  provider: string;
+}
+
 export interface PaymentProvider {
   readonly name: string;
 
   /** What this provider supports (methods, recurring, payouts, portal). */
   readonly capabilities: ProviderCapabilities;
+
+  /**
+   * Whether this provider can currently start a checkout — i.e. it has its keys
+   * configured, or a dev fallback is available (non-production). Used to filter
+   * the payment-method picker so it never offers a method whose provider isn't
+   * usable. Optional; treated as available when not implemented.
+   */
+  isAvailable?(): boolean;
 
   /** Start a subscription checkout for a user subscribing to a tipster. */
   createSubscriptionCheckout(params: {
@@ -135,4 +166,16 @@ export interface PaymentProvider {
     amountCents: number;
     idempotencyKey: string;
   }): Promise<TransferResult>;
+
+  /**
+   * Verify + normalize a raw *transfer/payout* webhook into a PayoutEvent, or
+   * null if it isn't a transfer event we act on. Providers settle payouts
+   * asynchronously and post the final state to the **same** webhook URL as
+   * charges, so this runs as a fallback when {@link parseWebhook} yields no
+   * subscription event. Optional — only providers with async payouts implement it.
+   */
+  parseTransferWebhook?(
+    rawBody: string,
+    headers: Record<string, string>,
+  ): PayoutEvent | null;
 }

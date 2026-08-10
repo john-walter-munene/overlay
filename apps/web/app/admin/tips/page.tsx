@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { todayIsoDate } from '@overlay/shared/daily-tips';
+import { roleHasPermission } from '@overlay/shared/rbac';
 import { authFetch, getProfile } from '../../../lib/auth';
+import {
+  discoverEvents,
+  getEventDetail,
+  getEventMarkets,
+  listProviderSports,
+  type EventSummary,
+  type MarketInfo,
+  type MarketOdds,
+  type ProviderSport,
+} from '../../../lib/events';
 
 interface ManagedTip {
   id: string;
@@ -83,6 +94,18 @@ export default function AdminTipsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // Live-event assist: pull real fixtures/markets/odds like the tipster form.
+  const [catalog, setCatalog] = useState<ProviderSport[]>([]);
+  const [pickerSport, setPickerSport] = useState('');
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [events, setEvents] = useState<EventSummary[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [eventMarkets, setEventMarkets] = useState<MarketOdds[]>([]);
+  const [marketInfo, setMarketInfo] = useState<MarketInfo[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [loadingOdds, setLoadingOdds] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -104,7 +127,7 @@ export default function AdminTipsPage() {
         router.replace('/login');
         return;
       }
-      if (profile.role !== 'admin') {
+      if (!roleHasPermission(profile.role, 'content:moderate')) {
         router.replace('/account');
         return;
       }
@@ -114,6 +137,93 @@ export default function AdminTipsPage() {
   }, [router, load]);
 
   const set = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
+
+  // Load the provider sport catalog once authorized (for the event picker).
+  useEffect(() => {
+    if (authorized) listProviderSports().then(setCatalog);
+  }, [authorized]);
+
+  // Debounce the event search box.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(pickerQuery), 300);
+    return () => clearTimeout(t);
+  }, [pickerQuery]);
+
+  // Search upcoming events whenever the sport/search filter changes.
+  useEffect(() => {
+    if (!authorized) return;
+    if (!pickerSport && !debouncedQuery) {
+      setEvents([]);
+      return;
+    }
+    let alive = true;
+    setLoadingEvents(true);
+    discoverEvents({
+      sport: pickerSport || undefined,
+      q: debouncedQuery || undefined,
+      status: 'upcoming',
+      limit: 15,
+    })
+      .then((p) => {
+        if (alive) setEvents(p.events);
+      })
+      .finally(() => {
+        if (alive) setLoadingEvents(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [authorized, pickerSport, debouncedQuery]);
+
+  /** Select a live event → fill match/sport/league and load its markets+odds. */
+  async function selectEvent(ev: EventSummary) {
+    setSelectedEventId(ev.id);
+    set({
+      sport: ev.sportGroup ?? ev.sport,
+      league: ev.league ?? '',
+      match: `${ev.home} vs ${ev.away}`,
+    });
+    setLoadingOdds(true);
+    try {
+      const [detail, inv] = await Promise.all([
+        getEventDetail(ev.id),
+        getEventMarkets(ev.id),
+      ]);
+      const markets = detail?.markets ?? [];
+      setEventMarkets(markets);
+      setMarketInfo(inv);
+      const first = markets[0];
+      if (first) {
+        const [sel, price] = Object.entries(first.prices)[0] ?? ['', 0];
+        set({ market: first.market, selection: sel, odds: price ? String(price) : '' });
+      }
+    } finally {
+      setLoadingOdds(false);
+    }
+  }
+
+  /** Pick a market from the loaded event → default to its best line. */
+  function pickMarket(market: string) {
+    const prices = eventMarkets.find((m) => m.market === market)?.prices;
+    if (prices) {
+      const [sel, price] = Object.entries(prices)[0] ?? ['', 0];
+      set({ market, selection: sel, odds: price ? String(price) : '' });
+    } else {
+      set({ market });
+    }
+  }
+
+  /** Pick a selection → auto-fill the live odds for it. */
+  function pickSelection(sel: string) {
+    const price = eventMarkets.find((m) => m.market === draft.market)?.prices[sel];
+    set({ selection: sel, odds: price ? String(price) : draft.odds });
+  }
+
+  function clearAssist() {
+    setSelectedEventId(null);
+    setEventMarkets([]);
+    setMarketInfo([]);
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -142,6 +252,7 @@ export default function AdminTipsPage() {
       if (!res.ok) throw new Error(`Save failed (${res.status})`);
       setNotice(draft.id ? 'Tip updated.' : 'Tip added.');
       setDraft(emptyDraft());
+      clearAssist();
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
@@ -167,10 +278,10 @@ export default function AdminTipsPage() {
   return (
     <main style={{ maxWidth: 860, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <h1 style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>
-        Free Daily Tips
+        Free Daily Picks
       </h1>
       <p style={{ color: MUTED, marginTop: 0 }}>
-        Curate the public “bets of the day” shown on{' '}
+        Curate the public “picks of the day” shown on{' '}
         <a href="/tips" style={{ color: 'var(--accent)' }}>
           /tips
         </a>
@@ -179,6 +290,154 @@ export default function AdminTipsPage() {
 
       {error ? <p style={{ color: 'var(--danger)' }}>{error}</p> : null}
       {notice ? <p style={{ color: 'var(--success)' }}>{notice}</p> : null}
+
+      <section
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          padding: '1.1rem',
+          margin: '1.5rem 0',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+          <strong style={{ fontSize: '0.95rem' }}>Pull from live events</strong>
+          <span style={{ color: MUTED, fontSize: '0.8rem' }}>
+            Fills match, market, selection &amp; odds from real data — all still editable below.
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.75rem' }}>
+          <select
+            aria-label="Filter by sport"
+            value={pickerSport}
+            onChange={(e) => setPickerSport(e.target.value)}
+            style={{ ...inputStyle, width: 'auto', minWidth: 180 }}
+          >
+            <option value="">All sports</option>
+            {[...new Set(catalog.filter((s) => s.active).map((s) => s.group))]
+              .sort()
+              .map((group) => (
+                <optgroup key={group} label={group}>
+                  {catalog
+                    .filter((s) => s.active && s.group === group)
+                    .map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {s.title}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
+          </select>
+          <input
+            type="search"
+            placeholder="Search team or league…"
+            value={pickerQuery}
+            onChange={(e) => setPickerQuery(e.target.value)}
+            style={{ ...inputStyle, flex: '1 1 200px' }}
+            aria-label="Search events"
+          />
+        </div>
+
+        {loadingEvents ? (
+          <p style={{ color: MUTED, marginBottom: 0 }}>Searching…</p>
+        ) : events.length > 0 && !selectedEventId ? (
+          <ul style={{ listStyle: 'none', padding: 0, margin: '0.75rem 0 0', display: 'grid', gap: '0.35rem' }}>
+            {events.map((ev) => (
+              <li key={ev.id}>
+                <button
+                  type="button"
+                  onClick={() => selectEvent(ev)}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    padding: '0.5rem 0.7rem',
+                    color: 'inherit',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  <strong>{ev.home}</strong> v <strong>{ev.away}</strong>
+                  <span style={{ color: MUTED }}>
+                    {'  '}· {[ev.sportGroup, ev.league].filter(Boolean).join(' · ') || ev.sport} ·{' '}
+                    {new Date(ev.startTime).toLocaleString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {selectedEventId ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.9rem' }}>
+                Selected: <strong>{draft.match || 'event'}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={clearAssist}
+                style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Change event
+              </button>
+            </div>
+            {loadingOdds ? (
+              <p style={{ color: MUTED }}>Loading markets &amp; odds…</p>
+            ) : eventMarkets.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '0.5rem', alignItems: 'end' }}>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                  <span style={{ color: MUTED, fontSize: '0.8rem' }}>Market</span>
+                  <select
+                    value={draft.market}
+                    onChange={(e) => pickMarket(e.target.value)}
+                    style={{ ...inputStyle, width: 'auto', minWidth: 140 }}
+                  >
+                    {eventMarkets.map((m) => (
+                      <option key={m.market} value={m.market}>
+                        {m.market}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'grid', gap: '0.25rem' }}>
+                  <span style={{ color: MUTED, fontSize: '0.8rem' }}>Selection @ odds</span>
+                  <select
+                    value={draft.selection}
+                    onChange={(e) => pickSelection(e.target.value)}
+                    style={{ ...inputStyle, width: 'auto', minWidth: 180 }}
+                  >
+                    <option value="">Choose a line…</option>
+                    {Object.entries(
+                      eventMarkets.find((m) => m.market === draft.market)?.prices ?? {},
+                    ).map(([sel, price]) => (
+                      <option key={sel} value={sel}>
+                        {sel} @ {price.toFixed(2)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <p style={{ color: MUTED }}>
+                No featured odds for this event yet — fill the market, selection and odds manually below.
+              </p>
+            )}
+            {marketInfo.length > 0 ? (
+              <p style={{ color: MUTED, fontSize: '0.78rem', marginBottom: 0 }}>
+                {marketInfo.filter((m) => m.pickable).length} gradeable market(s) ·{' '}
+                {marketInfo.filter((m) => !m.pickable).length} view-only (props/period) available on this event.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       <form
         onSubmit={save}

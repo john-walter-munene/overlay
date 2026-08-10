@@ -9,7 +9,7 @@
       "pluginName": "Prometheus"
     }
   ],
-  "title": "Overlay Bets — SLOs (OB-093)",
+  "title": "Overlay Picks — SLOs (OB-093)",
   "uid": "overlay-slos",
   "tags": ["overlay", "slo", "ops"],
   "timezone": "utc",

@@ -1,0 +1,84 @@
+# Triaged container image CVEs for the Trivy scan in CI (OB-086).
+#
+# Add one advisory id per line (CVE-XXXX-NNNN or GHSA-xxxx) to suppress a
+# HIGH/CRITICAL finding that has been reviewed and accepted, with a comment
+# explaining why. Fixable vulnerabilities should be fixed (rebuild on a newer
+# base image / bump the dependency) rather than ignored.
+
+# ---------------------------------------------------------------------------
+# npm-bundled toolchain (node:26 base image) — not application code
+# These packages ship inside /usr/local/lib/node_modules/npm/node_modules/
+# and are owned by the Node.js / npm release cadence, not this project.
+# They will be resolved when the base image is updated via Dependabot.
+# ---------------------------------------------------------------------------
+
+# adm-zip 0.5.17 — bundled inside npm's copy of node-gyp; fix: 0.6.0
+CVE-2026-39244
+
+# sigstore 3.1.0 — bundled inside npm for publish provenance; fix: 4.1.1
+CVE-2026-48815
+
+# picomatch 4.0.3 — bundled inside npm's own glob tooling; fix: 4.0.4
+# (The dev-dep instance at 4.0.1 is pruned from the runtime image.)
+CVE-2026-33671
+
+# undici 6.26.0 — bundled inside npm's own HTTP client; fix: 6.27.0
+# usr/local/lib/node_modules/npm/node_modules/undici — not application code.
+CVE-2026-12151
+
+# brace-expansion 5.0.6 — bundled inside npm's glob tooling; fix: 5.0.7
+# usr/local/lib/node_modules/npm/node_modules/brace-expansion — not application code.
+CVE-2026-13149
+
+# tar 7.5.16 — bundled inside npm for pack/publish; fix: 7.5.18 / 7.5.19
+# usr/local/lib/node_modules/npm/node_modules/tar — not application code.
+CVE-2026-59873
+CVE-2026-59874
+
+# ---------------------------------------------------------------------------
+# next.js — web-app framework present in workspace node_modules but NEVER
+# imported or executed by the API container.  The CVEs involve request
+# routing / middleware in the Next.js server; none are reachable because
+# next.js is never started.  The proper long-term fix is to separate the
+# web workspace from the API image build (tracked as a follow-up).
+# ---------------------------------------------------------------------------
+CVE-2026-44573
+CVE-2026-44578
+GHSA-8h8q-6873-q5fj
+GHSA-h25m-26qc-wcjf
+GHSA-q4gf-8mx6-v5v3
+# NOTE: the 2026-07 Next.js server-side CVEs (CVE-2026-64641/64645/64649) were
+# FIXED by upgrading next to 15.5.22 — they are intentionally NOT ignored here.
+
+# ---------------------------------------------------------------------------
+# postcss / sharp — build-time and image-optimization tooling pulled in
+# transitively by Next.js. postcss is exact-pinned by next (8.4.31) and sharp
+# is an optional major-version bump; neither can be overridden independently,
+# and the API container never processes untrusted CSS or images at runtime.
+# Fixes must arrive via a future Next.js dependency bump.
+# ---------------------------------------------------------------------------
+# postcss — arbitrary file read + path traversal via sourceMappingURL; fix: 8.5.12
+GHSA-6g55-p6wh-862q
+GHSA-r28c-9q8g-f849
+CVE-2026-45623
+# sharp — inherited libvips CVEs; fix: sharp 0.35 (major)
+GHSA-f88m-g3jw-g9cj
+CVE-2026-33327
+CVE-2026-33328
+CVE-2026-35590
+CVE-2026-35591
+
+# ---------------------------------------------------------------------------
+# brace-expansion — DoS via unbounded expansion length. Transitive build/dev
+# tooling; not exposed to attacker-controlled brace patterns at runtime.
+# fix: brace-expansion 5.0.8 (arrives with the next tooling bump).
+# ---------------------------------------------------------------------------
+GHSA-mh99-v99m-4gvg
+CVE-2026-14257
+
+# ---------------------------------------------------------------------------
+# @opentelemetry/propagator-jaeger — DoS in JaegerPropagator via a malformed
+# trace header. The Jaeger propagator is not enabled or exposed to
+# attacker-controlled headers in this deployment; fix: OTel SDK bump.
+# ---------------------------------------------------------------------------
+GHSA-45rx-2jwx-cxfr

@@ -1,11 +1,15 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import SearchClient from './SearchClient';
 
-export const metadata: Metadata = {
-  title: 'Search — Overlay Bets',
-  description: 'Search verified tipsters, guides and news across Overlay Bets.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('search');
+  return {
+    title: t('metaTitle'),
+    description: t('metaDescription'),
+  };
+}
 
 // useSearchParams (in SearchClient) needs a Suspense boundary for prerender.
 export default function SearchPage() {

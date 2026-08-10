@@ -13,6 +13,9 @@ function fields(over: Partial<TipsterPayoutFields> = {}): TipsterPayoutFields {
     payoutWalletChain: null,
     payoutMobileNumber: null,
     payoutMobileNetwork: null,
+    payoutBankAccount: null,
+    payoutBankCode: null,
+    payoutAccountName: null,
     ...over,
   };
 }
@@ -59,6 +62,35 @@ test('mobile money method resolves to a phone destination', () => {
       network: 'mpesa',
     },
   });
+});
+
+test('paystack method resolves to a bank destination', () => {
+  const r = resolvePayoutTarget(
+    fields({
+      payoutMethod: 'paystack',
+      payoutBankAccount: '0001234567',
+      payoutBankCode: '058',
+      payoutAccountName: 'Ada Tipster',
+    }),
+  );
+  assert.deepEqual(r, {
+    provider: 'paystack',
+    destination: {
+      kind: 'paystack',
+      accountNumber: '0001234567',
+      bankCode: '058',
+      accountName: 'Ada Tipster',
+    },
+  });
+});
+
+test('paystack with incomplete bank details returns null', () => {
+  assert.equal(
+    resolvePayoutTarget(
+      fields({ payoutMethod: 'paystack', payoutBankAccount: '0001234567' }),
+    ),
+    null,
+  );
 });
 
 test('incomplete details for the chosen method return null', () => {

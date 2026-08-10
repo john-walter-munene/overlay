@@ -1,4 +1,4 @@
-# Overlay Bets
+# Overlay Picks
 
 > Verified sports tipster marketplace. Picks are cryptographically locked before kickoff, so track records can't be faked. Bettors follow tipsters ranked by **real** ROI and **Closing Line Value (CLV)** — not screenshots.
 
@@ -10,7 +10,7 @@ An **overlay** is a bet where the offered odds are higher than the true probabil
 
 ## Why this exists
 
-Most tipster sites are unaccountable — losing picks get deleted, records are cherry-picked screenshots, and "guaranteed wins" are scams. Overlay Bets makes every pick **immutable and independently gradable**:
+Most tipster sites are unaccountable — losing picks get deleted, records are cherry-picked screenshots, and "guaranteed wins" are scams. Overlay Picks makes every pick **immutable and independently gradable**:
 
 - Picks are hash-locked + timestamped **before** the event starts.
 - Settlement is automated from a sports-data API — tipsters can't edit results.
@@ -29,6 +29,7 @@ We sell **data, tools, and picks** — we do **not** take bets (keeps us out of 
 | `docs/ROADMAP.md` | Phased delivery plan (Phase 0–4) with exit criteria |
 | `docs/NAMING.md` | Branding rationale + name/domain candidates |
 | `docs/VENDOR-SPIKE.md` | Sports-data vendor evaluation brief (the critical first task) |
+| `docs/DEPLOY.md` | Deployment runbook — provision Postgres+Redis, deploy API+worker, migrate, smoke test |
 
 ---
 

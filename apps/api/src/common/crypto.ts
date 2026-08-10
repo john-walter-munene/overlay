@@ -1,9 +1,10 @@
 import { createHmac } from 'node:crypto';
+import type { Role } from '@overlay/shared';
 
 /** Authenticated principal attached to requests by JwtAuthGuard. */
 export interface AuthUser {
   userId: string;
-  role: 'user' | 'tipster' | 'admin';
+  role: Role;
   /** Present when role === 'tipster'. */
   tipsterId?: string;
 }

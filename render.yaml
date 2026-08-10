@@ -1,4 +1,4 @@
-# Render Blueprint for Overlay Bets staging (OB-101 / OB-105).
+# Render Blueprint for Overlay Picks staging (OB-101 / OB-105).
 # Deploy: Render Dashboard -> New -> Blueprint -> pick this repo/branch.
 # Provisions: Postgres + Redis + API (web) + settlement worker, all from the
 # root Dockerfile. Migrations run via preDeployCommand before each API deploy.
@@ -72,6 +72,18 @@ services:
       # PAYMENTS_PROVIDER to a real provider (+ its keys) before taking money.
       - key: ALLOW_MOCK_PAYMENTS
         value: "true"
+      # Paystack (card checkout + tipster bank payouts). To go live, set
+      # PAYMENTS_PROVIDER=paystack, remove ALLOW_MOCK_PAYMENTS, and set the
+      # secret key + charge currency in the dashboard (sync:false = never
+      # committed). The same secret verifies webhooks (HMAC-SHA512).
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_CURRENCY
+        sync: false
+      # Platform's cut of subscription revenue (0.20 = 20%); the rest is the
+      # tipster's net payout. Overrides the app default if set.
+      - key: PLATFORM_FEE_RATE
+        value: "0.20"
       # Sports data (OB-045). Provider + key + ingested leagues are set in the
       # dashboard (sync:false) so the blueprint doesn't reset them to mock.
       # The embedded worker (EMBED_WORKER=true) ingests these on a schedule.

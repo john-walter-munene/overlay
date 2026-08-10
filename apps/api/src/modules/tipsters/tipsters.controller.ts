@@ -52,14 +52,18 @@ class UpdateTipsterDto {
   @IsOptional() @IsString() @MaxLength(120) socialX?: string;
   @IsOptional() @IsString() @MaxLength(120) socialInstagram?: string;
   @IsOptional() @IsString() @MaxLength(120) socialTelegram?: string;
-  @IsOptional() @IsIn(['stripe', 'crypto', 'mobile_money']) payoutMethod?:
+  @IsOptional() @IsIn(['stripe', 'paystack', 'crypto', 'mobile_money']) payoutMethod?:
     | 'stripe'
+    | 'paystack'
     | 'crypto'
     | 'mobile_money';
   @IsOptional() @IsString() @MaxLength(120) payoutWalletAddress?: string;
   @IsOptional() @IsString() @MaxLength(40) payoutWalletChain?: string;
   @IsOptional() @IsString() @MaxLength(40) payoutMobileNumber?: string;
   @IsOptional() @IsString() @MaxLength(40) payoutMobileNetwork?: string;
+  @IsOptional() @IsString() @MaxLength(40) payoutBankAccount?: string;
+  @IsOptional() @IsString() @MaxLength(20) payoutBankCode?: string;
+  @IsOptional() @IsString() @MaxLength(120) payoutAccountName?: string;
 }
 
 class SubmitVerificationDto {
@@ -76,6 +80,22 @@ export class TipstersController {
   @Get('marketplace')
   marketplace(@Query() query: RawMarketplaceQuery) {
     return this.tipsters.listMarketplace(query);
+  }
+
+  /** Active tipster ids for sitemap / ISR static generation (OB-131). */
+  @Get('sitemap')
+  sitemap() {
+    return this.tipsters.listPublicTipsterIds();
+  }
+
+  /** Side-by-side comparison for up to three tipsters (OB-160). */
+  @Get('compare')
+  compare(@Query('ids') ids?: string) {
+    const list = (ids ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return this.tipsters.compareProfiles(list);
   }
 
   @Get(':id')

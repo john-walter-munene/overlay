@@ -27,7 +27,7 @@ export class PayoutsService {
   ) {}
 
   private get feeRate(): number {
-    return Number(process.env.PLATFORM_FEE_RATE ?? 0.25);
+    return Number(process.env.PLATFORM_FEE_RATE ?? 0.2);
   }
 
   /**

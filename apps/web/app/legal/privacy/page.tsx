@@ -2,9 +2,9 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Overlay Bets',
+  title: 'Privacy Policy — Overlay Picks',
   description:
-    'How Overlay Bets collects, uses and protects your personal data, including cookies and consent choices.',
+    'How Overlay Picks collects, uses and protects your personal data, including cookies and consent choices.',
   alternates: { canonical: '/legal/privacy' },
 };
 
@@ -15,7 +15,7 @@ export default function PrivacyPage() {
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '3rem 1.5rem' }}>
       <p style={{ margin: 0 }}>
         <Link href="/" style={{ color: 'var(--accent)' }}>
-          ← Overlay Bets
+          ← Overlay Picks
         </Link>
       </p>
       <h1 style={{ fontSize: '2.1rem', marginBottom: '0.25rem' }}>
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
 
       <div style={{ color: 'var(--fg)', lineHeight: 1.7 }}>
         <p>
-          This Privacy Policy explains what personal data Overlay Bets (the
+          This Privacy Policy explains what personal data Overlay Picks (the
           &ldquo;Service&rdquo;) collects, how we use it, and the choices you
           have. It applies alongside our{' '}
           <Link href="/legal/terms" style={{ color: 'var(--accent)' }}>
@@ -94,8 +94,8 @@ export default function PrivacyPage() {
         <h2>8. Contact</h2>
         <p>
           For privacy questions or requests, email{' '}
-          <a href="mailto:privacy@overlaybets.com" style={{ color: 'var(--accent)' }}>
-            privacy@overlaybets.com
+          <a href="mailto:hello@overlaypicks.com" style={{ color: 'var(--accent)' }}>
+            hello@overlaypicks.com
           </a>
           .
         </p>

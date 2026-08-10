@@ -25,6 +25,7 @@ export default function AvatarPicker({
 }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
   const options = avatarOptions(seed || 'you');
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -112,53 +113,64 @@ export default function AvatarPicker({
           </div>
           <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
             {msg ??
-              'Upload a photo, or pick an avatar below. JPG/PNG/WEBP, up to 2 MB.'}
+              'Upload a photo, or pick a generated avatar. JPG/PNG/WEBP, up to 2 MB.'}
           </span>
         </div>
       </div>
 
-      <p
+      <button
+        type="button"
+        className="btn btn--ghost btn--sm"
+        onClick={() => setShowOptions((open) => !open)}
+        aria-expanded={showOptions}
+        aria-controls="avatar-options"
         style={{
-          color: 'var(--muted)',
-          fontSize: '0.85rem',
-          margin: '1rem 0 0.5rem',
+          marginTop: '1rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.4rem',
         }}
       >
-        Or pick an avatar
-      </p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))',
-          gap: '0.6rem',
-        }}
-      >
-        {options.map((o) => {
-          const selected = value === o.url;
-          return (
-            <button
-              key={o.style}
-              type="button"
-              onClick={() => pick(o.url)}
-              disabled={busy}
-              aria-pressed={selected}
-              title={o.style === 'initials' ? 'Initials' : o.style}
-              style={{
-                padding: '0.25rem',
-                borderRadius: 12,
-                border: `2px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
-                background: selected ? 'var(--surface-2)' : 'transparent',
-                cursor: busy ? 'default' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Avatar src={o.url} seed={seed} size={44} />
-            </button>
-          );
-        })}
-      </div>
+        Pick an avatar
+        <span aria-hidden="true">{showOptions ? '\u25B4' : '\u25BE'}</span>
+      </button>
+      {showOptions ? (
+        <div
+          id="avatar-options"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))',
+            gap: '0.6rem',
+            marginTop: '0.75rem',
+          }}
+        >
+          {options.map((o) => {
+            const selected = value === o.url;
+            return (
+              <button
+                key={o.style}
+                type="button"
+                onClick={() => pick(o.url)}
+                disabled={busy}
+                aria-pressed={selected}
+                title={o.style === 'initials' ? 'Initials' : o.style}
+                style={{
+                  padding: '0.25rem',
+                  borderRadius: 12,
+                  border: `2px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
+                  background: selected ? 'var(--surface-2)' : 'transparent',
+                  cursor: busy ? 'default' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Avatar src={o.url} seed={seed} size={44} />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
